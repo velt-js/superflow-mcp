@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "ai.usesuperflow/superflow",
+  "description": "Read website comments and AI review-agent findings, run review agents against a URL, and manage Superflow projects, analytics, and team access.",
+  "status": "active",
+  "version": "1.0.0",
+  "websiteUrl": "https://usesuperflow.ai",
+  "repository": {
+    "url": "https://github.com/velt-js/superflow-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.usesuperflow.ai/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <Superflow personal access token>. Mint one in the Superflow portal under Settings > Integrations > Connected apps. Not required when the client completes the OAuth 2.1 flow instead.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

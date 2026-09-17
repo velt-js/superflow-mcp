@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "superflow": {
+      "url": "https://mcp.usesuperflow.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer sf_pat_YOUR_TOKEN"
+      }
+    }
+  }
+}

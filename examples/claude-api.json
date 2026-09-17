@@ -1,0 +1,19 @@
+{
+  "model": "claude-opus-5",
+  "max_tokens": 16000,
+  "betas": ["mcp-client-2025-11-20"],
+  "mcp_servers": [
+    {
+      "type": "url",
+      "name": "superflow",
+      "url": "https://mcp.usesuperflow.ai/mcp",
+      "authorization_token": "sf_pat_YOUR_TOKEN"
+    }
+  ],
+  "tools": [
+    { "type": "mcp_toolset", "mcp_server_name": "superflow" }
+  ],
+  "messages": [
+    { "role": "user", "content": "List the projects in my Superflow workspace." }
+  ]
+}
