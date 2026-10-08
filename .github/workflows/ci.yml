@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [staging, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build, drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Drift check (offline always; live when SUPERFLOW_DRIFT_BASE_URL is set)
+        run: pnpm check:drift
+        env:
+          SUPERFLOW_DRIFT_BASE_URL: ${{ vars.SUPERFLOW_DRIFT_BASE_URL }}
+      - name: docs/tools.md is current
+        run: pnpm docs:tools && git diff --exit-code docs/tools.md
+      - name: Stdio smoke test
+        run: pnpm smoke:stdio
+
+  node20:
+    name: Built CLI runs on Node 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      # pnpm itself needs Node 22, so install and build there, then run on Node 20.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - run: node --version
+      - run: node scripts/smoke-stdio.mjs
