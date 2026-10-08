@@ -10,9 +10,9 @@ call).
 | BugHerd | Superflow | Notes |
 |---|---|---|
 | task | comment | A comment is a thread: the first message plus replies. It has a per-project number, like `#4821`. |
-| column | status | Statuses are ordered and can be customized per project. Some count as resolved. See `superflow_list_statuses`. |
-| requester | guest | Clients and reviewers invited to a single project. Your team are members. |
-| project | project | One website. Find it by name, site URL or id. |
+| column | status | Statuses are ordered and can be customized for the workspace or per project. Some count as resolved. See `superflow_list_statuses`; add, rename, reorder or delete them with the status tools. |
+| requester | guest | Clients and reviewers invited to a single project. Your team are members. Invite with `superflow_invite_guest`. |
+| project | project | One website. Find it by name, site URL or id. One project per domain; the site URL cannot change, but you can add extra domains. |
 | tag | tag | Unknown tag names are created when you write them. |
 | assigned_to | assignee | A comment has one assignee. Removing it is not supported yet: unassign in the Superflow toolbar. |
 | priority | priority | Superflow has three priorities you can set: `critical` (P0), `high` (P1), `medium` (P2). BugHerd `critical`, `important` and `normal` map to them. `minor` reads as `low` and `not_set` as `none`; you can filter by both, but `low` cannot be written and a priority cannot be cleared yet. |
@@ -20,7 +20,7 @@ call).
 | attachment | attachment | Added by URL. Superflow downloads and stores the file. |
 | local_task_id | comment number | `#4821`, scoped to a project. |
 | external_id | external link | Planned (Phase 3). `has_external_link` matches nothing yet. |
-| admin / member | member | Superflow members are workspace owners or admins. |
+| admin / member | member | Superflow members are workspace owners or admins of every project. There are no per-project member roles. |
 
 You can name things the way people do: a project by name or domain, a person by name
 or email, a status by name. When a name matches more than one thing, the tool returns
@@ -33,10 +33,10 @@ planned are not in this release.
 
 | BugHerd endpoint | Superflow tool | Status |
 |---|---|---|
-| `GET /organization.json` | `superflow_get_me` | available |
+| `GET /organization.json` | `superflow_get_organization` (plan, seats, projects, credits), or `superflow_get_me` (you and your key) | available |
 | `GET /users.json`, `/users/members.json`, `/users/guests.json` | `superflow_list_members` | available |
 | `GET /projects.json`, `/projects/active.json` | `superflow_list_projects` | available |
-| `GET /projects/{id}.json` | `superflow_list_projects` with `query`, or the `superflow://projects/{project}` resource | available |
+| `GET /projects/{id}.json` | `superflow_get_project` | available |
 | `GET /projects/{id}/columns.json` | `superflow_list_statuses` | available |
 | `GET /projects/{id}/tasks.json` (and its filters) | `superflow_list_comments` | available |
 | Counting tasks by column, assignee or tag | `superflow_comment_stats` | available |
@@ -51,9 +51,17 @@ planned are not in this release.
 | `POST /projects/{id}/tasks/{id}/attachments.json` | `superflow_add_attachment` | available |
 | `DELETE /projects/{id}/tasks/{id}.json` | `superflow_delete_comment` (with `confirm: true`; restorable) | available |
 | Exporting tasks | `superflow_export_comments` (csv, json, markdown) | available |
-| `POST /projects.json`, `PUT /projects/{id}.json`, `DELETE /projects/{id}.json` | project admin tools | planned (Phase 2) |
-| `POST /projects/{id}/add_member.json`, `/add_guest.json` | member and guest admin tools (the hosted server has `invite_team_member` and `invite_guest` today) | planned (Phase 2) |
-| `POST /projects/{id}/columns.json` | status admin tools | planned (Phase 2) |
+| `POST /projects.json` | `superflow_create_project` (optionally inviting guests) | available |
+| `PUT /projects/{id}.json` | `superflow_update_project` (name, settings, extra domains), `superflow_archive_project`, `superflow_unarchive_project` | available |
+| `DELETE /projects/{id}.json` | `superflow_delete_project` (with `confirm: true`; permanent) | available |
+| `POST /projects/{id}/add_member.json` | `superflow_invite_member` (members see every project) | available |
+| `POST /projects/{id}/add_guest.json` | `superflow_invite_guest` | available |
+| Removing a user or guest | `superflow_remove_member`, `superflow_remove_guest` (with `confirm: true`) | available |
+| `POST /projects/{id}/columns.json` | `superflow_create_status` | available |
+| `PUT /projects/{id}/columns/{id}.json` | `superflow_update_status`, `superflow_reorder_statuses` | available |
+| Deleting a column | `superflow_delete_status` (moves its comments; with `confirm: true`) | available |
+| Managing tags | `superflow_create_tag`, `superflow_update_tag`, `superflow_delete_tag`, `superflow_merge_tags` | available |
+| Install code for a project | `superflow_get_install_snippet`, `superflow_verify_install` | available |
 | `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | removing an attachment (not offered by the API yet) | planned |
 | `GET /webhooks.json`, `POST /webhooks.json`, `DELETE /webhooks/{id}.json` | webhooks | planned (Phase 3) |
 | `external_id` on tasks | external links (Jira, Linear and others) | planned (Phase 3) |

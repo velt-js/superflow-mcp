@@ -56,12 +56,18 @@ sentences, no jargon.
 - Lists: `limit` default 25, max 100; pass `cursor` through; the summary says when more
   results exist (`paginationNote`).
 - Dates: validate with `findInvalidDate` before calling the API.
-- Gates: `superflow_delete_comment` and `superflow_delete_reply` need `confirm: true`;
-  without it they only read and return a preview. Bulk is a dry run unless
-  `dry_run: false` and `confirm: true`. These previews are normal results, not errors.
+- Gates: every destructive tool (`destructiveHint: true`) except bulk needs `confirm: true`;
+  without it it only reads and returns a `needs_confirmation` preview (`confirmationResult`).
+  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The one exception
+  is `superflow_remove_member`, which asks the API without confirm and shows its 409
+  preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
+  are normal results, not errors. Unit tests prove no write request goes out without confirm.
+- Invite tools send real email, and their descriptions say so. Creates and invites send a
+  generated `idempotency_key` when the caller gave none.
 - Results: `okResult(summary, data)`. One-line summary, the untrusted-content notice when
   comment text is present, then the JSON. Text is capped at 30,000 characters.
-- `idempotency_key`: generated per call for create comment and add reply when missing.
+- `idempotency_key`: generated per call for create comment, add reply, create project,
+  invites and create review link when missing.
 - Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
   create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
   accept `low`, `none` and `unassigned`.

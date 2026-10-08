@@ -41,6 +41,26 @@ The assistant asks before it writes. Bulk changes are a dry run first.
 - Leave a comment on https://acme.com/pricing saying the price table is cut off on mobile.
 - Attach https://files.example.com/fix.png to comment 4821.
 
+## Running the workspace
+
+These use the admin tools. Invites send real email, and deletes, removals and merges
+show a preview first.
+
+- Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
+- Is the Superflow snippet live on acme.com yet?
+- Turn on guest comments for Acme, but make guests sign in.
+- Add staging.acme.com as an extra domain for Acme.
+- Invite jen@agency.com to the team.
+- Who are the guests on Acme? Remove the one from the old agency.
+- Remove Jen from the workspace and hand her open comments to Rakesh.
+- Add an "In review" status to Acme, between Open and Resolved.
+- Merge the tag "Copy text" into "copy".
+- How many member seats do we have left?
+- Which agent used the most AI credits this month?
+- What did the API change on Acme in the last week, and who did it?
+- Switch my email digest to weekly and only email me about my own threads.
+- Archive the Acme project, we are done with it.
+
 ## Prompts that ship with the server
 
 Your client may show these as slash commands or templates.
@@ -50,4 +70,5 @@ Your client may show these as slash commands or templates.
 - `client_update`: what closed, what is open, what we need from the client.
 - `agent_findings_review`: review an agent run and flag likely false positives.
 - `find_duplicates`: near-duplicate comments and which to keep.
-- `launch_checklist`: open comments by priority, and pages nobody has reviewed.
+- `launch_checklist`: install status, guests, open comments by priority, and pages nobody has reviewed.
+- `onboard_client`: create a project for a new client, invite their reviewers, hand over the install snippet and check it.
