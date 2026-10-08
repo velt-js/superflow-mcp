@@ -474,14 +474,16 @@ export interface NotificationSettings {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Phase 3 (CONTRACT-P3): agents, runs, schedules, integrations, webhooks.
+// Phase 3: agents, runs, schedules, integrations, webhooks (the backend's OpenAPI document).
 // ---------------------------------------------------------------------------------------------
 
 /** An issue or task created from a comment in a connected tool (Phase 3 push). */
 export interface ExternalLink {
+  /** jira, asana, clickup or monday. */
   type: string;
-  key: string;
-  url: string;
+  /** Issue key or task id. */
+  key: string | null;
+  url: string | null;
 }
 
 export interface IdName {
@@ -489,12 +491,18 @@ export interface IdName {
   name: string;
 }
 
+/** A reference whose name the API may not know. */
+export interface Ref {
+  id: string;
+  name: string | null;
+}
+
 export type AgentKind = "built_in" | "custom";
 
 export interface Agent {
   id: string;
   name: string;
-  description: string | null;
+  description: string;
   kind: AgentKind;
   enabled: boolean;
   packs: IdName[];
@@ -508,24 +516,17 @@ export interface Agent {
   note?: string | null;
 }
 
-/** The 409 needs_confirmation preview of DELETE /agents/{agent}. */
-export interface DeleteAgentPreview {
-  agent: Agent;
-  packs: IdName[];
-  schedules_using: Schedule[];
-}
-
 export interface DeleteAgentResponse {
   deleted: true;
   id: string;
-  schedules_updated?: number;
-  schedules_disabled?: number;
+  /** Schedules the agent was taken out of. A schedule left with no agents is turned off. */
+  schedules_updated: number;
 }
 
 export interface AgentPack {
   id: string;
   name: string;
-  description: string | null;
+  description: string;
   agent_ids: string[];
   agent_count: number;
   system: boolean;
@@ -536,6 +537,7 @@ export type PricingMode = "scan" | "flat" | "token";
 export type RunScope = "page" | "list" | "site";
 
 export interface RunEstimate {
+  /** null in token pricing mode. */
   credits: number | null;
   credits_display: string;
   pricing_mode: PricingMode;
@@ -546,31 +548,33 @@ export interface RunEstimate {
   sufficient: boolean;
   auto_refill_enabled: boolean;
   agents: IdName[];
-  note: string | null;
+  note: string;
 }
 
 export type RunStatus = "queued" | "running" | "done" | "failed" | "partial";
-export type ExecutionStatus = "running" | "passed" | "failed" | "partial" | "error" | "skipped";
 
 export interface RunExecution {
-  agent: IdName | string;
-  status: ExecutionStatus;
+  /** run_<executionId>: readable on its own with GET /runs/{run}. */
+  id: string;
+  agent: Ref | null;
+  /** running, passed, failed, partial, error or skipped. */
+  status: string;
   findings: number | null;
 }
 
 export interface Run {
   id: string;
-  project: IdName | string | null;
-  agents: IdName[];
+  project: Ref;
+  agents: Ref[];
   scope: RunScope;
-  pages_requested?: string[] | number | null;
+  pages_requested: string[];
   status: RunStatus;
   credits_charged: number | null;
   findings_count: number | null;
   started_at: string | null;
   finished_at: string | null;
   trigger: "manual" | "schedule" | "api";
-  created_by?: { email?: string | null; name?: string | null; uid?: string | null } | string | null;
+  created_by: { id: string | null; email: string | null };
   executions: RunExecution[];
 }
 
@@ -582,17 +586,18 @@ export interface Finding extends CommentCompact {
 
 export interface Schedule {
   id: string;
-  project: IdName | string | null;
+  project: Ref;
   cron: string;
   timezone: string;
-  agents: Array<IdName | string>;
-  pack: IdName | string | null;
+  agents: Ref[] | null;
+  pack: Ref | null;
   scope: RunScope;
-  pages?: string[] | null;
+  pages: string[];
   enabled: boolean;
   next_run_at: string | null;
-  last_run: { run_id: string | null; at: string; status: string } | null;
-  created_by?: { email?: string | null; name?: string | null } | string | null;
+  /** status is a run status, skipped_insufficient_credits or failed_to_start. */
+  last_run: { run_id: string | null; at: string | null; status: string } | null;
+  created_by: { id: string | null; email: string | null };
 }
 
 export interface DeleteScheduleResponse {
@@ -606,26 +611,30 @@ export interface Integration {
   id: string;
   type: IntegrationType;
   name: string;
-  /** Slack channel or the tool's site. */
+  /** Slack channel or Jira site. */
   detail: string | null;
   status: "connected" | "needs_reauth";
   connected_at: string | null;
-  settings: { default_project?: string | null };
+  settings: { default_project: string | null };
 }
 
 export interface ConnectLink {
+  type: IntegrationType;
   url: string;
   note: string;
 }
 
 export interface PushCommentResponse {
-  comment: string | CommentCompact;
+  comment: CommentFull;
   link: ExternalLink;
 }
 
+/** A refused post is a 502 upstream error, so a 200 always has ok: true. */
 export interface SlackPostResponse {
   ok: boolean;
   permalink: string | null;
+  channel: string | null;
+  comments_posted: number;
 }
 
 export interface Webhook {
@@ -634,11 +643,11 @@ export interface Webhook {
   events: string[];
   project_id: string | null;
   active: boolean;
-  description?: string | null;
   /** The last 4 characters of the signing secret. */
-  secret_hint: string;
+  secret_hint: string | null;
+  description: string | null;
   created_at: string | null;
-  last_delivery: { status: string; at: string } | null;
+  last_delivery: { status: string; at: string | null } | null;
 }
 
 /** POST /webhooks: the signing secret is returned this once. */
@@ -652,14 +661,16 @@ export interface DeleteWebhookResponse {
 }
 
 export interface WebhookTestResponse {
-  ok?: boolean;
-  id?: string;
+  sent: boolean;
+  id: string;
+  event: "ping";
+  message_id: string | null;
 }
 
 export interface WebhookDelivery {
   id: string;
-  event: string;
+  event: string | null;
   status: string;
   response_code: number | null;
-  at: string;
+  at: string | null;
 }

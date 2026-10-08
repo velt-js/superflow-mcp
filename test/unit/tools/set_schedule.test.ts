@@ -16,7 +16,36 @@ describe(TOOL, () => {
       "Created schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run done. Each run spends AI credits.",
     );
     expect(recorded[0]?.operationId).toBe("createSchedule");
-    expect(recorded[0]?.body).toEqual({ project: "Acme Dental", cron: "0 9 * * 1", timezone: "Europe/Berlin", pack: "Pre-Launch" });
+    expect(recorded[0]?.body).toEqual({
+      project: "Acme Dental",
+      cron: "0 9 * * 1",
+      timezone: "Europe/Berlin",
+      pack: "Pre-Launch",
+      idempotency_key: expect.any(String),
+    });
+  });
+
+  it("drops a null clear on create, where there is nothing to clear", async () => {
+    on("post", "/schedules", ok(schedule, 201));
+    const h = await connect();
+    await h.call(TOOL, { project: "Acme Dental", cron: "0 9 * * 1", pack: null, agents: ["Proofreader"], idempotency_key: "k-1" });
+    expect(recorded[0]?.body).toEqual({ project: "Acme Dental", cron: "0 9 * * 1", agents: ["Proofreader"], idempotency_key: "k-1" });
+  });
+
+  it("clears the pack with null when switching a schedule to agents, without an idempotency key", async () => {
+    on("patch", "/schedules/:schedule", ok({ ...schedule, pack: null, agents: [{ id: "agt_proof", name: "Proofreader" }] }));
+    const h = await connect();
+    const result = await h.call(TOOL, { schedule: "sch_4d5e6f", pack: null, agents: ["Proofreader"] });
+    expect(recorded[0]?.body).toEqual({ pack: null, agents: ["Proofreader"] });
+    expect(summaryOf(result)).toContain("1 agent, site scope");
+  });
+
+  it("explains a run skipped for credits in the last run", async () => {
+    on("patch", "/schedules/:schedule", ok({ ...schedule, last_run: { run_id: null, at: "2026-10-05T07:00:00Z", status: "skipped_insufficient_credits" } }));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, { schedule: "sch_4d5e6f", enabled: true }))).toContain(
+      "last run skipped (not enough AI credits).",
+    );
   });
 
   it("changes only the given fields when a schedule id is given", async () => {

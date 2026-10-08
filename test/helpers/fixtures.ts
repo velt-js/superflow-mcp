@@ -332,7 +332,7 @@ export const agentPack: AgentPack = {
 export const systemPack: AgentPack = {
   id: "pck_copy",
   name: "Copy QA",
-  description: null,
+  description: "",
   agent_ids: ["agt_proof"],
   agent_count: 1,
   system: true,
@@ -353,7 +353,7 @@ export const estimate: RunEstimate = {
     { id: "agt_proof", name: "Proofreader" },
     { id: "agt_legal1", name: "Legal footer" },
   ],
-  note: null,
+  note: "",
 };
 
 export const lowBalanceEstimate: RunEstimate = { ...estimate, balance: 4, sufficient: false };
@@ -363,17 +363,17 @@ export const runningRun: Run = {
   project: { id: "prj_1a2b", name: "Acme Dental" },
   agents: estimate.agents,
   scope: "site",
-  pages_requested: null,
+  pages_requested: [],
   status: "running",
   credits_charged: 10,
   findings_count: 3,
   started_at: "2026-10-08T10:00:00Z",
   finished_at: null,
   trigger: "api",
-  created_by: { email: "rakesh@agency.com" },
+  created_by: { id: "usr_7", email: "owner@example.com" },
   executions: [
-    { agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
-    { agent: { id: "agt_legal1", name: "Legal footer" }, status: "running", findings: null },
+    { id: "run_exec1", agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
+    { id: "run_exec2", agent: { id: "agt_legal1", name: "Legal footer" }, status: "running", findings: null },
   ],
 };
 
@@ -383,8 +383,8 @@ export const doneRun: Run = {
   findings_count: 5,
   finished_at: "2026-10-08T10:06:00Z",
   executions: [
-    { agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
-    { agent: { id: "agt_legal1", name: "Legal footer" }, status: "passed", findings: 2 },
+    { id: "run_exec1", agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
+    { id: "run_exec2", agent: { id: "agt_legal1", name: "Legal footer" }, status: "passed", findings: 2 },
   ],
 };
 
@@ -403,14 +403,14 @@ export const schedule: Schedule = {
   project: { id: "prj_1a2b", name: "Acme Dental" },
   cron: "0 9 * * 1",
   timezone: "Europe/Berlin",
-  agents: [],
+  agents: null,
   pack: { id: "pck_pre", name: "Pre-Launch" },
   scope: "site",
-  pages: null,
+  pages: [],
   enabled: true,
   next_run_at: "2026-10-12T07:00:00Z",
   last_run: { run_id: "run_8f3k2", at: "2026-10-05T07:00:00Z", status: "done" },
-  created_by: { email: "rakesh@agency.com" },
+  created_by: { id: "usr_7", email: "owner@example.com" },
 };
 
 export const agentSchedule: Schedule = {
@@ -427,17 +427,17 @@ export const slackIntegration: Integration = {
   detail: "#design-feedback",
   status: "connected",
   connected_at: "2026-09-01T10:00:00Z",
-  settings: {},
+  settings: { default_project: null },
 };
 
 export const jiraIntegration: Integration = {
   id: "int_7g8h9i",
   type: "jira",
   name: "Acme Jira",
-  detail: "acme.atlassian.net",
+  detail: "example.atlassian.net",
   status: "connected",
   connected_at: "2026-09-02T10:00:00Z",
-  settings: { default_project: "WEB" },
+  settings: { default_project: "WEB:10001" },
 };
 
 export const webhook: Webhook = {
@@ -455,7 +455,7 @@ export const webhook: Webhook = {
 export const createdWebhook: CreatedWebhook = {
   ...webhook,
   last_delivery: null,
-  secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+  secret: "whsec_dGVzdC1zZWNyZXQtbm90LXJlYWw=",
 };
 
 export const delivery: WebhookDelivery = {

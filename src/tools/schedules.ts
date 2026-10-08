@@ -1,4 +1,5 @@
 // Schedule tools: create or change a scheduled agent run, list schedules, delete one.
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
 import type { DeleteScheduleResponse, ListEnvelope, Schedule } from "../client/types.ts";
@@ -6,7 +7,15 @@ import { CONFIRM_DELETE_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts"
 import { confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join, nameList } from "./helpers.ts";
-import { agentListSchema, confirmSchema, packRefSchema, projectRefSchema, runPagesSchema, runScopeSchema } from "./schemas.ts";
+import {
+  agentListSchema,
+  confirmSchema,
+  idempotencySchema,
+  packRefSchema,
+  projectRefSchema,
+  runPagesSchema,
+  runScopeSchema,
+} from "./schemas.ts";
 
 const scheduleRefSchema = z.string().min(1).describe("Schedule id (sch_...), from superflow_list_schedules.");
 
@@ -14,18 +23,22 @@ const scheduleRefSchema = z.string().min(1).describe("Schedule id (sch_...), fro
 const CRON_FIELDS = /^\S+(\s+\S+){4}$/;
 
 function label(value: Schedule["project"] | Schedule["pack"]): string | undefined {
-  if (!value) return undefined;
-  return typeof value === "string" ? value : value.name ?? value.id;
+  return value ? (value.name ?? value.id) : undefined;
 }
+
+const LAST_RUN_LABELS: Record<string, string> = {
+  skipped_insufficient_credits: "skipped (not enough AI credits)",
+  failed_to_start: "failed to start",
+};
 
 /** "sch_1 on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, on, next run 2026-10-12T07:00:00Z, last run done." */
 export function scheduleLine(schedule: Schedule): string {
   const project = label(schedule.project);
   const pack = label(schedule.pack);
-  const agents = (schedule.agents ?? []).map((agent) => (typeof agent === "string" ? agent : agent.name ?? agent.id));
+  const agents = (schedule.agents ?? []).map((agent) => agent.name ?? agent.id);
   const what = pack ? `pack ${pack}` : agents.length > 0 ? plural(agents.length, "agent") : "the default agents";
   return join(
-    `${schedule.id}${project ? ` on ${project}` : ""}: ${schedule.cron} (${schedule.timezone ?? "UTC"}), ${what}, ${schedule.scope ?? "site"} scope, ${schedule.enabled ? "on" : "paused"}${schedule.next_run_at && schedule.enabled ? `, next run ${schedule.next_run_at}` : ""}${schedule.last_run ? `, last run ${schedule.last_run.status}` : ""}.`,
+    `${schedule.id}${project ? ` on ${project}` : ""}: ${schedule.cron} (${schedule.timezone ?? "UTC"}), ${what}, ${schedule.scope ?? "site"} scope, ${schedule.enabled ? "on" : "paused"}${schedule.next_run_at && schedule.enabled ? `, next run ${schedule.next_run_at}` : ""}${schedule.last_run ? `, last run ${LAST_RUN_LABELS[schedule.last_run.status] ?? schedule.last_run.status}` : ""}.`,
     agents.length > 0 && !pack && `Agents: ${nameList(agents)}.`,
   );
 }
@@ -35,7 +48,7 @@ export const setSchedule = defineTool({
   title: "Create or change a schedule",
   description: [
     "Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.",
-    "Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits.",
+    "Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).",
     "Runs at most once an hour: more frequent crons are refused. Pause with enabled: false; delete with superflow_delete_schedule. Ask the user before creating or changing a schedule.",
     'Example: {"project": "Acme Dental", "cron": "0 9 * * 1", "timezone": "Europe/Berlin", "pack": "Pre-Launch"}',
   ].join("\n"),
@@ -54,11 +67,19 @@ export const setSchedule = defineTool({
       .min(1)
       .optional()
       .describe("IANA time zone for the cron, for example Europe/Berlin or America/New_York. Default UTC."),
-    agents: agentListSchema("Agents to run"),
-    pack: packRefSchema.optional().describe("Run every agent in this pack (name or pck_ id). Give agents or pack, not both."),
+    agents: agentListSchema("Agents to run")
+      .nullable()
+      .describe("Agents to run: names or ids (agt_...), at most 25. Give agents or pack, not both. On a change, null clears them (then the pack or the default agents run)."),
+    pack: packRefSchema
+      .nullable()
+      .optional()
+      .describe("Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it."),
     scope: runScopeSchema,
-    pages: runPagesSchema,
+    pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, for scope list. On a change, null clears them."),
     enabled: z.boolean().optional().describe("false pauses the schedule, true turns it back on. New schedules start on."),
+    idempotency_key: idempotencySchema.describe(
+      "Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out.",
+    ),
   },
   annotations: hints(false, false, true, false),
   write: true,
@@ -70,6 +91,7 @@ export const setSchedule = defineTool({
         "Use minute hour day-of-month month day-of-week, for example \"0 9 * * 1\" for Mondays at 9:00.",
       );
     }
+    // null clears agents, pack or pages on a change; compact keeps it, and drops only what was not given.
     const fields = compact({
       project: args.project,
       cron: args.cron?.trim(),
@@ -85,7 +107,12 @@ export const setSchedule = defineTool({
         return invalidInput("A new schedule needs project and cron.", "To change an existing schedule, pass its id as schedule.");
       }
       if (args.scope === "list" && !args.pages) return invalidInput("scope list needs pages: the page URLs to review.");
-      const created = await api.call<Schedule>("createSchedule", { body: fields });
+      // A new schedule has nothing to clear, so null means "not given".
+      const body = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null));
+      const created = await api.call<Schedule>("createSchedule", {
+        // Generated once per tool call, so the client's own retries cannot create two schedules.
+        body: { ...body, idempotency_key: args.idempotency_key ?? randomUUID() },
+      });
       return okResult(join(`Created schedule ${scheduleLine(created)}`, "Each run spends AI credits."), asData(created));
     }
     if (Object.keys(fields).length === 0) {
