@@ -8,7 +8,7 @@ import { silentLogger } from "./lib/logger.ts";
 import { registerPrompts } from "./prompts/index.ts";
 import { registerResources } from "./resources/index.ts";
 import type { ToolContext } from "./tools/index.ts";
-import { toolsFor } from "./tools/index.ts";
+import { WRITE_TOOL_NAMES, toolsFor } from "./tools/index.ts";
 import { PACKAGE_NAME, VERSION } from "./version.ts";
 
 export interface CreateServerOptions {
@@ -32,6 +32,35 @@ function instructions(readOnly: boolean): string {
   return lines.join("\n");
 }
 
+/**
+ * The SDK answers schema validation failures and unknown tools with a plain text error.
+ * Route those through errorResult too, so every tool error has the contract shape
+ * { error: { code, message, hint, candidates } }. If a future SDK renames this hook,
+ * the SDK default stays in place (test/unit/server.test.ts would catch it).
+ */
+function useContractErrors(server: McpServer, readOnly: boolean): void {
+  const target = server as unknown as { createToolError?: (message: string) => CallToolResult };
+  if (typeof target.createToolError !== "function") return;
+  target.createToolError = (raw: string) => {
+    const message = raw.replace(/^MCP error -?\d+:\s*/, "");
+    const missing = /^Tool (\S+) not found/.exec(message)?.[1];
+    if (missing && readOnly && WRITE_TOOL_NAMES.includes(missing)) {
+      return errorResult({
+        code: "forbidden",
+        message: `${missing} changes data, and this server is read-only (SUPERFLOW_READ_ONLY=true).`,
+        hint: "Tell the user the change cannot be made from here. They can make it in Superflow, or turn off read-only mode.",
+        candidates: [],
+      });
+    }
+    return errorResult({
+      code: "invalid",
+      message,
+      hint: missing ? "Call tools/list to see the available tools." : "Check the arguments against the tool's input schema and call again.",
+      candidates: [],
+    });
+  };
+}
+
 /** Builds the MCP server with tools, resources and prompts. Does not connect a transport. */
 export function createServer({ config, client, logger = silentLogger }: CreateServerOptions): McpServer {
   const server = new McpServer(
@@ -39,6 +68,7 @@ export function createServer({ config, client, logger = silentLogger }: CreateSe
     { instructions: instructions(config.readOnly) },
   );
   const ctx: ToolContext = { api: client, config, logger };
+  useContractErrors(server, config.readOnly);
 
   for (const tool of toolsFor({ readOnly: config.readOnly })) {
     server.registerTool(

@@ -464,7 +464,7 @@ export const deleteReply = defineTool({
     "Delete one reply. Only the reply's author or a workspace owner or admin can delete it, and it cannot be restored.",
     "Without confirm: true nothing is deleted: you get the reply back as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To delete a whole thread use superflow_delete_comment.",
-    'Example: {"reply": "rpl_8f3k2.654321", "confirm": true}',
+    'Example: {"reply": "rpl_8f3k2.654321"}',
   ].join("\n"),
   inputSchema: {
     reply: z.string().min(1).describe("Reply id (rpl_...), from superflow_get_comment."),
@@ -515,7 +515,7 @@ export const deleteComment = defineTool({
     "Delete one comment thread with its replies. It can be restored with superflow_restore_comment until restore_until.",
     "Without confirm: true nothing is deleted: you get the comment back as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To close a comment without deleting it use superflow_resolve_comment. There is no bulk delete: delete one comment at a time.",
-    'Example: {"comment": "4821", "project": "Acme Dental", "confirm": true}',
+    'Example: {"comment": "4821", "project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,

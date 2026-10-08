@@ -455,7 +455,7 @@ To delete a whole thread use superflow_delete_comment.
 Example:
 
 ```json
-{"reply":"rpl_8f3k2.654321","confirm":true}
+{"reply":"rpl_8f3k2.654321"}
 ```
 
 ## superflow_delete_comment
@@ -475,7 +475,7 @@ To close a comment without deleting it use superflow_resolve_comment. There is n
 Example:
 
 ```json
-{"comment":"4821","project":"Acme Dental","confirm":true}
+{"comment":"4821","project":"Acme Dental"}
 ```
 
 ## superflow_restore_comment

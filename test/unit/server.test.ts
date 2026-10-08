@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { WRITE_TOOL_NAMES, tools } from "../../src/tools/index.ts";
-import { connect, useMsw } from "../helpers/harness.ts";
+import { connect, errorOf, seen, summaryOf, useMsw } from "../helpers/harness.ts";
 
 useMsw();
 
@@ -100,7 +100,20 @@ describe("tool registration", () => {
   it("rejects a call to a write tool in read-only mode without any request", async () => {
     const h = await connect({ readOnly: true });
     const result = await h.call("superflow_delete_comment", { comment: "cmt_1", confirm: true });
-    expect(result.isError).toBe(true);
+    expect(errorOf(result).code).toBe("forbidden");
+    expect(errorOf(result).message).toContain("read-only (SUPERFLOW_READ_ONLY=true)");
+    expect(seen).toEqual([]);
+  });
+
+  it("returns schema validation failures in the contract error shape", async () => {
+    const h = await connect();
+    const result = await h.call("superflow_list_comments", { limit: 500 });
+    const error = errorOf(result);
+    expect(error.code).toBe("invalid");
+    expect(error.message).toContain("Input validation error");
+    expect(error.message).not.toMatch(/^MCP error/);
+    expect(summaryOf(result)).toMatch(/^Error \(invalid\): /);
+    expect(seen).toEqual([]);
   });
 
   it("declares instructions, prompts and resources", async () => {
