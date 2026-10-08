@@ -62,6 +62,10 @@ sentences, no jargon.
 - Results: `okResult(summary, data)`. One-line summary, the untrusted-content notice when
   comment text is present, then the JSON. Text is capped at 30,000 characters.
 - `idempotency_key`: generated per call for create comment and add reply when missing.
+- Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
+  create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
+  accept `low`, `none` and `unassigned`.
+- Comment `number` can be null. Label comments with `commentLabel`, which falls back to the id.
 
 ## Commands
 

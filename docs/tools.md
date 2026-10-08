@@ -306,6 +306,8 @@ Example:
 **Create a comment**
 
 Create a new comment on a page of a project, as the key's member. Optionally pin it to an element, and set priority, status, assignee, tags and attachments.
+The comment is public, the same as a comment left with the Superflow toolbar in normal (not private) mode: everyone with access to the project can see it.
+Superflow has three priorities: critical (P0), high (P1) and medium (P2). Use "none" or leave priority out for no priority.
 Use it when the user asks to leave or log feedback on a page. To answer an existing thread use superflow_add_reply instead.
 Ask the user before creating comments they did not ask for.
 
@@ -315,9 +317,9 @@ Ask the user before creating comments they did not ask for.
 | `page_url` | string | yes | Full URL of the page the comment is about. |
 | `text` | string | yes | The comment text. @Name or @email mentions notify those people. |
 | `anchor` | object (selector, xpath, x, y, element_text, viewport, device) | no | Where on the page the comment is pinned. Omit for a page-level comment. |
-| `priority` | `none`, `low`, `medium`, `high`, `critical` | no | Priority. "none" clears it. |
+| `priority` | `critical`, `high`, `medium`, `none` | no | Superflow has three priorities: critical (P0), high (P1) and medium (P2). "none", or leaving it out, creates the comment without a priority. |
 | `status` | string | no | Status name or id. "open" means the default status and "resolved" the resolved status. |
-| `assignees` | array of string | no | Replace the assignee: one name, email or id, or "me". A comment has one assignee. [] or ["unassigned"] clears it. |
+| `assignees` | array of string | no | The assignee: one name, email or id, or "me". A comment has one assignee. Leave it out for no assignee. |
 | `tags` | array of string | no | Tags to add. Unknown tag names are created in the comment's project. |
 | `attachments` | array of object (url, name) | no | Files to attach, by public URL. |
 | `on_behalf_of` | string | no | Post as this existing project guest (email). Needs the users:invite scope. |
@@ -334,6 +336,7 @@ Example:
 **Update a comment**
 
 Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.
+Superflow has three priorities: critical (P0), high (P1) and medium (P2). Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.
 Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.
 Ask the user before changing comments they did not ask about.
 
@@ -342,11 +345,10 @@ Ask the user before changing comments they did not ask about.
 | `comment` | string | yes | Comment: its number ("4821" or "#4821") or id (cmt_...). Numbers need a project. |
 | `project` | string | no | Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
 | `text` | string | no | New text for the comment's first message. |
-| `priority` | `none`, `low`, `medium`, `high`, `critical` | no | Priority. "none" clears it. |
+| `priority` | `critical`, `high`, `medium` | no | Superflow has three priorities: critical (P0), high (P1) and medium (P2). Clearing a priority is not supported yet. |
 | `status` | string | no | Status name or id. "open" means the default status and "resolved" the resolved status. |
-| `assignees` | array of string | no | Replace the assignee: one name, email or id, or "me". A comment has one assignee. [] or ["unassigned"] clears it. |
-| `add_assignees` | array of string | no | Set the assignee (replaces any existing one, since a comment has one assignee). |
-| `remove_assignees` | array of string | no | Remove this assignee if set. |
+| `assignees` | array of string | no | The new assignee: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
+| `add_assignees` | array of string | no | Same as assignees: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
 | `tags` | array of string | no | Replace all tags with these. [] removes every tag. Unknown tag names are created in the comment's project. |
 | `add_tags` | array of string | no | Tags to add. Unknown tag names are created in the comment's project. |
 | `remove_tags` | array of string | no | Tags to remove. |
@@ -501,16 +503,17 @@ Example:
 **Bulk update comments**
 
 Change many comments at once (up to 200): set status, priority or assignee, add or remove tags, or resolve or reopen with an optional note.
-Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments).
-It is a dry run by default: you get how many would change and a sample, and nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.
+Superflow has three priorities: critical (P0), high (P1) and medium (P2). Clearing the priority or removing the assignee is not supported yet.
+Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments). A filter that matches more comments than the API can scan is refused: narrow it, for example by project or date.
+It is a dry run by default: you get how many comments would change, how many already match, and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.
 For one comment use superflow_update_comment or superflow_resolve_comment.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `comment_ids` | array of string | no | Comments to change: numbers ("4821") or ids (cmt_...). Give this or filter, not both. |
-| `project` | string | no | Project for comment numbers in comment_ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
+| `project` | string | no | Project for comment numbers in comment_ids (defaults to SUPERFLOW_DEFAULT_PROJECT when set). With filter, it is used as the filter's project when the filter has none. |
 | `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run) | no | Select comments with the same filters as superflow_list_comments. Give this or comment_ids, not both. |
-| `patch` | object (status, priority, assignees, add_assignees, remove_assignees, add_tags, remove_tags, resolve, reopen, note) | yes | The change to apply to every selected comment. At least one field. |
+| `patch` | object (status, priority, assignees, add_assignees, add_tags, remove_tags, resolve, reopen, note) | yes | The change to apply to every selected comment. At least one field. |
 | `dry_run` | boolean | no | Default true: preview only. false writes, and also needs confirm: true. |
 | `confirm` | boolean | no | Must be true (with dry_run false) to write. Set it only after the user explicitly agreed. Default: `false`. |
 | `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
@@ -534,7 +537,7 @@ To post text use superflow_add_reply (it can carry attachments too).
 | `comment` | string | no | Comment: its number ("4821" or "#4821") or id (cmt_...). Numbers need a project. |
 | `reply` | string | no | Reply id (rpl_...). Give this or comment, not both. |
 | `project` | string | no | Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
-| `url` | string | yes | Public https URL of the file. |
+| `url` | string | yes | Public https URL of an image, video or PDF, at most 25 MB. |
 | `name` | string | no | File name to show. Defaults to the URL's file name. |
 
 Example:

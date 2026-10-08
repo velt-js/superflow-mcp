@@ -14,8 +14,8 @@ call).
 | requester | guest | Clients and reviewers invited to a single project. Your team are members. |
 | project | project | One website. Find it by name, site URL or id. |
 | tag | tag | Unknown tag names are created when you write them. |
-| assigned_to | assignee | A comment has one assignee. |
-| priority | priority | `not_set`, `minor`, `normal`, `important`, `critical` map to `none`, `low`, `medium`, `high`, `critical`. |
+| assigned_to | assignee | A comment has one assignee. Removing it is not supported yet: unassign in the Superflow toolbar. |
+| priority | priority | Superflow has three priorities you can set: `critical` (P0), `high` (P1), `medium` (P2). BugHerd `critical`, `important` and `normal` map to them. `minor` reads as `low` and `not_set` as `none`; you can filter by both, but `low` cannot be written and a priority cannot be cleared yet. |
 | task comment | reply | Replies support @mentions of members and guests. |
 | attachment | attachment | Added by URL. Superflow downloads and stores the file. |
 | local_task_id | comment number | `#4821`, scoped to a project. |

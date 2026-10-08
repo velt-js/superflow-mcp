@@ -135,8 +135,8 @@ Full parameters and examples: [`docs/tools.md`](docs/tools.md).
 | `superflow_get_comment` | One comment with every field and its replies. |
 | `superflow_comment_stats` | Counts grouped by page, status, assignee, week and more, plus response times. |
 | `superflow_export_comments` | Export matching comments as csv, json or markdown. |
-| `superflow_create_comment` | Leave a new comment on a page. |
-| `superflow_update_comment` | Change one comment: text, priority, status, assignee, tags. |
+| `superflow_create_comment` | Leave a new, public comment on a page. |
+| `superflow_update_comment` | Change one comment: text, priority, status, assignee, tags, page or pin. |
 | `superflow_resolve_comment` | Resolve one comment, with an optional note. |
 | `superflow_reopen_comment` | Reopen one comment, with an optional note. |
 | `superflow_add_reply` | Reply in a thread, with @mentions. |
@@ -146,6 +146,8 @@ Full parameters and examples: [`docs/tools.md`](docs/tools.md).
 | `superflow_restore_comment` | Restore a deleted comment. |
 | `superflow_bulk_update_comments` | Change up to 200 comments at once (dry run first, then confirm). |
 | `superflow_add_attachment` | Attach a file by URL to a comment or reply. |
+
+Superflow has three priorities you can set: critical (P0), high (P1) and medium (P2). Removing an assignee or clearing a priority is not supported yet, so the assistant will ask you to do that in the Superflow toolbar. Filters can still find `low` and `none` priority comments and `unassigned` ones.
 
 Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
@@ -169,7 +171,7 @@ More in [`examples/prompts.md`](examples/prompts.md).
 ### Safety
 
 - Deletes need `confirm: true`. Without it the tool only shows what would be deleted.
-- Bulk updates are a dry run by default. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
+- Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
 - The key is only ever sent as the bearer token to the Superflow API, and it is never logged. See [SECURITY.md](SECURITY.md).
 

@@ -28,7 +28,10 @@ First release of the `superflow-mcp` npm package, a local stdio server:
   `superflow://projects/{project}/comments`, `superflow://comments/{comment}`.
 - Ids accept names, site URLs, emails and comment numbers, resolved by the API.
   Ambiguous matches come back with candidates.
-- Confirm gates for deletes and bulk writes; bulk updates are dry runs by default.
+- Confirm gates for deletes and bulk writes; bulk updates are dry runs by default and
+  report how many comments would change, already match, were updated, skipped or failed.
+- Write limits from the API built into the schemas: three priorities (critical, high,
+  medium), one assignee, and comments created as public, like a toolbar comment.
 - `SUPERFLOW_READ_ONLY=true` leaves every write tool unregistered.
 - `SUPERFLOW_DEFAULT_PROJECT` for bare comment numbers.
 - Retries with `Retry-After` on rate limits, and safe retries on 502, 503 and 504.
@@ -40,6 +43,8 @@ First release of the `superflow-mcp` npm package, a local stdio server:
   already covers remote clients; a follow-up runs this package's tools there.
 - Admin tools (projects, members, statuses, tags), agents, integrations and
   webhooks. Those are Phase 2 and Phase 3.
+- Removing an assignee, clearing a priority and deleting an attachment. The API does
+  not support them yet; use the Superflow toolbar.
 
 ## [1.0.0] - Hosted server
 
