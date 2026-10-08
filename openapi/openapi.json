@@ -7968,11 +7968,15 @@
         "security": [
           {
             "bearer": [
-              "integrations:write"
+              "integrations:write",
+              "comments:read"
             ]
           }
         ],
         "x-required-scope": "integrations:write",
+        "x-also-requires": [
+          "comments:read"
+        ],
         "parameters": [
           {
             "name": "comment",
@@ -7993,6 +7997,10 @@
                 "properties": {
                   "integration": {
                     "type": "string"
+                  },
+                  "project": {
+                    "type": "string",
+                    "description": "The project, required when the comment path parameter is a comment number."
                   },
                   "project_key": {
                     "type": "string",
@@ -8065,7 +8073,7 @@
     "/integrations/slack/post": {
       "post": {
         "operationId": "postToSlack",
-        "summary": "Post to the Slack channel of a connection",
+        "summary": "Post to the Slack channel of a connection (quoting comments also needs comments:read)",
         "tags": [
           "integrations"
         ],
@@ -13769,7 +13777,7 @@
         "name": "has_external_link",
         "in": "query",
         "required": false,
-        "description": "true matches nothing in v1.",
+        "description": "true: comments pushed to an issue tracker (pushComment stored a link). false: comments without one.",
         "schema": {
           "type": "boolean"
         }
