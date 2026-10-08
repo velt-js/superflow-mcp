@@ -2,6 +2,7 @@
 // its settings, pushing a comment to a tracker, and posting to Slack.
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { SuperflowApiError } from "../client/api.ts";
 import type {
   CommentCompact,
   CommentFull,
@@ -284,20 +285,29 @@ export const postToSlack = defineTool({
         "Pick a Slack connection from superflow_list_integrations, or push to a tracker with superflow_push_comment.",
       );
     }
-    let matching: { count: number | null; more: boolean; sample: Array<CommentCompact | CommentFull> } | undefined;
+    let matching: { count: number; at_least: boolean; sample: Array<CommentCompact | CommentFull> } | undefined;
+    let unlisted = false;
     if (filter) {
-      const list = await api.call<ListEnvelope<CommentCompact | CommentFull>>("listComments", {
-        query: { ...filter, limit: 25, fields: "compact" },
-      });
-      const sample = list.items ?? [];
-      matching = { count: typeof list.total === "number" ? list.total : sample.length, more: Boolean(list.next_cursor), sample };
+      try {
+        const list = await api.call<ListEnvelope<CommentCompact | CommentFull>>("listComments", {
+          query: { ...filter, limit: 25, fields: "compact" },
+        });
+        const sample = list.items ?? [];
+        const total = typeof list.total === "number" ? list.total : undefined;
+        matching = { count: total ?? sample.length, at_least: total === undefined && Boolean(list.next_cursor), sample };
+      } catch (error) {
+        // A key may post to Slack without reading comments itself: preview without the sample.
+        if (!(error instanceof SuperflowApiError) || error.code !== "forbidden") throw error;
+        unlisted = true;
+      }
     }
     const channel = integration.detail ? ` ${integration.detail}` : "";
     const what = join(
       args.text && `the text "${args.text.length > 120 ? `${args.text.slice(0, 120)}...` : args.text}"`,
       comments && `${args.text ? "and " : ""}${plural(comments.length, "comment")}`,
       matching &&
-        `${args.text ? "and " : ""}${matching.more ? "the first 25 of " : ""}${plural(matching.count ?? 0, "matching comment")}`,
+        `${args.text ? "and " : ""}${matching.at_least ? "at least " : ""}${plural(matching.count ?? 0, "matching comment")}`,
+      unlisted && `${args.text ? "and " : ""}the comments matching the filter (this key cannot list them for a preview)`,
       args.template && `as a ${args.template}`,
     );
     return confirmationResult(

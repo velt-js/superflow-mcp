@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CONFIRM_POST_TO_SLACK_MESSAGE } from "../../../src/lib/confirm.ts";
 import { compactComment, jiraIntegration, list, slackIntegration } from "../../helpers/fixtures.ts";
-import { connect, data, errorOf, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
+import { connect, data, errorOf, fail, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
 
 useMsw();
 
@@ -25,15 +25,39 @@ describe(TOOL, () => {
         text: "Critical items below.",
         filter,
         template: "list",
-        matching_comments: { count: 40, more: true, sample: [compactComment] },
+        matching_comments: { count: 40, at_least: false, sample: [compactComment] },
       },
       message: CONFIRM_POST_TO_SLACK_MESSAGE,
     });
     expect(summaryOf(result)).toBe(
-      'Would post to Slack #design-feedback (Acme workspace): the text "Critical items below." and the first 25 of 40 matching comments as a list. Nothing was posted. Ask the user to confirm.',
+      'Would post to Slack #design-feedback (Acme workspace): the text "Critical items below." and 40 matching comments as a list. Nothing was posted. Ask the user to confirm.',
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["getIntegration", "listComments"]);
     expect(recorded[1]?.query).toEqual({ project: "Acme Dental", priority: "critical", limit: "25", fields: "compact" });
+    expect(writes()).toEqual([]);
+  });
+
+  it("says at least when the comment list has more pages and no total", async () => {
+    on("get", "/integrations/:integration", ok(slackIntegration));
+    on("get", "/comments", ok(list([compactComment], { next_cursor: "c2" })));
+    const h = await connect();
+    const result = await h.call(TOOL, { integration: "int_1a2b3c", filter: { project: "Acme Dental" } });
+    expect(summaryOf(result)).toBe(
+      "Would post to Slack #design-feedback (Acme workspace): at least 1 matching comment. Nothing was posted. Ask the user to confirm.",
+    );
+  });
+
+  it("still previews when the key cannot list comments", async () => {
+    on("get", "/integrations/:integration", ok(slackIntegration));
+    on("get", "/comments", fail(403, { code: "forbidden", message: "This key lacks comments:read." }));
+    const h = await connect();
+    const result = await h.call(TOOL, { integration: "int_1a2b3c", filter: { project: "Acme Dental", status: ["open"] } });
+    expect(result.isError).toBeFalsy();
+    expect(data(result)).toMatchObject({ needs_confirmation: true });
+    expect(data(result).preview).not.toHaveProperty("matching_comments");
+    expect(summaryOf(result)).toBe(
+      "Would post to Slack #design-feedback (Acme workspace): the comments matching the filter (this key cannot list them for a preview). Nothing was posted. Ask the user to confirm.",
+    );
     expect(writes()).toEqual([]);
   });
 
