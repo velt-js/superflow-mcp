@@ -16,14 +16,14 @@ describe("loadConfig", () => {
     expect(
       loadConfig({
         SUPERFLOW_API_KEY: " sf_pat_x ",
-        SUPERFLOW_API_BASE_URL: "https://us-central1-snipply-sdk-staging.cloudfunctions.net/superflowpublicapi/v1/",
+        SUPERFLOW_API_BASE_URL: "https://api.staging.example.com/v1/",
         SUPERFLOW_DEFAULT_PROJECT: "Acme Dental",
         SUPERFLOW_READ_ONLY: "TRUE",
         SUPERFLOW_LOG_LEVEL: "debug",
       }),
     ).toEqual({
       apiKey: "sf_pat_x",
-      baseUrl: "https://us-central1-snipply-sdk-staging.cloudfunctions.net/superflowpublicapi/v1",
+      baseUrl: "https://api.staging.example.com/v1",
       defaultProject: "Acme Dental",
       readOnly: true,
       logLevel: "debug",
