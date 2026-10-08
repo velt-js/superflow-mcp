@@ -267,7 +267,7 @@ export const reviewLink: ReviewLink = {
   project_id: "prj_1a2b",
   url: "https://acme.com/?sfShare=8a7b6c",
   created_at: "2026-10-01T12:00:00Z",
-  created_by: { id: "usr_7", email: "rakesh@velt.dev" },
+  created_by: { id: "usr_7", email: "reviewer@velt.dev" },
 };
 
 export const notificationSettings: NotificationSettings = {
