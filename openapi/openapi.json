@@ -5045,6 +5045,110 @@
         }
       }
     },
+    "/comments/{comment}/push": {
+      "post": {
+        "operationId": "pushComment",
+        "summary": "Create an issue or task from a comment in a connected tool",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:write",
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:write comments:read",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "integration": {
+                    "type": "string"
+                  },
+                  "project_key": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "integration"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/replies/{reply}": {
       "patch": {
         "operationId": "updateReply",
@@ -5902,6 +6006,2727 @@
           }
         }
       }
+    },
+    "/agents": {
+      "get": {
+        "operationId": "listAgents",
+        "summary": "Review agents, built-in and custom",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAgent",
+        "summary": "Create a custom agent from instructions",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "packs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "name",
+                  "instructions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/agents/{agent}": {
+      "get": {
+        "operationId": "getAgent",
+        "summary": "One agent, with instructions for custom agents",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "path",
+            "required": true,
+            "description": "Agent: agt_ id, raw agent id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateAgent",
+        "summary": "Update an agent (built-in: enabled only)",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "path",
+            "required": true,
+            "description": "Agent: agt_ id, raw agent id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAgent",
+        "summary": "Delete a custom agent",
+        "description": "Without confirm=true: 409 needs_confirmation with preview { agent, packs, schedules_using }. Also removes the agent from schedules that name it.",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "path",
+            "required": true,
+            "description": "Agent: agt_ id, raw agent id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedAgent"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/agents/{agent}/duplicate": {
+      "post": {
+        "operationId": "duplicateAgent",
+        "summary": "Copy a custom agent",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "path",
+            "required": true,
+            "description": "Agent: agt_ id, raw agent id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicatedAgent"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/agent-packs": {
+      "get": {
+        "operationId": "listAgentPacks",
+        "summary": "Agent packs (groups) with their agents",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPackList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAgentPack",
+        "summary": "Create an agent pack",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "name",
+                  "agents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPack"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/agent-packs/{pack}": {
+      "patch": {
+        "operationId": "updateAgentPack",
+        "summary": "Update an agent pack",
+        "description": "System packs: membership edits only. is_default_for_runs makes this pack the default for runs and estimates with no agents and no pack.",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:write"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:write",
+        "parameters": [
+          {
+            "name": "pack",
+            "in": "path",
+            "required": true,
+            "description": "Agent pack: pck_ id, raw group id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "add_agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1
+                  },
+                  "remove_agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1
+                  },
+                  "is_default_for_runs": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPack"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/runs/estimate": {
+      "post": {
+        "operationId": "estimateRun",
+        "summary": "Price a run before starting it (charges nothing)",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "page",
+                      "list",
+                      "site"
+                    ],
+                    "description": "Default site."
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 500,
+                    "description": "Page URLs for scope list."
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 25,
+                    "description": "Agents (ids or names). Not with pack."
+                  },
+                  "pack": {
+                    "type": "string",
+                    "description": "Agent pack (id or name). Not with agents."
+                  }
+                },
+                "required": [
+                  "project"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunEstimate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/runs": {
+      "get": {
+        "operationId": "listRuns",
+        "summary": "Agent runs started through the API, the MCP or a schedule, newest first",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Project reference.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "running",
+                "done",
+                "failed",
+                "partial"
+              ]
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "ISO date or relative token.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from next_cursor.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "runAgents",
+        "summary": "Start one site scan with the chosen agents (spends AI credits)",
+        "description": "confirm must be true, else 409 needs_confirmation whose preview is the estimate. Not enough credits: 409 invalid.",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:run"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:run",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "page",
+                      "list",
+                      "site"
+                    ],
+                    "description": "Default site."
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 500,
+                    "description": "Page URLs for scope list."
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 25,
+                    "description": "Agents (ids or names). Not with pack."
+                  },
+                  "pack": {
+                    "type": "string",
+                    "description": "Agent pack (id or name). Not with agents."
+                  },
+                  "confirm": {
+                    "type": "boolean"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "project",
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/runs/{run}": {
+      "get": {
+        "operationId": "getRun",
+        "summary": "One run with live status per agent",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "description": "Agent run: run_ id (a run record, or a Phase 1 execution id as a single-execution run). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/runs/{run}/findings": {
+      "get": {
+        "operationId": "listRunFindings",
+        "summary": "The comments a run's agents left",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "description": "Agent run: run_ id (a run record, or a Phase 1 execution id as a single-execution run). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "description": "Comma separated severities.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from next_cursor.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/schedules": {
+      "get": {
+        "operationId": "listSchedules",
+        "summary": "Scheduled agent runs",
+        "tags": [
+          "schedules"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:read"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Only this project's schedules.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSchedule",
+        "summary": "Schedule agent runs",
+        "tags": [
+          "schedules"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:run"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:run",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string",
+                    "description": "Five-field cron. At most once an hour."
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA time zone. Default UTC."
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 25
+                  },
+                  "pack": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "page",
+                      "list",
+                      "site"
+                    ]
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 500
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "project",
+                  "cron"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/schedules/{schedule}": {
+      "patch": {
+        "operationId": "updateSchedule",
+        "summary": "Change a schedule",
+        "tags": [
+          "schedules"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:run"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:run",
+        "parameters": [
+          {
+            "name": "schedule",
+            "in": "path",
+            "required": true,
+            "description": "Schedule: sch_ id or raw schedule id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string",
+                    "description": "Five-field cron. At most once an hour."
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA time zone. Default UTC."
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 25
+                  },
+                  "pack": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "page",
+                      "list",
+                      "site"
+                    ]
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 500
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSchedule",
+        "summary": "Delete a schedule (idempotent)",
+        "tags": [
+          "schedules"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:run"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:run",
+        "parameters": [
+          {
+            "name": "schedule",
+            "in": "path",
+            "required": true,
+            "description": "Schedule: sch_ id or raw schedule id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedSchedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/integrations": {
+      "get": {
+        "operationId": "listIntegrations",
+        "summary": "Connected tools (Slack, Jira, Asana, ClickUp, Monday)",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:read"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/integrations/connect": {
+      "post": {
+        "operationId": "connectIntegration",
+        "summary": "A portal link that starts connecting a tool",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:write"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "slack",
+                      "jira",
+                      "asana",
+                      "clickup",
+                      "monday"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/integrations/slack/post": {
+      "post": {
+        "operationId": "postToSlack",
+        "summary": "Post a message to a connected Slack channel",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:write"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "integration": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "comments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 25
+                  },
+                  "filter": {
+                    "type": "object",
+                    "description": "Comment filters with the same names as GET /comments, arrays as arrays.",
+                    "properties": {}
+                  },
+                  "template": {
+                    "type": "string",
+                    "enum": [
+                      "summary",
+                      "list"
+                    ]
+                  }
+                },
+                "required": [
+                  "integration"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlackPost"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/integrations/{integration}": {
+      "get": {
+        "operationId": "getIntegration",
+        "summary": "One connected tool",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:read"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:read",
+        "parameters": [
+          {
+            "name": "integration",
+            "in": "path",
+            "required": true,
+            "description": "Integration: int_ id, raw connection id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integration"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateIntegration",
+        "summary": "Integration settings",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "integrations:write"
+            ]
+          }
+        ],
+        "x-required-scope": "integrations:write",
+        "parameters": [
+          {
+            "name": "integration",
+            "in": "path",
+            "required": true,
+            "description": "Integration: int_ id, raw connection id or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "default_project": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Jira project key, or the Asana, ClickUp or Monday project or list id."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integration"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "operationId": "listWebhooks",
+        "summary": "Webhook endpoints",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:read"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebhook",
+        "summary": "Add a webhook endpoint (returns the signing secret once)",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:write"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "Public https URL."
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "comment.created",
+                        "comment.updated",
+                        "comment.resolved",
+                        "comment.reopened",
+                        "comment.deleted",
+                        "reply.created",
+                        "reply.updated",
+                        "reply.deleted",
+                        "project.created",
+                        "project.updated",
+                        "project.archived",
+                        "page.created",
+                        "page.removed",
+                        "member.invited",
+                        "member.removed",
+                        "guest.invited",
+                        "agent_run.started",
+                        "agent_run.completed",
+                        "agent_run.failed"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url",
+                  "events"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedWebhook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}": {
+      "get": {
+        "operationId": "getWebhook",
+        "summary": "One webhook endpoint",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:read"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:read",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Webhook: whk_ id or raw endpoint id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Webhook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateWebhook",
+        "summary": "Change a webhook endpoint",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:write"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:write",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Webhook: whk_ id or raw endpoint id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "comment.created",
+                        "comment.updated",
+                        "comment.resolved",
+                        "comment.reopened",
+                        "comment.deleted",
+                        "reply.created",
+                        "reply.updated",
+                        "reply.deleted",
+                        "project.created",
+                        "project.updated",
+                        "project.archived",
+                        "page.created",
+                        "page.removed",
+                        "member.invited",
+                        "member.removed",
+                        "guest.invited",
+                        "agent_run.started",
+                        "agent_run.completed",
+                        "agent_run.failed"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Webhook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWebhook",
+        "summary": "Delete a webhook endpoint",
+        "description": "Without confirm=true: 409 needs_confirmation with the webhook as the preview.",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:write"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:write",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Webhook: whk_ id or raw endpoint id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedWebhook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}/test": {
+      "post": {
+        "operationId": "testWebhook",
+        "summary": "Send a ping event",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:write"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:write",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Webhook: whk_ id or raw endpoint id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}/deliveries": {
+      "get": {
+        "operationId": "listWebhookDeliveries",
+        "summary": "The last 100 deliveries",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "webhooks:read"
+            ]
+          }
+        ],
+        "x-required-scope": "webhooks:read",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Webhook: whk_ id or raw endpoint id. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeliveryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6719,7 +9544,7 @@
           "external_links": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ExternalLink"
             }
           },
           "attachments": {
@@ -8994,6 +11819,1298 @@
           "email"
         ],
         "additionalProperties": false
+      },
+      "Agent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "agt_ id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "built_in",
+              "custom"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "packs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "is_default": {
+            "type": "boolean",
+            "description": "In Superflow's default run set."
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "kind",
+          "enabled",
+          "packs",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "AgentDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Agent"
+          },
+          {
+            "type": "object",
+            "description": "instructions is the custom agent's prompt; null for built-in agents.",
+            "properties": {
+              "instructions": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "AgentList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Agent"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "DuplicatedAgent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentDetail"
+          },
+          {
+            "type": "object",
+            "description": "note says what was not copied.",
+            "properties": {
+              "note": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DeletedAgent": {
+        "type": "object",
+        "description": "Delete result.",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "schedules_updated": {
+            "type": "integer"
+          },
+          "schedules_disabled": {
+            "type": "integer"
+          }
+        }
+      },
+      "AgentPack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "pck_ id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agent_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "agent_count": {
+            "type": "integer"
+          },
+          "system": {
+            "type": "boolean"
+          },
+          "is_default_for_runs": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "agent_ids",
+          "agent_count",
+          "system",
+          "is_default_for_runs"
+        ],
+        "additionalProperties": false
+      },
+      "AgentPackList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentPack"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "RunEstimate": {
+        "type": "object",
+        "properties": {
+          "credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "credits_display": {
+            "type": "string"
+          },
+          "pricing_mode": {
+            "type": "string",
+            "enum": [
+              "scan",
+              "flat",
+              "token"
+            ]
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "band": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_rescan": {
+            "type": "boolean"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sufficient": {
+            "type": "boolean"
+          },
+          "auto_refill_enabled": {
+            "type": "boolean"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "credits",
+          "credits_display",
+          "pricing_mode",
+          "page_count",
+          "band",
+          "is_rescan",
+          "balance",
+          "sufficient",
+          "auto_refill_enabled",
+          "agents",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "Run": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "run_ id"
+          },
+          "project": {
+            "type": "object",
+            "description": "The project the run reviewed (name, or { id, name }).",
+            "properties": {}
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "page",
+              "list",
+              "site"
+            ]
+          },
+          "pages_requested": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "partial"
+            ],
+            "description": "done, failed and partial are terminal."
+          },
+          "credits_charged": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "findings_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule",
+              "api"
+            ]
+          },
+          "created_by": {
+            "type": "object",
+            "description": "Who started the run.",
+            "properties": {}
+          },
+          "executions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "object",
+                  "description": "The agent ({ id, name }).",
+                  "properties": {}
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "passed",
+                    "failed",
+                    "partial",
+                    "error",
+                    "skipped"
+                  ]
+                },
+                "findings": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "agent",
+                "status",
+                "findings"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "project",
+          "agents",
+          "scope",
+          "status",
+          "credits_charged",
+          "findings_count",
+          "started_at",
+          "finished_at",
+          "trigger",
+          "executions"
+        ],
+        "additionalProperties": false
+      },
+      "RunList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Run"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Finding": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Comment"
+          },
+          {
+            "type": "object",
+            "description": "Agent findings carry severity and confidence.",
+            "properties": {
+              "severity": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "confidence": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "FindingList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Schedule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "sch_ id"
+          },
+          "project": {
+            "type": "object",
+            "description": "The project ({ id, name }).",
+            "properties": {}
+          },
+          "cron": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "pack": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "page",
+              "list",
+              "site"
+            ]
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "next_run_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "run_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "run_id",
+                  "at",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_by": {
+            "type": "object",
+            "description": "Who created the schedule.",
+            "properties": {}
+          }
+        },
+        "required": [
+          "id",
+          "project",
+          "cron",
+          "timezone",
+          "agents",
+          "pack",
+          "scope",
+          "enabled",
+          "next_run_at",
+          "last_run",
+          "created_by"
+        ],
+        "additionalProperties": false
+      },
+      "ScheduleList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Schedule"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "DeletedSchedule": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "Integration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "int_ id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "slack",
+              "jira",
+              "asana",
+              "clickup",
+              "monday"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Slack channel or the tool's site."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "needs_reauth"
+            ]
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "default_project": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "detail",
+          "status",
+          "connected_at",
+          "settings"
+        ],
+        "additionalProperties": false
+      },
+      "IntegrationList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integration"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ConnectLink": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "ExternalLink": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "PushResult": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "link": {
+            "$ref": "#/components/schemas/ExternalLink"
+          }
+        },
+        "required": [
+          "comment",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "SlackPost": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "permalink": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "permalink"
+        ],
+        "additionalProperties": false
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "whk_ id"
+          },
+          "url": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "comment.created",
+                "comment.updated",
+                "comment.resolved",
+                "comment.reopened",
+                "comment.deleted",
+                "reply.created",
+                "reply.updated",
+                "reply.deleted",
+                "project.created",
+                "project.updated",
+                "project.archived",
+                "page.created",
+                "page.removed",
+                "member.invited",
+                "member.removed",
+                "guest.invited",
+                "agent_run.started",
+                "agent_run.completed",
+                "agent_run.failed"
+              ]
+            }
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secret_hint": {
+            "type": "string",
+            "description": "The last 4 characters of the signing secret."
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_delivery": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  }
+                },
+                "required": [
+                  "status",
+                  "at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "events",
+          "project_id",
+          "active",
+          "secret_hint",
+          "created_at",
+          "last_delivery"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedWebhook": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Webhook"
+          },
+          {
+            "type": "object",
+            "description": "secret is the signing secret. It is returned once, on create.",
+            "properties": {
+              "secret": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "WebhookList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Webhook"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "DeletedWebhook": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookTest": {
+        "type": "object",
+        "description": "The ping was queued.",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookDeliveryList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "event": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "response_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC ISO 8601 with Z"
+                }
+              },
+              "required": [
+                "id",
+                "event",
+                "status",
+                "response_code",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {
@@ -9229,7 +13346,7 @@
         "name": "has_external_link",
         "in": "query",
         "required": false,
-        "description": "true matches nothing in v1.",
+        "description": "true: comments linked to an issue or task in an external tool (pushed with POST /comments/{comment}/push). false: comments without one.",
         "schema": {
           "type": "boolean"
         }
