@@ -131,6 +131,26 @@ export interface Project {
   guest_count?: number;
   total_comment_count?: number | null;
   statuses?: Status[];
+  /** Phase 2: GET /projects/{project} only. */
+  settings?: ProjectSettings;
+  /** Phase 2: GET /projects/{project} only. */
+  install?: ProjectInstall;
+}
+
+/** CONTRACT-P2 section 2. */
+export interface ProjectSettings {
+  guest_comments: boolean;
+  guest_sign_in: boolean;
+  comments_disabled: boolean;
+  toolbar_enabled: boolean;
+  query_params_as_pages: boolean;
+}
+
+export interface ProjectInstall {
+  platform: string;
+  status: string;
+  verified_by: string | null;
+  script_tag_detected_at: string | null;
 }
 
 /** Section 5.6. */
@@ -267,4 +287,175 @@ export interface BulkRunResponse {
   /** Selected comments already in the target state (skipped, no note posted). */
   unchanged: number;
   failed: Array<{ id: string; error: string }>;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2 (CONTRACT-P2): admin responses.
+// ---------------------------------------------------------------------------------------------
+
+export interface CreatedProject extends Project {
+  guest_invites?: Array<{ email: string; sent: boolean }>;
+}
+
+/** Archive and unarchive. */
+export interface ProjectChangeResponse {
+  project: Project;
+  changed: boolean;
+}
+
+export interface DeleteProjectResponse {
+  deleted: true;
+  id: string;
+}
+
+export interface InstallSnippet {
+  script_tag: string;
+  platform: string;
+  steps: string[];
+  docs_url: string | null;
+}
+
+export type InstallVerdict = "installed" | "different_project_installed" | "not_installed" | "inconclusive";
+
+export interface VerifyInstallResponse {
+  verdict: InstallVerdict;
+  reason: string;
+  project: Project | string | null;
+}
+
+/** POST /projects/{project}/pages: the page, with created false when it already existed. */
+export interface AddedPage extends Page {
+  created?: boolean;
+}
+
+export interface RemovePageResponse {
+  removed: true;
+  id: string;
+  comments_deleted: number;
+  restore_until: string | null;
+}
+
+export interface SeatCount {
+  used: number;
+  total: number | null;
+}
+
+export interface InviteResponse {
+  invited: Array<{ email: string; sent: boolean }>;
+  skipped: Array<{ email: string; reason: string }>;
+  seats?: { before: SeatCount; after: SeatCount };
+}
+
+/** The 409 needs_confirmation preview of DELETE /members/{member}. */
+export interface RemoveMemberPreview {
+  member: Member | { id: string; name: string; email?: string | null };
+  open_assigned_count: number | null;
+}
+
+export interface RemoveMemberResponse {
+  removed: true;
+  id: string;
+  reassigned: number;
+  still_assigned: number;
+}
+
+export interface RemoveGuestResponse {
+  removed: true;
+  id: string;
+  project: string;
+}
+
+/** Status writes carry the workspace's custom statuses flag. */
+export interface StatusWriteResponse extends Status {
+  custom_statuses_enabled?: boolean;
+  hint?: string;
+}
+
+export interface DeleteStatusResponse {
+  deleted: true;
+  id: string;
+  comments_moved: number;
+  custom_statuses_enabled?: boolean;
+}
+
+export interface DeleteTagResponse {
+  deleted: true;
+  id: string;
+  removed_from: number;
+}
+
+export interface MergeTagsResponse {
+  merged: true;
+  from: string;
+  into: string;
+  comments_updated: number;
+}
+
+export interface SeatUsage {
+  used: number;
+  invited: number;
+  total: number | null;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  plan: string | null;
+  owner: { name: string | null; email: string | null } | null;
+  seats: { members: SeatUsage; guests: SeatUsage } | null;
+  projects: { used: number; total: number | null } | null;
+  credits: {
+    balance: number;
+    included_remaining: number;
+    purchased_remaining: number;
+    auto_refill: { enabled: boolean; threshold?: number; pack?: string };
+  } | null;
+  created_at: string | null;
+}
+
+export interface CreditUsageRow {
+  key: string | null;
+  label: string;
+  credits: number;
+  runs: number;
+}
+
+export interface CreditUsageResponse {
+  rows: CreditUsageRow[];
+  total_credits: number;
+  applied_filters?: Record<string, unknown>;
+  scan?: Scan;
+}
+
+export interface ActivityEntry {
+  id: string;
+  at: string;
+  actor: { id?: string; email: string; name?: string };
+  action: string;
+  entity: { type: string; ids: string[] };
+  via: string;
+}
+
+export interface ReviewLink {
+  id: string;
+  project_id: string;
+  url: string;
+  created_at: string | null;
+  created_by: { id?: string; name?: string | null; email?: string | null } | string | null;
+  /** Only on create: who can see the project through the link. */
+  note?: string;
+}
+
+export interface RevokeReviewLinkResponse {
+  revoked?: boolean;
+  id?: string;
+  changed?: boolean;
+}
+
+export type NotificationLevel = "all" | "mine" | "none";
+
+export interface NotificationSettings {
+  email_digest: { enabled: boolean; cadence: "daily" | "weekly" | "monthly" };
+  inbox: NotificationLevel;
+  email: NotificationLevel;
 }

@@ -28,15 +28,56 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_restore_comment: [false, false, true, false],
   superflow_bulk_update_comments: [false, true, false, false],
   superflow_add_attachment: [false, false, false, true],
+  // CONTRACT-P2 section 10.
+  superflow_get_project: [true, false, true, false],
+  superflow_create_project: [false, false, false, false],
+  superflow_update_project: [false, false, true, false],
+  superflow_archive_project: [false, false, true, false],
+  superflow_unarchive_project: [false, false, true, false],
+  superflow_delete_project: [false, true, true, false],
+  superflow_get_install_snippet: [true, false, true, false],
+  superflow_verify_install: [false, false, true, true],
+  superflow_get_page: [true, false, true, false],
+  superflow_add_page: [false, false, true, false],
+  superflow_remove_page: [false, true, true, false],
+  superflow_invite_member: [false, false, false, true],
+  superflow_remove_member: [false, true, true, false],
+  superflow_list_guests: [true, false, true, false],
+  superflow_invite_guest: [false, false, false, true],
+  superflow_remove_guest: [false, true, true, false],
+  superflow_create_status: [false, false, false, false],
+  superflow_update_status: [false, false, true, false],
+  superflow_reorder_statuses: [false, false, true, false],
+  superflow_delete_status: [false, true, true, false],
+  superflow_create_tag: [false, false, false, false],
+  superflow_update_tag: [false, false, true, false],
+  superflow_delete_tag: [false, true, true, false],
+  superflow_merge_tags: [false, true, true, false],
+  superflow_get_organization: [true, false, true, false],
+  superflow_update_organization: [false, false, true, false],
+  superflow_get_credit_usage: [true, false, true, false],
+  superflow_list_activity: [true, false, true, false],
+  superflow_list_review_links: [true, false, true, false],
+  superflow_create_review_link: [false, false, false, true],
+  superflow_revoke_review_link: [false, true, true, false],
+  superflow_get_notification_settings: [true, false, true, false],
+  superflow_update_notification_settings: [false, false, true, false],
 };
+
+// Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
+// two comment deletes). Bulk gates on dry_run plus confirm.
+const CONFIRM_GATED = Object.entries(CONTRACT)
+  .filter(([name, [, destructive]]) => destructive && name !== "superflow_bulk_update_comments")
+  .map(([name]) => name);
+const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly).length;
 
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 21 contract tools", async () => {
+  it("registers exactly the 54 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(21);
+    expect(listed).toHaveLength(54);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -106,9 +147,32 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(listed).toHaveLength(10);
+    expect(READ_ONLY_COUNT).toBe(19);
+    expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+  });
+
+  it("gives every destructive tool a confirm flag that defaults to false", async () => {
+    expect(CONFIRM_GATED).toHaveLength(10);
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    for (const name of CONFIRM_GATED) {
+      const confirm = (listed.find((t) => t.name === name)?.inputSchema.properties ?? {}) as Record<string, { type?: string; default?: unknown }>;
+      expect(confirm.confirm, name).toMatchObject({ type: "boolean", default: false });
+      expect(listed.find((t) => t.name === name)?.description, name).toContain("Without confirm: true nothing");
+    }
+  });
+
+  it("says in their descriptions that invite tools send real email", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    for (const name of ["superflow_invite_member", "superflow_invite_guest", "superflow_create_project"]) {
+      expect(listed.find((t) => t.name === name)?.description, name).toMatch(/real invite email/);
+    }
+    const review = listed.find((t) => t.name === "superflow_create_review_link")?.description ?? "";
+    expect(review).toContain("visible to anyone who has the link");
+    expect(review).toContain("Velt-internal accounts");
   });
 
   it("rejects a call to a write tool in read-only mode without any request", async () => {

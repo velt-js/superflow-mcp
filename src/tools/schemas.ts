@@ -162,3 +162,42 @@ export function pickFilters(input: Record<string, unknown>): Record<string, unkn
   }
   return out;
 }
+
+export const idempotencySchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .optional()
+  .describe("Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result.");
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2 (admin tools).
+// ---------------------------------------------------------------------------------------------
+
+/** Platforms with their own install steps (CONTRACT-P2 section 2). */
+export const PLATFORMS = ["webflow", "shopify", "wordpress", "framer", "html", "netlify", "nextjs", "vercel", "other"] as const;
+export const CREDIT_GROUP_BY = ["project", "agent", "day"] as const;
+export const DIGEST_CADENCES = ["daily", "weekly", "monthly"] as const;
+export const NOTIFICATION_LEVELS = ["all", "mine", "none"] as const;
+
+export const platformSchema = z
+  .enum(PLATFORMS)
+  .optional()
+  .describe("What the site is built with: webflow, shopify, wordpress, framer, html, netlify, nextjs, vercel or other.");
+
+/** 1 to 10 email addresses. Invite tools send each one a real email. */
+export const inviteEmailsSchema = (who: string) =>
+  z
+    .array(z.string().email())
+    .min(1)
+    .max(10)
+    .describe(`${who}: 1 to 10 email addresses. Each one gets a real invite email.`);
+
+/** The confirm flag of a destructive tool. */
+export const confirmSchema = (action: string) =>
+  z
+    .boolean()
+    .default(false)
+    .describe(`Must be true to ${action}. Set it only after the user explicitly agreed in this conversation.`);
+
+export const dateSchema = (what: string) => z.string().min(1).optional().describe(`${what} ${DATE_DESCRIPTION}`);

@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
-const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 21);
+const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 54);
 const TIMEOUT_MS = 15_000;
 
 function cleanEnv(extra) {

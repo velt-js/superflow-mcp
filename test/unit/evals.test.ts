@@ -42,7 +42,7 @@ describe("eval helpers", () => {
     const session = await startServer({ apiKey: "sf_pat_eval", readOnly: true });
     const tools = toClaudeTools(session.tools);
     await session.close();
-    expect(tools).toHaveLength(10);
+    expect(tools).toHaveLength(19);
     for (const tool of tools) {
       expect(tool.input_schema.type).toBe("object");
       expect(tool.input_schema).not.toHaveProperty("$schema");

@@ -4,7 +4,10 @@ import type { Logger } from "../lib/logger.ts";
 import { silentLogger } from "../lib/logger.ts";
 import { operations } from "./generated/operations.ts";
 import type { OperationId } from "./generated/operations.ts";
-import type { BulkPreview, Candidate } from "./types.ts";
+import type { Candidate } from "./types.ts";
+
+/** The preview a 409 needs_confirmation carries (bulk, or a Phase 2 delete). */
+export type ApiPreview = Record<string, unknown>;
 
 export type ErrorCode =
   | "unauthorized"
@@ -25,7 +28,7 @@ export interface SuperflowApiErrorInit {
   message: string;
   hint?: string;
   candidates?: Candidate[];
-  preview?: BulkPreview;
+  preview?: ApiPreview;
 }
 
 /** An API (or transport) failure in the contract's error shape. */
@@ -35,7 +38,7 @@ export class SuperflowApiError extends Error {
   readonly code: string;
   readonly hint: string;
   readonly candidates: Candidate[];
-  readonly preview: BulkPreview | undefined;
+  readonly preview: ApiPreview | undefined;
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -73,7 +76,21 @@ export interface ApiClientOptions {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SLOW_TIMEOUT_MS = 60_000;
-const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set(["getCommentStats", "exportComments", "bulkUpdateComments"]);
+// Operations that scan, fetch a site, or change many comments get 60 s.
+const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
+  "getCommentStats",
+  "exportComments",
+  "bulkUpdateComments",
+  "createProject",
+  "deleteProject",
+  "verifyInstall",
+  "removePage",
+  "removeMember",
+  "deleteStatus",
+  "deleteTag",
+  "mergeTags",
+  "getCreditUsage",
+]);
 const MAX_RETRIES = 2;
 const BACKOFF_MS = [500, 1500] as const;
 const RETRY_AFTER_CAP_MS = 10_000;
@@ -112,7 +129,7 @@ const FALLBACK_MESSAGES: Record<ErrorCode, string> = {
 
 const FALLBACK_HINTS: Partial<Record<ErrorCode, string>> = {
   forbidden:
-    "Check the key's scopes (comments:read, comments:write, projects:read) in Superflow under Settings > Integrations > API keys.",
+    "Check the key's scopes with superflow_get_me. Change them in Superflow under Settings > Integrations > API keys.",
   ambiguous: "Pick one of the candidates and call again with its id.",
 };
 
@@ -315,7 +332,7 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
   let hint = typeof errorBody?.hint === "string" ? errorBody.hint : "";
   const candidates = Array.isArray(errorBody?.candidates) ? (errorBody.candidates as Candidate[]) : [];
   const preview =
-    errorBody?.preview && typeof errorBody.preview === "object" ? (errorBody.preview as BulkPreview) : undefined;
+    errorBody?.preview && typeof errorBody.preview === "object" ? (errorBody.preview as ApiPreview) : undefined;
 
   let message = apiMessage || FALLBACK_MESSAGES[knownCode] || `The Superflow API returned HTTP ${status}.`;
   if (code === "unauthorized") {

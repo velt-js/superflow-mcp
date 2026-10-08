@@ -28,3 +28,30 @@ export const CONFIRM_DELETE_REPLY_MESSAGE =
 
 export const CONFIRM_BULK_MESSAGE =
   "Nothing was changed. This was a dry run. Show the user how many comments would change and the sample, and ask whether to apply it. If they say yes, call superflow_bulk_update_comments again with the same selection and patch, dry_run: false and confirm: true.";
+
+// Phase 2 destructive tools. Each message tells the model what was NOT done, what to show
+// the user, what the real call does, and how to make it.
+
+export const CONFIRM_DELETE_PROJECT_MESSAGE =
+  "Nothing was deleted. Show the user the project with its comment and page counts, and ask whether to delete it. Deleting is permanent: the project, its pages and every comment on it are gone and cannot be restored. To hide a project without losing anything, use superflow_archive_project. If the user says yes, call superflow_delete_project again with confirm: true.";
+
+export const CONFIRM_REMOVE_PAGE_MESSAGE =
+  "Nothing was removed. Show the user the page and how many comments it has, and ask whether to remove it. Removing a page also deletes its comments (at most 200); they can be restored one by one with superflow_restore_comment for 30 days. If the user says yes, call superflow_remove_page again with confirm: true.";
+
+export const CONFIRM_REMOVE_MEMBER_MESSAGE =
+  "Nothing was removed. Show the user the member and how many open comments are assigned to them, and ask whether to remove them from the workspace. Pass reassign_to (another member) to move those comments; otherwise they stay assigned to the removed person. If the user says yes, call superflow_remove_member again with confirm: true.";
+
+export const CONFIRM_REMOVE_GUEST_MESSAGE =
+  "Nothing was removed. Show the user the guest and ask whether to remove them from this project. They keep any other projects they were invited to. If the user says yes, call superflow_remove_guest again with confirm: true.";
+
+export const CONFIRM_DELETE_STATUS_MESSAGE =
+  "Nothing was deleted. Show the user the status, where its comments will move, and how many comments that is, and ask whether to delete it. If the user says yes, call superflow_delete_status again with the same move_comments_to and confirm: true.";
+
+export const CONFIRM_DELETE_TAG_MESSAGE =
+  "Nothing was deleted. Show the user the tag and how many comments use it, and ask whether to delete it. Deleting removes the tag from every comment that has it. If the user says yes, call superflow_delete_tag again with confirm: true.";
+
+export const CONFIRM_MERGE_TAGS_MESSAGE =
+  "Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one, and the first tag is deleted. If the user says yes, call superflow_merge_tags again with confirm: true.";
+
+export const CONFIRM_REVOKE_REVIEW_LINK_MESSAGE =
+  "Nothing was revoked. Show the user the link and its project, and ask whether to revoke it. Anyone using the link loses access. If the user says yes, call superflow_revoke_review_link again with confirm: true.";
