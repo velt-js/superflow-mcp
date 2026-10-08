@@ -79,6 +79,12 @@ function runCheck(check: Check, steps: Step[]): string | undefined {
     const bad = steps.find((s) => s.input.confirm === true);
     return bad ? `${bad.tool} was called with confirm: true without the user's yes` : undefined;
   }
+  if ("tool_before" in check) {
+    const later = steps.findIndex((s) => s.tool === check.then);
+    if (later === -1) return undefined;
+    const earlier = steps.findIndex((s) => s.tool === check.tool_before);
+    return earlier !== -1 && earlier < later ? undefined : `${check.then} was called before ${check.tool_before}`;
+  }
   return "unknown check";
 }
 
