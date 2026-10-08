@@ -15,7 +15,7 @@ describe(TOOL, () => {
     expect(data(result)).toEqual(archived);
     expect(summaryOf(result)).toBe(`Archived project Acme Dental. Link: ${project.url}`);
     expect(recorded[0]?.operationId).toBe("archiveProject");
-    expect(recorded[0]?.body).toEqual({});
+    expect(recorded[0]?.body).toBeUndefined();
   });
 
   it("is a no-op when already archived", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyPage } from "../../helpers/fixtures.ts";
-import { connect, data, ok, on, recorded, standardErrorCases, summaryOf, useMsw } from "../../helpers/harness.ts";
+import { connect, data, errorOf, ok, on, recorded, standardErrorCases, summaryOf, useMsw } from "../../helpers/harness.ts";
 
 useMsw();
 
@@ -25,10 +25,10 @@ describe(TOOL, () => {
     expect(recorded[0]?.body).toEqual({ url: "https://acme.com/about" });
   });
 
-  it("also reads a { page, created } body", async () => {
-    on("post", "/projects/:project/pages", ok({ page: emptyPage, created: false }));
+  it("needs a full http or https URL", async () => {
     const h = await connect();
-    expect(summaryOf(await h.call(TOOL, { project: "Acme Dental", url: "https://acme.com/about" }))).toContain("already exists");
+    expect(errorOf(await h.call(TOOL, { project: "Acme Dental", url: "/about" })).code).toBe("invalid");
+    expect(recorded).toHaveLength(0);
   });
 
   standardErrorCases({

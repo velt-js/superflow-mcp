@@ -320,12 +320,13 @@ export type InstallVerdict = "installed" | "different_project_installed" | "not_
 export interface VerifyInstallResponse {
   verdict: InstallVerdict;
   reason: string;
-  project: Project | string | null;
+  /** The compact project after the check. */
+  project: Project;
 }
 
-/** POST /projects/{project}/pages: the page, with created false when it already existed. */
+/** POST /projects/{project}/pages: the page, with created false (HTTP 200) when it already existed. */
 export interface AddedPage extends Page {
-  created?: boolean;
+  created: boolean;
 }
 
 export interface RemovePageResponse {
@@ -340,16 +341,22 @@ export interface SeatCount {
   total: number | null;
 }
 
+export type InviteSkipReason = "already_member" | "already_guest" | "duplicate";
+
 export interface InviteResponse {
   invited: Array<{ email: string; sent: boolean }>;
-  skipped: Array<{ email: string; reason: string }>;
-  seats?: { before: SeatCount; after: SeatCount };
+  /** Every email skipped is still a 201. */
+  skipped: Array<{ email: string; reason: InviteSkipReason | string }>;
+  /** used counts users plus pending invites; total null means unlimited. */
+  seats: { before: SeatCount; after: SeatCount };
 }
 
 /** The 409 needs_confirmation preview of DELETE /members/{member}. */
 export interface RemoveMemberPreview {
-  member: Member | { id: string; name: string; email?: string | null };
-  open_assigned_count: number | null;
+  member: Member;
+  open_assigned_count: number;
+  /** Only when the count's scan stopped early. */
+  scan?: Scan;
 }
 
 export interface RemoveMemberResponse {
@@ -365,17 +372,21 @@ export interface RemoveGuestResponse {
   project: string;
 }
 
-/** Status writes carry the workspace's custom statuses flag. */
-export interface StatusWriteResponse extends Status {
-  custom_statuses_enabled?: boolean;
-  hint?: string;
+/** Every status response carries the workspace's custom statuses switch and a hint (null when on). */
+export interface CustomStatusFlag {
+  custom_statuses_enabled: boolean;
+  hint: string | null;
 }
 
-export interface DeleteStatusResponse {
+export type StatusWriteResponse = Status & CustomStatusFlag;
+
+/** PUT /statuses/order: a list envelope plus the flag. */
+export type StatusOrderResponse = ListEnvelope<Status> & CustomStatusFlag;
+
+export interface DeleteStatusResponse extends CustomStatusFlag {
   deleted: true;
   id: string;
   comments_moved: number;
-  custom_statuses_enabled?: boolean;
 }
 
 export interface DeleteTagResponse {
@@ -399,11 +410,11 @@ export interface SeatUsage {
 
 export interface Organization {
   id: string;
-  name: string;
+  name: string | null;
   plan: string | null;
-  owner: { name: string | null; email: string | null } | null;
-  seats: { members: SeatUsage; guests: SeatUsage } | null;
-  projects: { used: number; total: number | null } | null;
+  owner: { name: string | null; email: string | null };
+  seats: { members: SeatUsage; guests: SeatUsage };
+  projects: { used: number; total: number | null };
   credits: {
     balance: number;
     included_remaining: number;
@@ -414,7 +425,8 @@ export interface Organization {
 }
 
 export interface CreditUsageRow {
-  key: string | null;
+  /** prj_ or agt_ id, a UTC day (YYYY-MM-DD), or "none". */
+  key: string;
   label: string;
   credits: number;
   runs: number;
@@ -429,11 +441,12 @@ export interface CreditUsageResponse {
 
 export interface ActivityEntry {
   id: string;
-  at: string;
-  actor: { id?: string; email: string; name?: string };
+  at: string | null;
+  actor: { id: string | null; email: string | null; name: string | null };
+  /** The operationId of the write. */
   action: string;
-  entity: { type: string; ids: string[] };
-  via: string;
+  entity: { type: string | null; ids: string[] };
+  via: "api" | "mcp";
 }
 
 export interface ReviewLink {
@@ -441,15 +454,15 @@ export interface ReviewLink {
   project_id: string;
   url: string;
   created_at: string | null;
-  created_by: { id?: string; name?: string | null; email?: string | null } | string | null;
+  created_by: { id: string | null; email: string | null };
   /** Only on create: who can see the project through the link. */
   note?: string;
 }
 
+/** Idempotent: an already revoked link answers the same. */
 export interface RevokeReviewLinkResponse {
-  revoked?: boolean;
-  id?: string;
-  changed?: boolean;
+  revoked: true;
+  id: string;
 }
 
 export type NotificationLevel = "all" | "mine" | "none";

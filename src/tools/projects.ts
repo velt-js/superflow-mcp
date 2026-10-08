@@ -17,11 +17,16 @@ import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join, nameList } from "./helpers.ts";
 import {
   confirmSchema,
+  httpUrlSchema,
   idempotencySchema,
   inviteEmailsSchema,
   platformSchema,
   projectRefSchema,
 } from "./schemas.ts";
+
+/** The PREVIEW lock (the API answers 400 invalid): a project shared with a review link. */
+const previewLock = (what: string) =>
+  `A project in preview (shared with a review link) refuses ${what} until the link is revoked with superflow_revoke_review_link.`;
 
 const INSTALL_LABELS: Record<string, string> = {
   not_installed: "not installed",
@@ -92,11 +97,10 @@ export const createProject = defineTool({
     'Example: {"name": "Acme Dental", "site_url": "https://acme.com", "platform": "webflow", "guests": ["dana@acme.com"]}',
   ].join("\n"),
   inputSchema: {
-    name: z.string().min(1).describe("Project name, usually the client or the site's name."),
-    site_url: z
-      .string()
-      .min(1)
-      .describe("The site's URL or domain, for example https://acme.com. One project per domain, and it cannot change later."),
+    name: z.string().min(1).max(200).describe("Project name, usually the client or the site's name."),
+    site_url: httpUrlSchema.describe(
+      "The site's full URL with http or https, for example https://acme.com. One project per domain, and it cannot change later.",
+    ),
     platform: platformSchema.describe(
       "What the site is built with, for the install steps: webflow, shopify, wordpress, framer, html, netlify, nextjs, vercel or other. Default other.",
     ),
@@ -126,7 +130,8 @@ export const createProject = defineTool({
     const summary = join(
       `Created project ${project.name ?? args.name} for ${project.site_url ?? args.site_url} (${project.id}).`,
       invites.length > 0 && `Invited ${plural(sent, "guest")}.`,
-      failed.length > 0 && `The invite email could not be sent to ${nameList(failed)}. Tell the user so they can let those people know.`,
+      failed.length > 0 &&
+        `No invite email went to ${nameList(failed)}: the email failed, or the person is already a member. Tell the user.`,
       "Next: get the script tag with superflow_get_install_snippet.",
       project.url && `Link: ${project.url}`,
     );
@@ -159,19 +164,19 @@ export const updateProject = defineTool({
   description: [
     "Change a project: rename it, change its settings (guest comments, guest sign-in, turn commenting off, show or hide the toolbar, query strings as pages), or add extra domains.",
     "The site URL cannot change because a project is tied to its domain: create a new project for a different domain, or add hosts like a staging site with add_domains.",
-    "Guest comments need a plan with guest mode. Projects still in preview cannot be changed. To archive use superflow_archive_project. Ask the user before changing settings.",
-    'Example: {"project": "Acme Dental", "settings": {"guest_comments": true, "guest_sign_in": false}, "add_domains": ["staging.acme.com"]}',
+    `Turning guest comments on needs a plan with guest mode. ${previewLock("settings changes")} To archive use superflow_archive_project. Ask the user before changing settings.`,
+    'Example: {"project": "Acme Dental", "settings": {"guest_comments": true, "guest_sign_in": false}, "add_domains": ["https://staging.acme.com"]}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
-    name: z.string().min(1).optional().describe("New project name."),
+    name: z.string().min(1).max(200).optional().describe("New project name."),
     settings: settingsSchema.optional(),
     add_domains: z
-      .array(z.string().min(1))
+      .array(httpUrlSchema)
       .min(1)
       .max(10)
       .optional()
-      .describe("Extra domains or URLs where the project's toolbar may run, for example staging.acme.com. Added to the existing ones."),
+      .describe("Extra sites where the project's toolbar may run, as full URLs, for example https://staging.acme.com. Added to the existing ones."),
   },
   annotations: hints(false, false, true, false),
   write: true,
@@ -200,13 +205,13 @@ function archiveTool(kind: "archive" | "unarchive") {
     description: (archive
       ? [
           "Archive a project to take it out of the active project list. Nothing is deleted: pages, comments, members and guests stay.",
-          "Safe to repeat: an archived project is left as it is. Projects still in preview cannot be archived.",
+          `Safe to repeat: an archived project is left as it is. ${previewLock("archiving")}`,
           "Undo with superflow_unarchive_project. To remove a project for good use superflow_delete_project. Ask the user before archiving.",
           'Example: {"project": "Acme Dental"}',
         ]
       : [
           "Bring an archived project back. Its install status comes back too: installed if the snippet was verified before, else not installed.",
-          "Safe to repeat: an active project is left as it is. Projects still in preview cannot be changed.",
+          `Safe to repeat: an active project is left as it is. ${previewLock("unarchiving")}`,
           "To archive use superflow_archive_project.",
           'Example: {"project": "Acme Dental"}',
         ]
@@ -217,7 +222,6 @@ function archiveTool(kind: "archive" | "unarchive") {
     async run(args, { api }) {
       const result = await api.call<ProjectChangeResponse>(archive ? "archiveProject" : "unarchiveProject", {
         path: { project: args.project },
-        body: {},
       });
       const name = result.project?.name ?? args.project;
       const link = result.project?.url ? ` Link: ${result.project.url}` : "";
@@ -323,7 +327,8 @@ export const verifyInstall = defineTool({
   title: "Verify the install",
   description: [
     "Check whether the Superflow snippet is live on the project's site. Superflow fetches the site once and answers installed, different_project_installed (a snippet for another project is there), not_installed or inconclusive, with the reason.",
-    "When the verdict is installed, the project is marked installed. Safe to repeat. Use it after the user says they added the snippet.",
+    "When the verdict is installed, the project is marked installed (an archived project comes out of the archive). Safe to repeat. Use it after the user says they added the snippet.",
+    previewLock("the check"),
     "To get the snippet use superflow_get_install_snippet.",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
@@ -331,9 +336,12 @@ export const verifyInstall = defineTool({
   annotations: hints(false, false, true, true),
   write: true,
   async run(args, { api }) {
-    const result = await api.call<VerifyInstallResponse>("verifyInstall", { path: { project: args.project }, body: {} });
+    const result = await api.call<VerifyInstallResponse>("verifyInstall", { path: { project: args.project } });
     const verdict = VERDICTS[result.verdict] ?? `Verdict: ${result.verdict}.`;
-    return okResult(join(verdict, result.reason && `Reason: ${result.reason}`), asData(result));
+    return okResult(
+      join(verdict, result.reason && `Reason: ${result.reason}`, result.project?.url && `Project: ${result.project.url}`),
+      asData(result),
+    );
   },
 });
 

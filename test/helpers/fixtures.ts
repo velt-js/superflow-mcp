@@ -226,7 +226,7 @@ export const projectStatuses: Status[] = [statuses[0] as Status, customStatus, s
 
 export const memberInvite: InviteResponse = {
   invited: [{ email: "jen@agency.com", sent: true }],
-  skipped: [{ email: "rakesh@agency.com", reason: "already a member" }],
+  skipped: [{ email: "rakesh@agency.com", reason: "already_member" }],
   seats: { before: { used: 3, total: 10 }, after: { used: 4, total: 10 } },
 };
 
@@ -267,7 +267,7 @@ export const reviewLink: ReviewLink = {
   project_id: "prj_1a2b",
   url: "https://acme.com/?sfShare=8a7b6c",
   created_at: "2026-10-01T12:00:00Z",
-  created_by: { id: "usr_7", name: "Rakesh", email: "rakesh@velt.dev" },
+  created_by: { id: "usr_7", email: "rakesh@velt.dev" },
 };
 
 export const notificationSettings: NotificationSettings = {

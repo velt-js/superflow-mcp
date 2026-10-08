@@ -201,3 +201,15 @@ export const confirmSchema = (action: string) =>
     .describe(`Must be true to ${action}. Set it only after the user explicitly agreed in this conversation.`);
 
 export const dateSchema = (what: string) => z.string().min(1).optional().describe(`${what} ${DATE_DESCRIPTION}`);
+
+/** An absolute http or https URL, as the API requires for sites, domains and pages. */
+export const httpUrlSchema = z
+  .string()
+  .url()
+  .max(2000)
+  .regex(/^https?:\/\//i, "must be an http or https URL, for example https://acme.com");
+
+/** A hex color, as the API requires for statuses and tags. */
+export const hexColorSchema = z
+  .string()
+  .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex color like #605CEC");

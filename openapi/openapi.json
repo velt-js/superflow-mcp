@@ -3,9 +3,8 @@
   "info": {
     "title": "Superflow API",
     "version": "1.0.0",
-    "description": "Read, filter, search, update, resolve, reply to and bulk-edit Superflow comments. Authenticate with a Superflow API key (sf_pat_) or an OAuth access token (sf_at_). Rate limit: 600 requests per minute per key."
+    "description": "Read, filter, search, update, resolve, reply to and bulk-edit Superflow comments, and administer projects, pages, people, statuses, tags, review links and the workspace. Authenticate with a Superflow API key (sf_pat_) or an OAuth access token (sf_at_). Rate limit: 600 requests per minute per key."
   },
-  "x-provisional": true,
   "servers": [
     {
       "url": "https://api.usesuperflow.ai/v1"
@@ -84,178 +83,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Me"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/me/notifications": {
-      "get": {
-        "operationId": "getNotificationSettings",
-        "summary": "The caller's notification settings",
-        "tags": [
-          "notifications"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "workspace:read"
-            ]
-          }
-        ],
-        "x-required-scope": "workspace:read",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationSettings"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "patch": {
-        "operationId": "updateNotificationSettings",
-        "summary": "Change the caller's notification settings",
-        "tags": [
-          "notifications"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "workspace:write"
-            ]
-          }
-        ],
-        "x-required-scope": "workspace:write",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email_digest": {
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "type": "boolean"
-                      },
-                      "cadence": {
-                        "type": "string",
-                        "enum": [
-                          "daily",
-                          "weekly",
-                          "monthly"
-                        ]
-                      }
-                    },
-                    "required": [],
-                    "additionalProperties": false
-                  },
-                  "inbox": {
-                    "type": "string",
-                    "enum": [
-                      "all",
-                      "mine",
-                      "none"
-                    ]
-                  },
-                  "email": {
-                    "type": "string",
-                    "enum": [
-                      "all",
-                      "mine",
-                      "none"
-                    ]
-                  }
-                },
-                "required": [],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationSettings"
                 }
               }
             }
@@ -386,8 +213,7 @@
       },
       "post": {
         "operationId": "createProject",
-        "summary": "Create a project",
-        "description": "guests also needs users:invite. A duplicate domain is 409 ambiguous with the existing project as the candidate.",
+        "summary": "Create a website project",
         "tags": [
           "projects"
         ],
@@ -408,11 +234,11 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string",
-                    "minLength": 1
+                    "type": "string"
                   },
                   "site_url": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "An http or https URL."
                   },
                   "platform": {
                     "type": "string",
@@ -426,7 +252,8 @@
                       "nextjs",
                       "vercel",
                       "other"
-                    ]
+                    ],
+                    "description": "Default other."
                   },
                   "guests": {
                     "type": "array",
@@ -435,16 +262,15 @@
                       "format": "email"
                     },
                     "minItems": 1,
-                    "maxItems": 10
+                    "maxItems": 10,
+                    "description": "Guests to invite (sends email; needs users:invite too)."
                   },
                   "copy_settings_from": {
                     "type": "string",
-                    "description": "Project reference."
+                    "description": "Project whose settings, access type and project statuses are copied."
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -577,8 +403,7 @@
       },
       "patch": {
         "operationId": "updateProject",
-        "summary": "Update a project",
-        "description": "site_url cannot change (400 invalid); use add_domains.",
+        "summary": "Update a project (name, settings, extra domains)",
         "tags": [
           "projects"
         ],
@@ -609,31 +434,26 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string",
-                    "minLength": 1
+                    "type": "string"
                   },
                   "settings": {
                     "type": "object",
                     "properties": {
                       "guest_comments": {
                         "type": "boolean",
-                        "description": "Guests can comment (public access with guest users). Plan gated (guestMode)."
+                        "description": "On: public document + guests allowed (needs the guestMode plan feature). Off: workspace members only."
                       },
                       "guest_sign_in": {
-                        "type": "boolean",
-                        "description": "Guests may comment without signing in. Only with guest_comments."
+                        "type": "boolean"
                       },
                       "comments_disabled": {
-                        "type": "boolean",
-                        "description": "Turn commenting off for everyone."
+                        "type": "boolean"
                       },
                       "toolbar_enabled": {
-                        "type": "boolean",
-                        "description": "Show the toolbar on the site."
+                        "type": "boolean"
                       },
                       "query_params_as_pages": {
-                        "type": "boolean",
-                        "description": "Treat URLs that differ by query string as different pages."
+                        "type": "boolean"
                       }
                     },
                     "required": [],
@@ -642,9 +462,9 @@
                   "add_domains": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    },
-                    "minItems": 1
+                      "type": "string",
+                      "description": "An http or https URL."
+                    }
                   }
                 },
                 "required": [],
@@ -701,8 +521,7 @@
       },
       "delete": {
         "operationId": "deleteProject",
-        "summary": "Delete a project (hard delete)",
-        "description": "Without confirm=true: 409 needs_confirmation with preview { project, comment_count, page_count }.",
+        "summary": "Delete a project and its comments for good",
         "tags": [
           "projects"
         ],
@@ -728,7 +547,7 @@
             "name": "confirm",
             "in": "query",
             "required": false,
-            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
+            "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
             "schema": {
               "type": "boolean"
             }
@@ -753,319 +572,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/archive": {
-      "post": {
-        "operationId": "archiveProject",
-        "summary": "Archive a project (idempotent)",
-        "tags": [
-          "projects"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectChange"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/unarchive": {
-      "post": {
-        "operationId": "unarchiveProject",
-        "summary": "Unarchive a project (idempotent)",
-        "tags": [
-          "projects"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectChange"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/install": {
-      "get": {
-        "operationId": "getInstallSnippet",
-        "summary": "The install snippet and steps",
-        "tags": [
-          "projects"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:read"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:read",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "platform",
-            "in": "query",
-            "required": false,
-            "description": "Defaults to the project's platform.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "webflow",
-                "shopify",
-                "wordpress",
-                "framer",
-                "html",
-                "netlify",
-                "nextjs",
-                "vercel",
-                "other"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstallSnippet"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/install/verify": {
-      "post": {
-        "operationId": "verifyInstall",
-        "summary": "Check the site for the snippet",
-        "description": "Fetches the site once. Marks the project installed on verdict installed.",
-        "tags": [
-          "projects"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstallVerification"
                 }
               }
             }
@@ -1205,7 +711,7 @@
       },
       "post": {
         "operationId": "addPage",
-        "summary": "Add a page (idempotent)",
+        "summary": "Add a page",
         "tags": [
           "pages"
         ],
@@ -1236,7 +742,8 @@
                 "type": "object",
                 "properties": {
                   "url": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "An http or https URL."
                   },
                   "title": {
                     "type": "string"
@@ -1268,179 +775,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AddedPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/pages/{page}": {
-      "get": {
-        "operationId": "getPage",
-        "summary": "Get a page",
-        "tags": [
-          "pages"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:read"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:read",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "path",
-            "required": true,
-            "description": "Page: pg_ id, raw location id, page URL or path. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "removePage",
-        "summary": "Remove a page and soft delete its comments",
-        "description": "Without confirm=true: 409 needs_confirmation with preview { page, comment_count }. At most 200 comments.",
-        "tags": [
-          "pages"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "path",
-            "required": true,
-            "description": "Page: pg_ id, raw location id, page URL or path. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "confirm",
-            "in": "query",
-            "required": false,
-            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RemovedPage"
+                  "$ref": "#/components/schemas/PageWrite"
                 }
               }
             }
@@ -1522,271 +857,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PeopleList"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/guests": {
-      "get": {
-        "operationId": "listProjectGuests",
-        "summary": "List the guests of a project",
-        "tags": [
-          "members"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:read"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:read",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GuestList"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "post": {
-        "operationId": "inviteGuests",
-        "summary": "Invite project guests (sends email)",
-        "tags": [
-          "members"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "users:invite"
-            ]
-          }
-        ],
-        "x-required-scope": "users:invite",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "emails": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "email"
-                    },
-                    "minItems": 1,
-                    "maxItems": 10
-                  },
-                  "idempotency_key": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255
-                  }
-                },
-                "required": [
-                  "emails"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InviteResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/projects/{project}/guests/{guest}": {
-      "delete": {
-        "operationId": "removeGuest",
-        "summary": "Remove a guest from one project",
-        "tags": [
-          "members"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "users:write"
-            ]
-          }
-        ],
-        "x-required-scope": "users:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "guest",
-            "in": "path",
-            "required": true,
-            "description": "Guest: gst_ id, raw user id, email or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "confirm",
-            "in": "query",
-            "required": false,
-            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RemovedGuest"
                 }
               }
             }
@@ -1898,7 +968,7 @@
         "operationId": "inviteMembers",
         "summary": "Invite workspace members (sends email)",
         "tags": [
-          "members"
+          "people"
         ],
         "security": [
           {
@@ -1926,9 +996,7 @@
                     "maxItems": 10
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1958,98 +1026,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InviteResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/members/{member}": {
-      "delete": {
-        "operationId": "removeMember",
-        "summary": "Remove a workspace member (owner only)",
-        "description": "Without confirm=true: 409 needs_confirmation with preview { member, open_assigned_count }.",
-        "tags": [
-          "members"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "users:write"
-            ]
-          }
-        ],
-        "x-required-scope": "users:write",
-        "parameters": [
-          {
-            "name": "member",
-            "in": "path",
-            "required": true,
-            "description": "Member: usr_ id, raw user id, email or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "confirm",
-            "in": "query",
-            "required": false,
-            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "reassign_to",
-            "in": "query",
-            "required": false,
-            "description": "Member who takes over the removed member's open assigned comments.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RemovedMember"
                 }
               }
             }
@@ -2188,11 +1164,12 @@
                     "maxLength": 20
                   },
                   "color": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
                   },
                   "is_resolved": {
                     "type": "boolean",
-                    "const": false
+                    "description": "false only: new statuses are in progress."
                   }
                 },
                 "required": [
@@ -2221,7 +1198,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusResult"
+                  "$ref": "#/components/schemas/StatusWrite"
                 }
               }
             }
@@ -2340,11 +1317,12 @@
                     "maxLength": 20
                   },
                   "color": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
                   },
                   "is_resolved": {
                     "type": "boolean",
-                    "const": false
+                    "description": "false only: new statuses are in progress."
                   }
                 },
                 "required": [
@@ -2373,296 +1351,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/statuses/order": {
-      "put": {
-        "operationId": "reorderStatuses",
-        "summary": "Reorder a status catalog",
-        "tags": [
-          "statuses"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "project",
-            "in": "query",
-            "required": false,
-            "description": "Project whose catalog to change. Omit for the workspace catalog.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "status_ids": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "minItems": 1
-                  }
-                },
-                "required": [
-                  "status_ids"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusList"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/statuses/{status}": {
-      "patch": {
-        "operationId": "updateStatus",
-        "summary": "Rename or recolor a status",
-        "tags": [
-          "statuses"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "status",
-            "in": "path",
-            "required": true,
-            "description": "Status: sts_ id, raw id or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "project",
-            "in": "query",
-            "required": false,
-            "description": "Project whose catalog to change. Omit for the workspace catalog.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 20
-                  },
-                  "color": {
-                    "type": "string"
-                  }
-                },
-                "required": [],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "deleteStatus",
-        "summary": "Delete a status, moving its comments",
-        "tags": [
-          "statuses"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "status",
-            "in": "path",
-            "required": true,
-            "description": "Status: sts_ id, raw id or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "project",
-            "in": "query",
-            "required": false,
-            "description": "Project whose catalog to change. Omit for the workspace catalog.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "move_comments_to",
-            "in": "query",
-            "required": true,
-            "description": "Status (id or name, same catalog) that takes over the comments. Required.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeletedStatus"
+                  "$ref": "#/components/schemas/StatusWrite"
                 }
               }
             }
@@ -2858,14 +1547,15 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string",
-                    "minLength": 1
+                    "type": "string"
                   },
                   "color": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
                   },
                   "project": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Scope it to a project. Omit for a workspace tag."
                   }
                 },
                 "required": [
@@ -2895,276 +1585,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Tag"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/tags/{tag}": {
-      "patch": {
-        "operationId": "updateTag",
-        "summary": "Rename or recolor a tag (keeps the id)",
-        "tags": [
-          "tags"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "tag",
-            "in": "path",
-            "required": true,
-            "description": "Tag: tag_ id or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "color": {
-                    "type": "string"
-                  }
-                },
-                "required": [],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Tag"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "deleteTag",
-        "summary": "Delete a tag and remove it from every comment",
-        "tags": [
-          "tags"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "tag",
-            "in": "path",
-            "required": true,
-            "description": "Tag: tag_ id or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "confirm",
-            "in": "query",
-            "required": false,
-            "description": "Must be true. Without it the API answers 409 needs_confirmation with a preview.",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeletedTag"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/tags/{tag}/merge": {
-      "post": {
-        "operationId": "mergeTags",
-        "summary": "Merge a tag into another",
-        "tags": [
-          "tags"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [
-          {
-            "name": "tag",
-            "in": "path",
-            "required": true,
-            "description": "Tag: tag_ id or name. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "into": {
-                    "type": "string"
-                  },
-                  "confirm": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "into",
-                  "confirm"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MergedTags"
                 }
               }
             }
@@ -5303,10 +3723,1412 @@
         }
       }
     },
+    "/projects/{project}/archive": {
+      "post": {
+        "operationId": "archiveProject",
+        "summary": "Archive a project",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/unarchive": {
+      "post": {
+        "operationId": "unarchiveProject",
+        "summary": "Unarchive a project",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/install": {
+      "get": {
+        "operationId": "getInstallSnippet",
+        "summary": "The install script tag and steps",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "description": "Default: the project's platform.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "webflow",
+                "shopify",
+                "wordpress",
+                "framer",
+                "html",
+                "netlify",
+                "nextjs",
+                "vercel",
+                "other"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallSnippet"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/install/verify": {
+      "post": {
+        "operationId": "verifyInstall",
+        "summary": "Check the install on the project site once",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/pages/{page}": {
+      "get": {
+        "operationId": "getPage",
+        "summary": "Get a page",
+        "tags": [
+          "pages"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Page: pg_ id, raw location id, page URL, or path (/pricing). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removePage",
+        "summary": "Remove a page and soft-delete its comments",
+        "tags": [
+          "pages"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Page: pg_ id, raw location id, page URL, or path (/pricing). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/members/{member}": {
+      "delete": {
+        "operationId": "removeMember",
+        "summary": "Remove a workspace member (owner only)",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "x-required-scope": "users:write",
+        "parameters": [
+          {
+            "name": "member",
+            "in": "path",
+            "required": true,
+            "description": "Member: usr_ id, raw id, email or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "reassign_to",
+            "in": "query",
+            "required": false,
+            "description": "Another member who takes over their open comments (at most 200).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/guests": {
+      "get": {
+        "operationId": "listProjectGuests",
+        "summary": "List the guests of a project",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "inviteGuests",
+        "summary": "Invite guests to a project (sends email)",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "users:invite"
+            ]
+          }
+        ],
+        "x-required-scope": "users:invite",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "emails": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  },
+                  "idempotency_key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "emails"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/guests/{guest}": {
+      "delete": {
+        "operationId": "removeGuest",
+        "summary": "Remove a guest from one project",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "x-required-scope": "users:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "guest",
+            "in": "path",
+            "required": true,
+            "description": "Guest of the project: gst_ id, raw id, email or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedGuest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/statuses/{status}": {
+      "patch": {
+        "operationId": "updateStatus",
+        "summary": "Rename or recolor a status",
+        "tags": [
+          "statuses"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "description": "Status: sts_ id, raw id, or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Work on this project's own statuses instead of the workspace catalog.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusWrite"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteStatus",
+        "summary": "Delete a status, moving its comments",
+        "tags": [
+          "statuses"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "description": "Status: sts_ id, raw id, or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Work on this project's own statuses instead of the workspace catalog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "move_comments_to",
+            "in": "query",
+            "required": false,
+            "description": "Required: the status (id or name, same catalog) its comments move to.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/statuses/order": {
+      "put": {
+        "operationId": "reorderStatuses",
+        "summary": "Reorder a status catalog",
+        "tags": [
+          "statuses"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Work on this project's own statuses instead of the workspace catalog.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Every status of the catalog, exactly once, in the new order."
+                  }
+                },
+                "required": [
+                  "status_ids"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOrder"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/tags/{tag}": {
+      "patch": {
+        "operationId": "updateTag",
+        "summary": "Rename or recolor a tag (the id is kept)",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTag",
+        "summary": "Delete a tag from every comment",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedTag"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/tags/{tag}/merge": {
+      "post": {
+        "operationId": "mergeTags",
+        "summary": "Merge a tag into another",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "into": {
+                    "type": "string"
+                  },
+                  "confirm": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "into"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergedTags"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/organization": {
       "get": {
         "operationId": "getOrganization",
-        "summary": "The workspace: plan, seats, projects, credits",
+        "summary": "The workspace: plan, owner, seats, projects, credits",
         "tags": [
           "organization"
         ],
@@ -5468,18 +5290,19 @@
             "name": "since",
             "in": "query",
             "required": false,
-            "description": "ISO date or relative token. Default 30d.",
+            "description": "Default 30d.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC)."
             }
           },
           {
             "name": "until",
             "in": "query",
             "required": false,
-            "description": "ISO date or relative token.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC)."
             }
           },
           {
@@ -5546,7 +5369,7 @@
     "/activity": {
       "get": {
         "operationId": "listActivity",
-        "summary": "API write activity, newest first",
+        "summary": "The API activity log",
         "tags": [
           "organization"
         ],
@@ -5563,45 +5386,45 @@
             "name": "actor",
             "in": "query",
             "required": false,
-            "description": "Person who made the change.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "A member: id, email, name, or me."
             }
           },
           {
             "name": "entity",
             "in": "query",
             "required": false,
-            "description": "Any prefixed id.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Any public id a write touched."
             }
           },
           {
             "name": "action",
             "in": "query",
             "required": false,
-            "description": "operationId of the write.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "An operationId."
             }
           },
           {
             "name": "since",
             "in": "query",
             "required": false,
-            "description": "ISO date or relative token.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC)."
             }
           },
           {
             "name": "until",
             "in": "query",
             "required": false,
-            "description": "ISO date or relative token.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC)."
             }
           },
           {
@@ -5675,7 +5498,7 @@
     "/review-links": {
       "get": {
         "operationId": "listReviewLinks",
-        "summary": "Active review links",
+        "summary": "List active review links",
         "tags": [
           "review-links"
         ],
@@ -5692,7 +5515,6 @@
             "name": "project",
             "in": "query",
             "required": false,
-            "description": "Only this project's link.",
             "schema": {
               "type": "string"
             }
@@ -5746,7 +5568,7 @@
       },
       "post": {
         "operationId": "createReviewLink",
-        "summary": "Create a review link (Velt-internal accounts only)",
+        "summary": "Create a review link (public link, guests can comment)",
         "tags": [
           "review-links"
         ],
@@ -5770,9 +5592,7 @@
                     "type": "string"
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -5833,7 +5653,7 @@
     "/review-links/{link}": {
       "delete": {
         "operationId": "revokeReviewLink",
-        "summary": "Revoke a review link (idempotent)",
+        "summary": "Revoke a review link",
         "tags": [
           "review-links"
         ],
@@ -5850,7 +5670,7 @@
             "name": "link",
             "in": "path",
             "required": true,
-            "description": "Review link: lnk_ id or the raw share id. URL-encoded.",
+            "description": "Review link: lnk_ id. URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -5902,6 +5722,178 @@
           }
         }
       }
+    },
+    "/me/notifications": {
+      "get": {
+        "operationId": "getNotificationSettings",
+        "summary": "Your notification settings",
+        "tags": [
+          "me"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateNotificationSettings",
+        "summary": "Change your notification settings",
+        "tags": [
+          "me"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:write"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email_digest": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "cadence": {
+                        "type": "string",
+                        "enum": [
+                          "daily",
+                          "weekly",
+                          "monthly"
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "inbox": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "mine",
+                      "none"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "mine",
+                      "none"
+                    ]
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5913,6 +5905,1205 @@
       }
     },
     "schemas": {
+      "ProjectSettings": {
+        "type": "object",
+        "properties": {
+          "guest_comments": {
+            "type": "boolean",
+            "description": "Document access public AND guests allowed (needs the guestMode plan feature to turn on)."
+          },
+          "guest_sign_in": {
+            "type": "boolean",
+            "description": "Guests may sign in (settings.allowAnonymousSignIn)."
+          },
+          "comments_disabled": {
+            "type": "boolean",
+            "description": "Commenting is off for everyone."
+          },
+          "toolbar_enabled": {
+            "type": "boolean",
+            "description": "The toolbar loads on the site (the document is not disabled)."
+          },
+          "query_params_as_pages": {
+            "type": "boolean",
+            "description": "Query strings make separate pages."
+          }
+        },
+        "required": [
+          "guest_comments",
+          "guest_sign_in",
+          "comments_disabled",
+          "toolbar_enabled",
+          "query_params_as_pages"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectInstall": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "webflow",
+              "shopify",
+              "wordpress",
+              "framer",
+              "html",
+              "netlify",
+              "nextjs",
+              "vercel",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_installed",
+              "installed",
+              "verified"
+            ]
+          },
+          "verified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "script_tag_detected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "platform",
+          "status",
+          "verified_by",
+          "script_tag_detected_at"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedProject": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProjectFull"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "guest_invites": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "sent": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "email",
+                    "sent"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "guest_invites"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ArchiveResult": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project",
+          "changed"
+        ],
+        "additionalProperties": false
+      },
+      "InstallSnippet": {
+        "type": "object",
+        "properties": {
+          "script_tag": {
+            "type": "string",
+            "description": "Paste into the <head> of every page."
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "webflow",
+              "shopify",
+              "wordpress",
+              "framer",
+              "html",
+              "netlify",
+              "nextjs",
+              "vercel",
+              "other"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "docs_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "script_tag",
+          "platform",
+          "steps",
+          "docs_url"
+        ],
+        "additionalProperties": false
+      },
+      "VerifyResult": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "installed",
+              "different_project_installed",
+              "not_installed",
+              "inconclusive"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          }
+        },
+        "required": [
+          "verdict",
+          "reason",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "PageWrite": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Page"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "boolean",
+                "description": "false when the page already existed (200)."
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RemovedPage": {
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "comments_deleted": {
+            "type": "integer"
+          },
+          "restore_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "removed",
+          "id",
+          "comments_deleted",
+          "restore_until"
+        ],
+        "additionalProperties": false
+      },
+      "InviteResult": {
+        "type": "object",
+        "properties": {
+          "invited": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "sent": {
+                  "type": "boolean",
+                  "description": "The invite email went out."
+                }
+              },
+              "required": [
+                "email",
+                "sent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "already_member",
+                    "already_guest",
+                    "duplicate"
+                  ]
+                }
+              },
+              "required": [
+                "email",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "seats": {
+            "type": "object",
+            "properties": {
+              "before": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "null = unlimited"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "used",
+                  "total"
+                ],
+                "additionalProperties": false
+              },
+              "after": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "null = unlimited"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "used",
+                  "total"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "before",
+              "after"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "invited",
+          "skipped",
+          "seats"
+        ],
+        "additionalProperties": false
+      },
+      "RemovedMember": {
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "reassigned": {
+            "type": "integer"
+          },
+          "still_assigned": {
+            "type": "integer",
+            "description": "Open comments still assigned to the removed member (Velt cannot clear an assignee)."
+          }
+        },
+        "required": [
+          "removed",
+          "id",
+          "reassigned",
+          "still_assigned"
+        ],
+        "additionalProperties": false
+      },
+      "RemovedGuest": {
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "removed",
+          "id",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "GuestList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Guest"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "StatusWrite": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Status"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "custom_statuses_enabled": {
+                "type": "boolean",
+                "description": "The workspace custom statuses switch (Settings > Advanced features). The API never flips it."
+              },
+              "hint": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "custom_statuses_enabled",
+              "hint"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "StatusOrder": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Status"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "custom_statuses_enabled": {
+            "type": "boolean",
+            "description": "The workspace custom statuses switch (Settings > Advanced features). The API never flips it."
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters",
+          "custom_statuses_enabled",
+          "hint"
+        ],
+        "additionalProperties": false
+      },
+      "DeletedStatus": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "comments_moved": {
+            "type": "integer"
+          },
+          "custom_statuses_enabled": {
+            "type": "boolean",
+            "description": "The workspace custom statuses switch (Settings > Advanced features). The API never flips it."
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deleted",
+          "id",
+          "comments_moved",
+          "custom_statuses_enabled",
+          "hint"
+        ],
+        "additionalProperties": false
+      },
+      "DeletedTag": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "removed_from": {
+            "type": "integer",
+            "description": "Comments the tag was removed from."
+          }
+        },
+        "required": [
+          "deleted",
+          "id",
+          "removed_from"
+        ],
+        "additionalProperties": false
+      },
+      "MergedTags": {
+        "type": "object",
+        "properties": {
+          "merged": {
+            "type": "boolean",
+            "const": true
+          },
+          "from": {
+            "type": "string"
+          },
+          "into": {
+            "type": "string"
+          },
+          "comments_updated": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "merged",
+          "from",
+          "into",
+          "comments_updated"
+        ],
+        "additionalProperties": false
+      },
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "org_ id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "email"
+            ],
+            "additionalProperties": false
+          },
+          "seats": {
+            "type": "object",
+            "properties": {
+              "members": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "integer"
+                  },
+                  "invited": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "null = unlimited"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "used",
+                  "invited",
+                  "total"
+                ],
+                "additionalProperties": false
+              },
+              "guests": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "integer"
+                  },
+                  "invited": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "null = unlimited"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "used",
+                  "invited",
+                  "total"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "members",
+              "guests"
+            ],
+            "additionalProperties": false
+          },
+          "projects": {
+            "type": "object",
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "total": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "null = unlimited"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "used",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "balance": {
+                    "type": "number"
+                  },
+                  "included_remaining": {
+                    "type": "number"
+                  },
+                  "purchased_remaining": {
+                    "type": "number"
+                  },
+                  "auto_refill": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "threshold": {
+                        "type": "number"
+                      },
+                      "pack": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "balance",
+                  "included_remaining",
+                  "purchased_remaining",
+                  "auto_refill"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "plan",
+          "owner",
+          "seats",
+          "projects",
+          "credits",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "CreditUsage": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "prj_ / agt_ id, a day (YYYY-MM-DD), or none"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "credits": {
+                  "type": "number"
+                },
+                "runs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "credits",
+                "runs"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total_credits": {
+            "type": "number"
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
+          }
+        },
+        "required": [
+          "rows",
+          "total_credits",
+          "applied_filters",
+          "scan"
+        ],
+        "additionalProperties": false
+      },
+      "ActivityList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "actor": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "email",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "action": {
+                  "type": "string",
+                  "description": "The operationId"
+                },
+                "entity": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "ids"
+                  ],
+                  "additionalProperties": false
+                },
+                "via": {
+                  "type": "string",
+                  "enum": [
+                    "api",
+                    "mcp"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "at",
+                "actor",
+                "action",
+                "entity",
+                "via"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "lnk_ id"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "prj_ id"
+          },
+          "url": {
+            "type": "string",
+            "description": "The public review page"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_by": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "email"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "url",
+          "created_at",
+          "created_by"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewLinkList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewLink"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedReviewLink": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReviewLink"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "note"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RevokedReviewLink": {
+        "type": "object",
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "revoked",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationSettings": {
+        "type": "object",
+        "properties": {
+          "email_digest": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "cadence": {
+                "type": "string",
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly"
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "cadence"
+            ],
+            "additionalProperties": false
+          },
+          "inbox": {
+            "type": "string",
+            "enum": [
+              "all",
+              "mine",
+              "none"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "enum": [
+              "all",
+              "mine",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "email_digest",
+          "inbox",
+          "email"
+        ],
+        "additionalProperties": false
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -5971,22 +7162,7 @@
               },
               "preview": {
                 "type": "object",
-                "properties": {
-                  "would_update": {
-                    "type": "integer"
-                  },
-                  "sample": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/Comment"
-                    }
-                  }
-                },
-                "required": [
-                  "would_update",
-                  "sample"
-                ],
-                "additionalProperties": false
+                "description": "needs_confirmation only: what the request would do. Bulk: { would_update, sample }. Deletes and removals: the entity and the counts it affects."
               }
             }
           }
@@ -7073,7 +8249,9 @@
               "guest_count",
               "total_comment_count",
               "default_agent_pack",
-              "statuses"
+              "statuses",
+              "settings",
+              "install"
             ],
             "additionalProperties": false
           }
@@ -7332,6 +8510,7 @@
               "type": "string",
               "enum": [
                 "workspace:read",
+                "workspace:write",
                 "projects:read",
                 "projects:write",
                 "agents:read",
@@ -7341,7 +8520,8 @@
                 "comments:read",
                 "comments:write",
                 "users:read",
-                "users:invite"
+                "users:invite",
+                "users:write"
               ]
             }
           },
@@ -7993,1007 +9173,6 @@
             "additionalProperties": false
           }
         ]
-      },
-      "ProjectSettings": {
-        "type": "object",
-        "properties": {
-          "guest_comments": {
-            "type": "boolean"
-          },
-          "guest_sign_in": {
-            "type": "boolean"
-          },
-          "comments_disabled": {
-            "type": "boolean"
-          },
-          "toolbar_enabled": {
-            "type": "boolean"
-          },
-          "query_params_as_pages": {
-            "type": "boolean"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "ProjectInstall": {
-        "type": "object",
-        "properties": {
-          "platform": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "verified_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "script_tag_detected_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "description": "UTC ISO 8601 with Z"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "platform",
-          "status",
-          "verified_by",
-          "script_tag_detected_at"
-        ],
-        "additionalProperties": false
-      },
-      "CreatedProject": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ProjectFull"
-          },
-          {
-            "type": "object",
-            "description": "Guest invites sent after the project was created.",
-            "properties": {
-              "guest_invites": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "email": {
-                      "type": "string"
-                    },
-                    "sent": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "email",
-                    "sent"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        ]
-      },
-      "ProjectChange": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          },
-          "changed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "project",
-          "changed"
-        ],
-        "additionalProperties": false
-      },
-      "InstallSnippet": {
-        "type": "object",
-        "properties": {
-          "script_tag": {
-            "type": "string"
-          },
-          "platform": {
-            "type": "string",
-            "enum": [
-              "webflow",
-              "shopify",
-              "wordpress",
-              "framer",
-              "html",
-              "netlify",
-              "nextjs",
-              "vercel",
-              "other"
-            ]
-          },
-          "steps": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "docs_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "script_tag",
-          "platform",
-          "steps",
-          "docs_url"
-        ],
-        "additionalProperties": false
-      },
-      "InstallVerification": {
-        "type": "object",
-        "properties": {
-          "verdict": {
-            "type": "string",
-            "enum": [
-              "installed",
-              "different_project_installed",
-              "not_installed",
-              "inconclusive"
-            ]
-          },
-          "reason": {
-            "type": "string"
-          },
-          "project": {
-            "type": "object",
-            "description": "The project, or the project found on the site.",
-            "properties": {}
-          }
-        },
-        "required": [
-          "verdict",
-          "reason",
-          "project"
-        ],
-        "additionalProperties": false
-      },
-      "AddedPage": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Page"
-          },
-          {
-            "type": "object",
-            "description": "created is false when the page already existed.",
-            "properties": {
-              "created": {
-                "type": "boolean"
-              }
-            }
-          }
-        ]
-      },
-      "RemovedPage": {
-        "type": "object",
-        "properties": {
-          "removed": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "comments_deleted": {
-            "type": "integer"
-          },
-          "restore_until": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "description": "UTC ISO 8601 with Z"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "removed",
-          "id",
-          "comments_deleted",
-          "restore_until"
-        ],
-        "additionalProperties": false
-      },
-      "InviteResult": {
-        "type": "object",
-        "properties": {
-          "invited": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "type": "string"
-                },
-                "sent": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "email",
-                "sent"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "skipped": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "type": "string"
-                },
-                "reason": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "email",
-                "reason"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "seats": {
-            "type": "object",
-            "properties": {
-              "before": {
-                "type": "object",
-                "properties": {
-                  "used": {
-                    "type": "integer"
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "used",
-                  "total"
-                ],
-                "additionalProperties": false
-              },
-              "after": {
-                "type": "object",
-                "properties": {
-                  "used": {
-                    "type": "integer"
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "used",
-                  "total"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "before",
-              "after"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "invited",
-          "skipped",
-          "seats"
-        ],
-        "additionalProperties": false
-      },
-      "RemovedMember": {
-        "type": "object",
-        "properties": {
-          "removed": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "reassigned": {
-            "type": "integer"
-          },
-          "still_assigned": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "removed",
-          "id",
-          "reassigned",
-          "still_assigned"
-        ],
-        "additionalProperties": false
-      },
-      "RemovedGuest": {
-        "type": "object",
-        "properties": {
-          "removed": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "project": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "removed",
-          "id",
-          "project"
-        ],
-        "additionalProperties": false
-      },
-      "GuestList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Guest"
-            }
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "total": {
-            "type": "integer"
-          },
-          "applied_filters": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "items",
-          "next_cursor"
-        ],
-        "additionalProperties": false
-      },
-      "StatusResult": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Status"
-          },
-          {
-            "type": "object",
-            "description": "Every status response carries custom_statuses_enabled.",
-            "properties": {
-              "custom_statuses_enabled": {
-                "type": "boolean"
-              }
-            }
-          }
-        ]
-      },
-      "DeletedStatus": {
-        "type": "object",
-        "properties": {
-          "deleted": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "comments_moved": {
-            "type": "integer"
-          },
-          "custom_statuses_enabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "deleted",
-          "id",
-          "comments_moved"
-        ],
-        "additionalProperties": false
-      },
-      "DeletedTag": {
-        "type": "object",
-        "properties": {
-          "deleted": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "removed_from": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "deleted",
-          "id",
-          "removed_from"
-        ],
-        "additionalProperties": false
-      },
-      "MergedTags": {
-        "type": "object",
-        "properties": {
-          "merged": {
-            "type": "boolean",
-            "const": true
-          },
-          "from": {
-            "type": "string"
-          },
-          "into": {
-            "type": "string"
-          },
-          "comments_updated": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "merged",
-          "from",
-          "into",
-          "comments_updated"
-        ],
-        "additionalProperties": false
-      },
-      "Organization": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "org_ id"
-          },
-          "name": {
-            "type": "string"
-          },
-          "plan": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "owner": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "email": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "name",
-              "email"
-            ],
-            "additionalProperties": false
-          },
-          "seats": {
-            "type": "object",
-            "properties": {
-              "members": {
-                "type": "object",
-                "properties": {
-                  "used": {
-                    "type": "integer"
-                  },
-                  "invited": {
-                    "type": "integer"
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "used",
-                  "invited",
-                  "total"
-                ],
-                "additionalProperties": false
-              },
-              "guests": {
-                "type": "object",
-                "properties": {
-                  "used": {
-                    "type": "integer"
-                  },
-                  "invited": {
-                    "type": "integer"
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "used",
-                  "invited",
-                  "total"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "members",
-              "guests"
-            ],
-            "additionalProperties": false
-          },
-          "projects": {
-            "type": "object",
-            "properties": {
-              "used": {
-                "type": "integer"
-              },
-              "total": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "used",
-              "total"
-            ],
-            "additionalProperties": false
-          },
-          "credits": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "balance": {
-                    "type": "number"
-                  },
-                  "included_remaining": {
-                    "type": "number"
-                  },
-                  "purchased_remaining": {
-                    "type": "number"
-                  },
-                  "auto_refill": {
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "type": "boolean"
-                      },
-                      "threshold": {
-                        "type": "number"
-                      },
-                      "pack": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "enabled"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "balance",
-                  "included_remaining",
-                  "purchased_remaining",
-                  "auto_refill"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "description": "UTC ISO 8601 with Z"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "plan",
-          "owner",
-          "seats",
-          "projects",
-          "credits",
-          "created_at"
-        ],
-        "additionalProperties": false
-      },
-      "CreditUsage": {
-        "type": "object",
-        "properties": {
-          "rows": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "label": {
-                  "type": "string"
-                },
-                "credits": {
-                  "type": "number"
-                },
-                "runs": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "key",
-                "label",
-                "credits",
-                "runs"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "total_credits": {
-            "type": "number"
-          },
-          "applied_filters": {
-            "type": "object"
-          },
-          "scan": {
-            "$ref": "#/components/schemas/Scan"
-          }
-        },
-        "required": [
-          "rows",
-          "total_credits",
-          "applied_filters",
-          "scan"
-        ],
-        "additionalProperties": false
-      },
-      "ActivityList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "description": "UTC ISO 8601 with Z"
-                },
-                "actor": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "email": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "email"
-                  ],
-                  "additionalProperties": false
-                },
-                "action": {
-                  "type": "string",
-                  "description": "The operationId of the write."
-                },
-                "entity": {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string"
-                    },
-                    "ids": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "ids"
-                  ],
-                  "additionalProperties": false
-                },
-                "via": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "at",
-                "actor",
-                "action",
-                "entity",
-                "via"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "total": {
-            "type": "integer"
-          },
-          "applied_filters": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "items",
-          "next_cursor"
-        ],
-        "additionalProperties": false
-      },
-      "ReviewLink": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "lnk_ id"
-          },
-          "project_id": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "UTC ISO 8601 with Z"
-          },
-          "created_by": {
-            "type": "object",
-            "description": "Who created the link.",
-            "properties": {}
-          }
-        },
-        "required": [
-          "id",
-          "project_id",
-          "url",
-          "created_at",
-          "created_by"
-        ],
-        "additionalProperties": false
-      },
-      "CreatedReviewLink": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ReviewLink"
-          },
-          {
-            "type": "object",
-            "description": "note warns that anyone with the link can see the project.",
-            "properties": {
-              "note": {
-                "type": "string"
-              }
-            }
-          }
-        ]
-      },
-      "ReviewLinkList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ReviewLink"
-            }
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "total": {
-            "type": "integer"
-          },
-          "applied_filters": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "items",
-          "next_cursor"
-        ],
-        "additionalProperties": false
-      },
-      "RevokedReviewLink": {
-        "type": "object",
-        "description": "Idempotent revoke result.",
-        "properties": {
-          "revoked": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          }
-        }
-      },
-      "NotificationSettings": {
-        "type": "object",
-        "properties": {
-          "email_digest": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "cadence": {
-                "type": "string",
-                "enum": [
-                  "daily",
-                  "weekly",
-                  "monthly"
-                ]
-              }
-            },
-            "required": [
-              "enabled",
-              "cadence"
-            ],
-            "additionalProperties": false
-          },
-          "inbox": {
-            "type": "string",
-            "enum": [
-              "all",
-              "mine",
-              "none"
-            ]
-          },
-          "email": {
-            "type": "string",
-            "enum": [
-              "all",
-              "mine",
-              "none"
-            ]
-          }
-        },
-        "required": [
-          "email_digest",
-          "inbox",
-          "email"
-        ],
-        "additionalProperties": false
       }
     },
     "parameters": {

@@ -204,7 +204,7 @@ export const operations = {
     method: "GET",
     path: "/projects/{project}/guests",
     pathParams: ["project"],
-    queryParams: [],
+    queryParams: ["query"],
   },
   listProjectMembers: {
     method: "GET",

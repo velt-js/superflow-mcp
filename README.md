@@ -197,7 +197,7 @@ Superflow has three priorities you can set: critical (P0), high (P1) and medium 
 
 Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
-Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent.
+Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent. While a project has an active review link it is in preview: archiving, install checks and settings changes wait until the link is revoked. Site, domain and page addresses are full `https://` URLs.
 
 The server also ships seven prompts (`triage`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`) and five resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`).
 
