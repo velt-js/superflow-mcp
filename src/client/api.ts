@@ -228,7 +228,7 @@ export class ApiClient {
           status: 0,
           code: "upstream",
           message: timedOut
-            ? `The Superflow API did not answer within ${Math.round(timeoutMs / 1000)} seconds.`
+            ? `The Superflow API did not answer within ${Math.max(1, Math.round(timeoutMs / 1000))} seconds.`
             : `Could not reach the Superflow API at ${new URL(this.baseUrl).host}.`,
           hint: timedOut
             ? "Try again with narrower filters or a smaller limit."
