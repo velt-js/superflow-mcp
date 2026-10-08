@@ -102,7 +102,7 @@ export interface CommentFull {
   metadata: Record<string, unknown> | null;
   source: CommentSource;
   agent: { id: string; name: string; run_id: string | null; severity: string | null; confidence: number | null } | null;
-  external_links: unknown[];
+  external_links: ExternalLink[];
   attachments: Attachment[];
   replies?: Reply[];
   reply_count: number;
@@ -458,4 +458,195 @@ export interface NotificationSettings {
   email_digest: { enabled: boolean; cadence: "daily" | "weekly" | "monthly" };
   inbox: NotificationLevel;
   email: NotificationLevel;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 (CONTRACT-P3): agents, runs, schedules, integrations, webhooks.
+// ---------------------------------------------------------------------------------------------
+
+/** An issue or task created from a comment in a connected tool (Phase 3 push). */
+export interface ExternalLink {
+  type: string;
+  key: string;
+  url: string;
+}
+
+export interface IdName {
+  id: string;
+  name: string;
+}
+
+export type AgentKind = "built_in" | "custom";
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: AgentKind;
+  enabled: boolean;
+  packs: IdName[];
+  /** In Superflow's default run set. */
+  is_default: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  /** GET /agents/{agent} and writes: the custom agent's instructions; null for built-in agents. */
+  instructions?: string | null;
+  /** Duplicate only: what was not copied. */
+  note?: string | null;
+}
+
+/** The 409 needs_confirmation preview of DELETE /agents/{agent}. */
+export interface DeleteAgentPreview {
+  agent: Agent;
+  packs: IdName[];
+  schedules_using: Schedule[];
+}
+
+export interface DeleteAgentResponse {
+  deleted: true;
+  id: string;
+  schedules_updated?: number;
+  schedules_disabled?: number;
+}
+
+export interface AgentPack {
+  id: string;
+  name: string;
+  description: string | null;
+  agent_ids: string[];
+  agent_count: number;
+  system: boolean;
+  is_default_for_runs: boolean;
+}
+
+export type PricingMode = "scan" | "flat" | "token";
+export type RunScope = "page" | "list" | "site";
+
+export interface RunEstimate {
+  credits: number | null;
+  credits_display: string;
+  pricing_mode: PricingMode;
+  page_count: number | null;
+  band: string | null;
+  is_rescan: boolean;
+  balance: number | null;
+  sufficient: boolean;
+  auto_refill_enabled: boolean;
+  agents: IdName[];
+  note: string | null;
+}
+
+export type RunStatus = "queued" | "running" | "done" | "failed" | "partial";
+export type ExecutionStatus = "running" | "passed" | "failed" | "partial" | "error" | "skipped";
+
+export interface RunExecution {
+  agent: IdName | string;
+  status: ExecutionStatus;
+  findings: number | null;
+}
+
+export interface Run {
+  id: string;
+  project: IdName | string | null;
+  agents: IdName[];
+  scope: RunScope;
+  pages_requested?: string[] | number | null;
+  status: RunStatus;
+  credits_charged: number | null;
+  findings_count: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  trigger: "manual" | "schedule" | "api";
+  created_by?: { email?: string | null; name?: string | null; uid?: string | null } | string | null;
+  executions: RunExecution[];
+}
+
+/** A run finding: a compact comment plus the agent's severity and confidence. */
+export interface Finding extends CommentCompact {
+  severity: string | null;
+  confidence: number | null;
+}
+
+export interface Schedule {
+  id: string;
+  project: IdName | string | null;
+  cron: string;
+  timezone: string;
+  agents: Array<IdName | string>;
+  pack: IdName | string | null;
+  scope: RunScope;
+  pages?: string[] | null;
+  enabled: boolean;
+  next_run_at: string | null;
+  last_run: { run_id: string | null; at: string; status: string } | null;
+  created_by?: { email?: string | null; name?: string | null } | string | null;
+}
+
+export interface DeleteScheduleResponse {
+  deleted: true;
+  id: string;
+}
+
+export type IntegrationType = "slack" | "jira" | "asana" | "clickup" | "monday";
+
+export interface Integration {
+  id: string;
+  type: IntegrationType;
+  name: string;
+  /** Slack channel or the tool's site. */
+  detail: string | null;
+  status: "connected" | "needs_reauth";
+  connected_at: string | null;
+  settings: { default_project?: string | null };
+}
+
+export interface ConnectLink {
+  url: string;
+  note: string;
+}
+
+export interface PushCommentResponse {
+  comment: string | CommentCompact;
+  link: ExternalLink;
+}
+
+export interface SlackPostResponse {
+  ok: boolean;
+  permalink: string | null;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  project_id: string | null;
+  active: boolean;
+  description?: string | null;
+  /** The last 4 characters of the signing secret. */
+  secret_hint: string;
+  created_at: string | null;
+  last_delivery: { status: string; at: string } | null;
+}
+
+/** POST /webhooks: the signing secret is returned this once. */
+export interface CreatedWebhook extends Webhook {
+  secret: string;
+}
+
+export interface DeleteWebhookResponse {
+  deleted: true;
+  id: string;
+}
+
+export interface WebhookTestResponse {
+  ok?: boolean;
+  id?: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  event: string;
+  status: string;
+  response_code: number | null;
+  at: string;
 }

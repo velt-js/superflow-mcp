@@ -55,3 +55,25 @@ export const CONFIRM_MERGE_TAGS_MESSAGE =
 
 export const CONFIRM_REVOKE_REVIEW_LINK_MESSAGE =
   "Nothing was revoked. Show the user the link and its project, and ask whether to revoke it. Anyone using the link loses access. If the user says yes, call superflow_revoke_review_link again with confirm: true.";
+
+// Phase 3 gated tools: three deletes, starting a run (it spends AI credits) and a Slack post
+// (people see it).
+
+export const CONFIRM_DELETE_AGENT_MESSAGE =
+  "Nothing was deleted. Show the user the agent, the packs it is in and the schedules that use it, and ask whether to delete it. Deleting is permanent. It is also taken out of those schedules, and a schedule left with no agents is turned off. To stop using it without deleting, use superflow_update_agent with enabled: false. If the user says yes, call superflow_delete_agent again with confirm: true.";
+
+export const CONFIRM_RUN_AGENTS_MESSAGE =
+  "Nothing was started. Show the user the estimate: the credits (credits_display), the pages, the agents and the balance. Ask whether to start the run. If the user says yes, call superflow_run_agents again with the same project, scope, pages and agents or pack, and confirm: true. Then check it with superflow_get_run no more often than every 20 seconds.";
+
+export const CONFIRM_DELETE_SCHEDULE_MESSAGE =
+  "Nothing was deleted. Show the user the schedule (project, when it runs, which agents) and ask whether to delete it. No more runs start from it after that. To pause it instead, use superflow_set_schedule with enabled: false. If the user says yes, call superflow_delete_schedule again with confirm: true.";
+
+export const CONFIRM_POST_TO_SLACK_MESSAGE =
+  "Nothing was posted. Show the user the channel and what would be posted (the text and the comments), and ask whether to post it. Everyone in that Slack channel will see the message. If the user says yes, call superflow_post_to_slack again with the same arguments and confirm: true.";
+
+export const CONFIRM_DELETE_WEBHOOK_MESSAGE =
+  "Nothing was deleted. Show the user the webhook (URL and events) and ask whether to delete it. The receiving system stops getting events right away, and the signing secret is gone. To pause it instead, use superflow_update_webhook with active: false. If the user says yes, call superflow_delete_webhook again with confirm: true.";
+
+/** Where to add AI credits, for runs that cannot start. */
+export const ADD_CREDITS_HINT =
+  "Add AI credits in Superflow under Settings > Billing, or turn on auto refill there. Do not retry the run until the balance covers it.";

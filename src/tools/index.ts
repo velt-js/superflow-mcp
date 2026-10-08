@@ -1,7 +1,9 @@
 // Tool registry. The order here is the order clients see in tools/list.
 import type { z } from "zod";
+import { agentTools } from "./agents.ts";
 import { commentTools } from "./comments.ts";
 import type { ToolDefinition } from "./define.ts";
+import { integrationTools } from "./integrations.ts";
 import { lookupTools } from "./lookups.ts";
 import { memberTools } from "./members.ts";
 import { notificationTools } from "./notifications.ts";
@@ -9,8 +11,11 @@ import { organizationTools } from "./organization.ts";
 import { pageTools } from "./pages.ts";
 import { projectTools } from "./projects.ts";
 import { reviewLinkTools } from "./review-links.ts";
+import { runTools } from "./runs.ts";
+import { scheduleTools } from "./schedules.ts";
 import { statusTools } from "./statuses.ts";
 import { tagTools } from "./tags.ts";
+import { webhookTools } from "./webhooks.ts";
 
 export type { ToolContext, ToolDefinition, ToolHints } from "./define.ts";
 
@@ -27,6 +32,12 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   ...organizationTools,
   ...reviewLinkTools,
   ...notificationTools,
+  // Phase 3: agents, runs, schedules, integrations, webhooks.
+  ...agentTools,
+  ...runTools,
+  ...scheduleTools,
+  ...integrationTools,
+  ...webhookTools,
 ];
 
 export const TOOL_NAMES: readonly string[] = tools.map((tool) => tool.name);
