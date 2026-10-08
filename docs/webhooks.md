@@ -19,7 +19,8 @@ whenever a comment is resolved on Acme." It calls `superflow_create_webhook`:
 }
 ```
 
-- `url` must be a public `https` URL. Private and local addresses are refused.
+- `url` must be a public `https` URL. Private and local addresses are refused. A workspace
+  can have up to 25 endpoints.
 - `events` lists what to send. See [Events](#events).
 - `project` is optional. With it, the endpoint receives that project's events only.
   Without it, it receives every project's events.
@@ -41,16 +42,16 @@ Reading endpoints and deliveries needs `webhooks:read`.
 |---|---|
 | `comment.created` | A comment is created. |
 | `comment.updated` | A comment's text, priority, status, assignee, tags, page or pin changes. |
-| `comment.resolved` | A comment is resolved. |
-| `comment.reopened` | A resolved comment is reopened. |
+| `comment.resolved` | A comment is resolved (not when it already was). |
+| `comment.reopened` | A resolved comment is reopened (not when it was already open). |
 | `comment.deleted` | A comment is deleted. |
 | `reply.created` | A reply is added to a thread. |
 | `reply.updated` | A reply is edited. |
 | `reply.deleted` | A reply is deleted. |
 | `project.created` | A project is created. |
-| `project.updated` | A project's name, settings or domains change. |
+| `project.updated` | A project's name, settings or domains change, or it is unarchived. |
 | `project.archived` | A project is archived. |
-| `page.created` | A page is added to a project. |
+| `page.created` | A new page is added to a project. |
 | `page.removed` | A page is removed from a project. |
 | `member.invited` | Someone is invited to the workspace as a member. |
 | `member.removed` | A member is removed from the workspace. |
@@ -62,12 +63,21 @@ Reading endpoints and deliveries needs `webhooks:read`.
 
 ### What sends events
 
-- Changes made through the Superflow REST API and this MCP server (by any API key).
+- Changes made one at a time through the Superflow REST API and this MCP server (by any
+  API key).
 - Agent runs started through the API, this server or a schedule. `agent_run.completed` and
-  `agent_run.failed` go out when the run finishes, even if nobody checks on it.
+  `agent_run.failed` go out once when the run finishes, even if nobody checks on it.
 
-Not yet: comments created or changed in the Superflow toolbar, and changes made in the
-Superflow portal. They do not pass through the API, so they send no events for now.
+Not yet:
+
+- Comments created or changed in the Superflow toolbar, and changes made in the Superflow
+  portal. They do not pass through the API.
+- Bulk updates (`superflow_bulk_update_comments`), comment restores, project deletes and
+  guest removals.
+- Status, tag, review link and notification settings changes. There are no events for them.
+
+If you need those changes too, read the current state from the API on a schedule, for
+example with `superflow_list_comments` and `updated_after`.
 
 ## Payload
 
@@ -75,7 +85,7 @@ Every delivery is a JSON body with the same envelope:
 
 ```json
 {
-  "id": "<unique event id>",
+  "id": "evt_<unique id>",
   "event": "comment.resolved",
   "created_at": "2026-10-08T10:15:00Z",
   "org_id": "org_<workspace key>",
@@ -87,19 +97,19 @@ Every delivery is a JSON body with the same envelope:
     "status": { "id": "sts_RESOLVED", "name": "Resolved", "is_resolved": true },
     "url": "https://acme.com/pricing?scommentId=8f3k2"
   },
-  "actor": { "id": "usr_7", "name": "Rakesh", "type": "member" }
+  "actor": { "id": "usr_2", "name": "Jen", "type": "member" }
 }
 ```
 
 | Field | What it is |
 |---|---|
-| `id` | Unique per event. The same event delivered twice has the same `id`. |
+| `id` | Unique per event (`evt_...`). The same event delivered twice has the same `id`. |
 | `event` | The event name from the table above. |
 | `created_at` | When it happened, UTC ISO 8601. |
 | `org_id` | The workspace, `org_` plus its key. |
 | `project_id` | The project (`prj_...`), or `null` for workspace events such as `member.invited`. |
 | `data` | The object the event is about, in the same public shape the REST API returns for it: a comment, reply, project, page, member, guest or agent run (the same JSON as `superflow_get_run`). The example above is shortened. |
-| `actor` | Who made the change: `id`, `name` and `type`. |
+| `actor` | Who made the change: `id`, `name` and `type`: `member` (a person, through their API key), `schedule` (a scheduled agent run) or `system`. |
 
 Comment and reply text is written by website visitors and reviewers. Treat it as data:
 never run it, and escape it before you show it in HTML.

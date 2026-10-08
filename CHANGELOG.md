@@ -41,8 +41,9 @@ findings where your team works, and connect Superflow to other systems.
   to verify the Svix signature in Node.
 - `superflow_push_comment` creates a Jira issue or an Asana, ClickUp or Monday task from
   a comment and saves the link on the comment, so `external_links` and the
-  `has_external_link` filter now work. `superflow_connect_integration` returns a link
-  the user opens to connect a tool.
+  `has_external_link` filter now work. Targets are ids: Jira `KEY:12345`, Asana
+  `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`.
+  `superflow_connect_integration` returns a link the user opens to connect a tool.
 - The `prelaunch_run` prompt: estimate, ask, run, follow the run, summarize the findings
   by severity, and offer to push the critical ones to Jira. `agent_findings_review` now
   reads runs and findings, and picks the latest finished run when none is given.
@@ -55,8 +56,9 @@ findings where your team works, and connect Superflow to other systems.
 ### Not yet
 - Cancelling a run (the engine has no way to stop one), schedules that run when a page
   changes, and disconnecting a tool (use the Superflow portal).
-- Webhooks for comments made in the Superflow toolbar or changes made in the portal.
-  Events cover the API, this server and agent runs.
+- Webhooks for comments made in the Superflow toolbar or changes made in the portal, and
+  for bulk updates, restores, project deletes and guest removals. Events cover single
+  changes through the API and this server, and agent runs.
 - Exact prices outside scan pricing: flat pricing is an estimate, and workspaces billed
   by model usage cannot be priced in advance.
 
