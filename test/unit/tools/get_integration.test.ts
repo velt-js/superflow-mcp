@@ -12,7 +12,7 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, { integration: "Acme Jira" });
     expect(data(result)).toEqual(jiraIntegration);
-    expect(summaryOf(result)).toBe("Jira: Acme Jira, acme.atlassian.net (int_7g8h9i, connected). Default project: WEB.");
+    expect(summaryOf(result)).toBe("Jira: Acme Jira, example.atlassian.net (int_7g8h9i, connected). Default project: WEB:10001.");
     expect(recorded[0]?.path).toBe("/integrations/Acme%20Jira");
   });
 

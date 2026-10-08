@@ -14,7 +14,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL);
     expect(data(result)).toEqual(body);
     expect(summaryOf(result)).toBe(
-      "2 connected tools: Slack: Acme workspace, #design-feedback (int_1a2b3c, connected); Jira: Acme Jira, acme.atlassian.net (int_7g8h9i, needs reconnecting). 1 connection needs reconnecting: get a link with superflow_connect_integration.",
+      "2 connected tools: Slack: Acme workspace, #design-feedback (int_1a2b3c, connected); Jira: Acme Jira, example.atlassian.net (int_7g8h9i, needs reconnecting). 1 connection needs reconnecting: get a link with superflow_connect_integration.",
     );
   });
 

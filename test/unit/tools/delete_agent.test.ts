@@ -9,8 +9,15 @@ const TOOL = "superflow_delete_agent";
 
 describe(TOOL, () => {
   it("without confirm, reads the agent and the schedules and returns a preview", async () => {
-    // A schedule that names the agent by its raw id, next to another agent.
-    const shared = { ...agentSchedule, id: "sch_shared", agents: ["legal1", "agt_proof"] };
+    // A schedule that names the agent next to another agent keeps running without it.
+    const shared = {
+      ...agentSchedule,
+      id: "sch_shared",
+      agents: [
+        { id: "agt_legal1", name: "Legal footer" },
+        { id: "agt_proof", name: "Proofreader" },
+      ],
+    };
     on("get", "/agents/:agent", ok(customAgentDetail));
     on("get", "/schedules", ok(list([schedule, agentSchedule, shared])));
     on("delete", "/agents/:agent", ok({ deleted: true, id: "agt_legal1" }));
@@ -40,11 +47,11 @@ describe(TOOL, () => {
   });
 
   it("deletes with confirm: true and reports the schedules it changed", async () => {
-    on("delete", "/agents/:agent", ok({ deleted: true, id: "agt_legal1", schedules_updated: 2, schedules_disabled: 1 }));
+    on("delete", "/agents/:agent", ok({ deleted: true, id: "agt_legal1", schedules_updated: 2 }));
     const h = await connect();
     const result = await h.call(TOOL, { agent: "Legal footer", confirm: true });
     expect(summaryOf(result)).toBe(
-      "Deleted agent Legal footer (agt_legal1). Took it out of 2 schedules; 1 had no agents left and was turned off.",
+      "Deleted agent Legal footer (agt_legal1). Took it out of 2 schedules; a schedule left with no agents is turned off.",
     );
     expect(recorded.map((r) => [r.method, r.query])).toEqual([["DELETE", { confirm: "true" }]]);
   });
@@ -54,6 +61,6 @@ describe(TOOL, () => {
     args: { agent: "Legal footer", confirm: true },
     method: "delete",
     path: "/agents/:agent",
-    success: ok({ deleted: true, id: "agt_legal1" }),
+    success: ok({ deleted: true, id: "agt_legal1", schedules_updated: 0 }),
   });
 });

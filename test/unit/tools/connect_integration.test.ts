@@ -5,7 +5,8 @@ useMsw();
 
 const TOOL = "superflow_connect_integration";
 const link = {
-  url: "https://app.usesuperflow.ai/settings/integrations/apps?workspaceId=key1&connect=jira",
+  type: "jira",
+  url: "https://app.usesuperflow.ai/settings/integrations/jira",
   note: "Open the link and sign in to Jira.",
 };
 

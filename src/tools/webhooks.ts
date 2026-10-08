@@ -1,4 +1,5 @@
 // Webhook tools: list, get, create, update, delete and test endpoints, and their deliveries.
+import { randomUUID } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type {
@@ -13,7 +14,7 @@ import { CONFIRM_DELETE_WEBHOOK_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join } from "./helpers.ts";
-import { confirmSchema, projectRefSchema, webhookEventsSchema, webhookRefSchema } from "./schemas.ts";
+import { confirmSchema, idempotencySchema, projectRefSchema, webhookEventsSchema, webhookRefSchema } from "./schemas.ts";
 
 const SAVE_SECRET =
   "Save the signing secret now (the secret field below): Superflow shows it only this once. Use it to verify the svix-signature header on every delivery.";
@@ -42,7 +43,9 @@ export function webhookLine(webhook: Webhook): string {
     events.length <= 3 ? events.join(", ") || "no events" : plural(events.length, "event"),
     webhook.project_id ? `project ${webhook.project_id}` : "all projects",
     webhook.active ? "active" : "paused",
-    webhook.last_delivery ? `last delivery ${webhook.last_delivery.status} at ${webhook.last_delivery.at}` : "no deliveries yet",
+    webhook.last_delivery
+      ? `last delivery ${webhook.last_delivery.status}${webhook.last_delivery.at ? ` at ${webhook.last_delivery.at}` : ""}`
+      : "no deliveries yet",
   ];
   return `${webhook.id} ${webhook.url} (${notes.join(", ")})`;
 }
@@ -88,7 +91,7 @@ export const createWebhook = defineTool({
   title: "Create a webhook",
   description: [
     "Add a webhook endpoint: Superflow sends signed POST requests to your https URL when the chosen events happen (comment created, resolved, reply added, project archived, agent run completed, and more). Give project to receive one project's events only.",
-    "The answer includes the signing secret. It is shown once and cannot be read again: tell the user to store it now, for example in their secret manager. Events cover changes made through the API, this server and agent runs, not yet comments made in the Superflow toolbar.",
+    "The answer includes the signing secret. It is shown once and cannot be read again: tell the user to store it now, for example in their secret manager. Events cover single changes made through the API or this server, and agent runs. Not yet: comments made in the Superflow toolbar, bulk updates, restores, project deletes and guest removals.",
     "Ask the user before creating. Send a test with superflow_test_webhook.",
     'Example: {"url": "https://hooks.example.com/superflow", "events": ["comment.created", "comment.resolved", "agent_run.completed"], "project": "Acme Dental"}',
   ].join("\n"),
@@ -97,6 +100,7 @@ export const createWebhook = defineTool({
     events: webhookEventsSchema,
     project: projectRefSchema.optional().describe("Only this project's events (name, site URL or id). Omit for every project."),
     description: z.string().min(1).max(500).optional().describe("What the endpoint is for, for example \"Zapier: new comments to Linear\"."),
+    idempotency_key: idempotencySchema,
   },
   annotations: hints(false, false, false, true),
   write: true,
@@ -104,7 +108,14 @@ export const createWebhook = defineTool({
     const problem = checkHttps(args.url);
     if (problem) return problem;
     const webhook = await api.call<CreatedWebhook>("createWebhook", {
-      body: compact({ url: args.url, events: args.events, project: args.project, description: args.description }),
+      body: compact({
+        url: args.url,
+        events: args.events,
+        project: args.project,
+        description: args.description,
+        // Generated once per tool call, so the client's own retries cannot create two endpoints.
+        idempotency_key: args.idempotency_key ?? randomUUID(),
+      }),
     });
     return okResult(join(`Created webhook ${webhook.id} for ${webhook.url ?? args.url}.`, SAVE_SECRET), asData(webhook));
   },
@@ -114,7 +125,7 @@ export const updateWebhook = defineTool({
   name: "superflow_update_webhook",
   title: "Update a webhook",
   description: [
-    "Change a webhook endpoint: its URL, its events (the new list replaces the old one), its project filter, or pause and resume it with active. The signing secret stays the same.",
+    "Change a webhook endpoint: its URL, its events (the new list replaces the old one), its project filter (null removes it), or pause and resume it with active. The signing secret stays the same.",
     "To delete an endpoint use superflow_delete_webhook.",
     'Example: {"webhook": "whk_2b3c4d", "active": false}',
   ].join("\n"),
@@ -122,7 +133,10 @@ export const updateWebhook = defineTool({
     webhook: webhookRefSchema,
     url: urlSchema.optional(),
     events: webhookEventsSchema.optional().describe("The full new list of events. It replaces the old list."),
-    project: projectRefSchema.optional().describe("Only this project's events from now on (name, site URL or id)."),
+    project: projectRefSchema
+      .nullable()
+      .optional()
+      .describe("Only this project's events from now on (name, site URL or id). null clears it, so every project's events are sent."),
     active: z.boolean().optional().describe("false pauses deliveries, true resumes them."),
   },
   annotations: hints(false, false, true, true),
@@ -182,10 +196,10 @@ export const testWebhook = defineTool({
   write: true,
   async run(args, { api }) {
     const result = await api.call<WebhookTestResponse>("testWebhook", { path: { webhook: args.webhook } });
-    return okResult(
-      `Sent a ping to webhook ${args.webhook}. Check the delivery with superflow_list_webhook_deliveries in a few seconds.`,
-      asData(result),
-    );
+    const summary = result.sent
+      ? `Sent a ping to webhook ${result.id ?? args.webhook}${result.message_id ? ` (message ${result.message_id})` : ""}. Check the delivery with superflow_list_webhook_deliveries in a few seconds.`
+      : `The ping to webhook ${result.id ?? args.webhook} was not sent. Check that the endpoint is active with superflow_get_webhook.`;
+    return okResult(summary, asData(result));
   },
 });
 
@@ -208,7 +222,8 @@ export const listWebhookDeliveries = defineTool({
     return okResult(
       join(
         `${plural(items.length, "delivery", "deliveries")} for webhook ${args.webhook}${items.length > 0 ? `: ${items.length - failed.length} succeeded, ${failed.length} failed or pending` : ""}.`,
-        latest && `Latest: ${latest.event} at ${latest.at}, ${latest.status}${typeof latest.response_code === "number" ? ` (HTTP ${latest.response_code})` : ""}.`,
+        latest &&
+          `Latest: ${latest.event ?? "unknown event"}${latest.at ? ` at ${latest.at}` : ""}, ${latest.status}${typeof latest.response_code === "number" ? ` (HTTP ${latest.response_code})` : ""}.`,
       ),
       asData(list),
     );

@@ -31,9 +31,9 @@ export function agentSummary(agent: Agent, lead = "Agent"): string {
   return `${lead} ${agent.name} (${parts.join(", ")}).`;
 }
 
-/** The ids a schedule names, whether the API sends ids or { id, name } objects. */
+/** The agent ids a schedule names (null when it runs a pack or the default agents). */
 function scheduleAgentIds(schedule: Schedule): string[] {
-  return (schedule.agents ?? []).map((agent) => (typeof agent === "string" ? agent : agent.id));
+  return (schedule.agents ?? []).map((agent) => agent.id);
 }
 
 /** True when a schedule names the agent by id, prefixed (agt_) or raw. */
@@ -195,11 +195,10 @@ export const deleteAgent = defineTool({
         query: { confirm: true },
       });
       const updated = result.schedules_updated ?? 0;
-      const disabled = result.schedules_disabled ?? 0;
       return okResult(
         join(
           `Deleted agent ${args.agent} (${result.id ?? "unknown id"}).`,
-          updated > 0 && `Took it out of ${plural(updated, "schedule")}${disabled > 0 ? `; ${disabled} had no agents left and ${disabled === 1 ? "was" : "were"} turned off` : ""}.`,
+          updated > 0 && `Took it out of ${plural(updated, "schedule")}; a schedule left with no agents is turned off.`,
         ),
         asData(result),
       );
@@ -241,11 +240,16 @@ export const duplicateAgent = defineTool({
   inputSchema: {
     agent: agentRefSchema,
     name: z.string().min(1).max(200).optional().describe("Name for the copy. Default \"<name> copy\"."),
+    idempotency_key: idempotencySchema,
   },
   annotations: hints(false, false, false, false),
   write: true,
   async run(args, { api }) {
-    const agent = await api.call<Agent>("duplicateAgent", { path: { agent: args.agent }, body: compact({ name: args.name }) });
+    const agent = await api.call<Agent>("duplicateAgent", {
+      path: { agent: args.agent },
+      // Generated once per tool call, so the client's own retries cannot make two copies.
+      body: compact({ name: args.name, idempotency_key: args.idempotency_key ?? randomUUID() }),
+    });
     return okResult(join(agentSummary(agent, `Copied ${args.agent} as`), agent.note), asData(agent));
   },
 });
@@ -289,12 +293,19 @@ export const createAgentPack = defineTool({
     name: z.string().min(1).max(200).describe("Pack name."),
     description: z.string().max(1000).optional().describe("Short description of what the pack is for."),
     agents: z.array(z.string().min(1)).min(1).max(100).describe("Agents in the pack: names or agt_ ids. At least one."),
+    idempotency_key: idempotencySchema,
   },
   annotations: hints(false, false, false, false),
   write: true,
   async run(args, { api }) {
     const pack = await api.call<AgentPack>("createAgentPack", {
-      body: compact({ name: args.name, description: args.description, agents: args.agents }),
+      body: compact({
+        name: args.name,
+        description: args.description,
+        agents: args.agents,
+        // Generated once per tool call, so the client's own retries cannot create two packs.
+        idempotency_key: args.idempotency_key ?? randomUUID(),
+      }),
     });
     return okResult(`Created agent pack ${packLine(pack)}, id ${pack.id}.`, asData(pack));
   },

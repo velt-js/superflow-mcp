@@ -1356,6 +1356,7 @@ Built-in agents cannot be copied: create a custom agent with superflow_create_ag
 |---|---|---|---|
 | `agent` | string | yes | Agent: its name ("Proofreader") or id (agt_...). |
 | `name` | string | no | Name for the copy. Default "<name> copy". |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
 
 Example:
 
@@ -1391,6 +1392,7 @@ Ask the user before creating. To change a pack use superflow_update_agent_pack. 
 | `name` | string | yes | Pack name. |
 | `description` | string | no | Short description of what the pack is for. |
 | `agents` | array of string | yes | Agents in the pack: names or agt_ ids. At least one. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
 
 Example:
 
@@ -1471,7 +1473,7 @@ Example:
 
 **Get a run**
 
-Get an agent run's live status: overall status, each agent's status and findings count, credits charged, and start and finish times.
+Get an agent run's live status: overall status, each agent's status and findings count, credits charged, and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution), which covers runs started in the Superflow portal.
 The run is finished when status is done, failed or partial (partial: some agents did not finish). While it is queued or running, call again no more often than every 20 seconds; a full site run can take several minutes.
 To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs.
 
@@ -1490,12 +1492,12 @@ Example:
 **List runs**
 
 List agent runs started through the API, this server or a schedule, newest first, with status, findings count and credits. Filter by project, status or start date.
-Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings.
+Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live. Runs started in the Superflow portal are not in this list: their findings carry a run_ id that superflow_get_run reads.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | no | Only this project's runs (name, site URL or id). |
-| `status` | `queued`, `running`, `done`, `failed`, `partial` | no | Only runs with this status: queued, running, done, failed or partial. |
+| `status` | array of `queued`, `running`, `done`, `failed`, `partial` | no | Only runs with these statuses: queued, running, done, failed or partial. done, failed and partial are finished. |
 | `since` | string | no | Only runs started at or after. ISO date (2026-10-01) or a token: 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week. |
 | `limit` | integer | no | How many rows to return, 1 to 100. Default 25. |
 | `cursor` | string | no | Opaque cursor from a previous call's next_cursor. Use it with the same filters to get the next page. |
@@ -1503,7 +1505,7 @@ Use it for "the last run" or "runs this week", then read one with superflow_get_
 Example:
 
 ```json
-{"project":"Acme Dental","limit":5}
+{"project":"Acme Dental","status":["done","partial"],"limit":5}
 ```
 
 ## superflow_list_findings
@@ -1516,7 +1518,7 @@ Use it after superflow_get_run says the run is done or partial, to summarize, tr
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `run` | string | yes | Agent run id (run_...), from superflow_run_agents or superflow_list_runs. |
-| `severity` | array of string | no | Only these severities, for example critical, high, medium, low. |
+| `severity` | array of `critical`, `high`, `medium`, `low`, `info` | no | Only these severities: critical, high, medium, low or info. |
 | `limit` | integer | no | How many rows to return, 1 to 100. Default 25. |
 | `cursor` | string | no | Opaque cursor from a previous call's next_cursor. Use it with the same filters to get the next page. |
 
@@ -1531,7 +1533,7 @@ Example:
 **Create or change a schedule**
 
 Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.
-Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits.
+Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).
 Runs at most once an hour: more frequent crons are refused. Pause with enabled: false; delete with superflow_delete_schedule. Ask the user before creating or changing a schedule.
 
 | Parameter | Type | Required | Description |
@@ -1540,11 +1542,12 @@ Runs at most once an hour: more frequent crons are refused. Pause with enabled: 
 | `project` | string | no | Project to review (name, site URL or id). Required to create. |
 | `cron` | string | no | When to run: a five-field cron (minute hour day-of-month month day-of-week), for example "0 9 * * 1" for Mondays at 9:00. At most once an hour. Required to create. |
 | `timezone` | string | no | IANA time zone for the cron, for example Europe/Berlin or America/New_York. Default UTC. |
-| `agents` | array of string | no | Agents to run: agent names or ids (agt_...), at most 25. Give agents or pack, not both. Leave both out for the default agents. |
-| `pack` | string | no | Run every agent in this pack (name or pck_ id). Give agents or pack, not both. |
+| `agents` | any or array of string or null | no | Agents to run: names or ids (agt_...), at most 25. Give agents or pack, not both. On a change, null clears them (then the pack or the default agents run). |
+| `pack` | string or null | no | Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it. |
 | `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
-| `pages` | array of string | no | Page URLs to review, at most 500. Needed for scope list; for scope page give the one page. |
+| `pages` | any or array of string or null | no | Page URLs to review, at most 500, for scope list. On a change, null clears them. |
 | `enabled` | boolean | no | false pauses the schedule, true turns it back on. New schedules start on. |
+| `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. |
 
 Example:
 
@@ -1624,7 +1627,7 @@ Example:
 
 **Connect a tool**
 
-Get a link that connects Slack, Jira, Asana, ClickUp or Monday to the workspace. The user opens it in a browser and signs in to the tool there. This server cannot finish the sign-in itself, and nothing is connected until the user does.
+Get a link to the Superflow page that connects Slack, Jira, Asana, ClickUp or Monday to the workspace. The user opens it in a browser where they are signed in to Superflow and signs in to the tool there. This server cannot finish the sign-in itself, and nothing is connected until the user does.
 Use it when superflow_push_comment or superflow_post_to_slack needs a tool that is not connected, or when a connection needs reconnecting. Afterwards check with superflow_list_integrations.
 Disconnecting is done in the Superflow portal, not here.
 
@@ -1642,48 +1645,50 @@ Example:
 
 **Update an integration**
 
-Set a connected tool's default project: the Jira project key, or the Asana, ClickUp or Monday project or list id that pushed comments go to when superflow_push_comment gets no project_key.
+Set or clear a connected tool's default project: where superflow_push_comment creates issues or tasks when it gets no project_key.
+The value uses ids, not names. Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>. Ask the user for the ids if you do not have them; null clears the default.
 Disconnecting a tool is not offered here: the user does it in the Superflow portal.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `integration` | string | yes | Connected tool: its id (int_...) or name, from superflow_list_integrations. |
-| `default_project` | string | yes | Jira project key (for example WEB), or the Asana, ClickUp or Monday project or list id. |
+| `default_project` | string or null | yes | Where pushes go by default. Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>. null clears it. |
 
 Example:
 
 ```json
-{"integration":"int_7g8h9i","default_project":"WEB"}
+{"integration":"int_7g8h9i","default_project":"WEB:10001"}
 ```
 
 ## superflow_push_comment
 
 **Push a comment to a tracker**
 
-Create an issue or task from a comment in a connected tool (Jira, Asana, ClickUp or Monday), with the comment's text, page and link. This creates a real item in the customer's own tool that their team will see. The new item's link is saved on the comment (external_links).
-Ask the user before pushing. Use it for findings or comments that need engineering or design work, for example critical agent findings. If the tool is not connected, the error says so: get a link with superflow_connect_integration.
-Find the integration id with superflow_list_integrations. To tell a Slack channel instead use superflow_post_to_slack.
+Create an issue or task from a comment in a connected tool (Jira, Asana, ClickUp or Monday), with the comment's text, page and link. This creates a real item in the customer's own tool that their team will see. The new item's link is saved on the comment (external_links). Needs the integrations:write and comments:read scopes.
+project_key says where it goes, with ids, not names. Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>. Leave it out to use the integration's default project (superflow_update_integration).
+Asana, ClickUp and Monday connections must also be set up to create items from Superflow (in Superflow under Settings > Integrations). When one is not, the API answers invalid with a hint: pass it on, with the link from superflow_connect_integration. If the push times out, call again with the same idempotency_key to pick up the result instead of creating a second item.
+Ask the user before pushing. Find the integration id with superflow_list_integrations. To tell a Slack channel instead use superflow_post_to_slack.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `comment` | string | yes | Comment: its number ("4821" or "#4821") or id (cmt_...). Numbers need a project. |
 | `project` | string | no | Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
 | `integration` | string | yes | The tracker connection (int_... or its name), from superflow_list_integrations. |
-| `project_key` | string | no | Jira project key, or Asana, ClickUp or Monday project or list id. Defaults to the integration's default project. |
+| `project_key` | string | no | Where to create it. Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>. Defaults to the integration's default project. |
 | `title` | string | no | Issue title. Defaults to the start of the comment text. |
 | `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
 
 Example:
 
 ```json
-{"comment":"4821","project":"Acme Dental","integration":"int_7g8h9i","project_key":"WEB"}
+{"comment":"4821","project":"Acme Dental","integration":"int_7g8h9i","project_key":"WEB:10001"}
 ```
 
 ## superflow_post_to_slack
 
 **Post to Slack**
 
-Post a message to a connected Slack channel: your text, and optionally up to 25 comments (by id or by filter) as a summary or a list with links. Everyone in that channel sees it, in the customer's own Slack.
+Post a message to a connected Slack channel: your text, and optionally up to 25 quoted comments (by id, or the 25 most recently active that match a filter) as a list (default) or a summary, with links. Everyone in that channel sees it, in the customer's own Slack. Quoting comments also needs the comments:read scope.
 Without confirm: true nothing is posted: you get the channel, the text and the comments that would be posted as a preview. Show it to the user and call again with confirm: true only after they say yes.
 Find the Slack integration id with superflow_list_integrations. To create a tracker issue instead use superflow_push_comment.
 
@@ -1692,8 +1697,8 @@ Find the Slack integration id with superflow_list_integrations. To create a trac
 | `integration` | string | yes | The Slack connection (int_... or its name). The message goes to its channel. |
 | `text` | string | no | The message. Plain text. |
 | `comments` | array of string | no | Comments to include: ids (cmt_...) from a list call, or numbers. Give comments or filter, not both. |
-| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run) | no | Post the comments that match these filters (the same as superflow_list_comments), at most 25. Give comments or filter, not both. |
-| `template` | `summary`, `list` | no | How comments are shown: summary (counts and the top items) or list (one line per comment with its link). |
+| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run) | no | Quote the comments that match these filters (the same as superflow_list_comments): the 25 with the most recent activity. Give comments or filter, not both. |
+| `template` | `summary`, `list` | no | How comments are shown: list (default, one line per comment with its link) or summary (counts and the top items). |
 | `confirm` | boolean | no | Must be true to post the message. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 
 Example:
@@ -1739,7 +1744,7 @@ Example:
 **Create a webhook**
 
 Add a webhook endpoint: Superflow sends signed POST requests to your https URL when the chosen events happen (comment created, resolved, reply added, project archived, agent run completed, and more). Give project to receive one project's events only.
-The answer includes the signing secret. It is shown once and cannot be read again: tell the user to store it now, for example in their secret manager. Events cover changes made through the API, this server and agent runs, not yet comments made in the Superflow toolbar.
+The answer includes the signing secret. It is shown once and cannot be read again: tell the user to store it now, for example in their secret manager. Events cover single changes made through the API or this server, and agent runs. Not yet: comments made in the Superflow toolbar, bulk updates, restores, project deletes and guest removals.
 Ask the user before creating. Send a test with superflow_test_webhook.
 
 | Parameter | Type | Required | Description |
@@ -1748,6 +1753,7 @@ Ask the user before creating. Send a test with superflow_test_webhook.
 | `events` | array of `comment.created`, `comment.updated`, `comment.resolved`, `comment.reopened`, `comment.deleted`, `reply.created`, `reply.updated`, `reply.deleted`, `project.created`, `project.updated`, `project.archived`, `page.created`, `page.removed`, `member.invited`, `member.removed`, `guest.invited`, `agent_run.started`, `agent_run.completed`, `agent_run.failed` | yes | Events to send, for example comment.created, comment.resolved, agent_run.completed. At least one. |
 | `project` | string | no | Only this project's events (name, site URL or id). Omit for every project. |
 | `description` | string | no | What the endpoint is for, for example "Zapier: new comments to Linear". |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
 
 Example:
 
@@ -1759,7 +1765,7 @@ Example:
 
 **Update a webhook**
 
-Change a webhook endpoint: its URL, its events (the new list replaces the old one), its project filter, or pause and resume it with active. The signing secret stays the same.
+Change a webhook endpoint: its URL, its events (the new list replaces the old one), its project filter (null removes it), or pause and resume it with active. The signing secret stays the same.
 To delete an endpoint use superflow_delete_webhook.
 
 | Parameter | Type | Required | Description |
@@ -1767,7 +1773,7 @@ To delete an endpoint use superflow_delete_webhook.
 | `webhook` | string | yes | Webhook id (whk_...), from superflow_list_webhooks. |
 | `url` | string | no | Public https URL that receives the events, for example https://hooks.example.com/superflow. |
 | `events` | array of `comment.created`, `comment.updated`, `comment.resolved`, `comment.reopened`, `comment.deleted`, `reply.created`, `reply.updated`, `reply.deleted`, `project.created`, `project.updated`, `project.archived`, `page.created`, `page.removed`, `member.invited`, `member.removed`, `guest.invited`, `agent_run.started`, `agent_run.completed`, `agent_run.failed` | no | The full new list of events. It replaces the old list. |
-| `project` | string | no | Only this project's events from now on (name, site URL or id). |
+| `project` | string or null | no | Only this project's events from now on (name, site URL or id). null clears it, so every project's events are sent. |
 | `active` | boolean | no | false pauses deliveries, true resumes them. |
 
 Example:

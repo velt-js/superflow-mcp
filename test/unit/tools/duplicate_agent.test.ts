@@ -23,14 +23,14 @@ describe(TOOL, () => {
       "Copied Legal footer as Legal footer (EU) (agt_legal2, custom, on, in no pack). Secrets in the agent's API settings were not copied.",
     );
     expect(recorded[0]?.path).toBe("/agents/Legal%20footer/duplicate");
-    expect(recorded[0]?.body).toEqual({ name: "Legal footer (EU)" });
+    expect(recorded[0]?.body).toEqual({ name: "Legal footer (EU)", idempotency_key: expect.any(String) });
   });
 
-  it("sends an empty body without a name", async () => {
+  it("sends only the caller's idempotency key without a name", async () => {
     on("post", "/agents/:agent/duplicate", ok({ ...copy, name: "Legal footer copy", note: null }, 201));
     const h = await connect();
-    await h.call(TOOL, { agent: "agt_legal1" });
-    expect(recorded[0]?.body).toEqual({});
+    await h.call(TOOL, { agent: "agt_legal1", idempotency_key: "k-1" });
+    expect(recorded[0]?.body).toEqual({ idempotency_key: "k-1" });
   });
 
   it("passes the built-in refusal through", async () => {

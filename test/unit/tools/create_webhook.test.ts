@@ -21,7 +21,7 @@ describe(TOOL, () => {
       "Created webhook whk_2b3c4d for https://hooks.example.com/superflow. Save the signing secret now (the secret field below): Superflow shows it only this once. Use it to verify the svix-signature header on every delivery.",
     );
     expect(textOf(result)).toContain(createdWebhook.secret);
-    expect(recorded[0]?.body).toEqual(args);
+    expect(recorded[0]?.body).toEqual({ ...args, idempotency_key: expect.any(String) });
   });
 
   it("refuses an http URL and unknown events before calling the API", async () => {

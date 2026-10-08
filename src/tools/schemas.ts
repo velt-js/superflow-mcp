@@ -224,6 +224,7 @@ export const hexColorSchema = z
 export const RUN_SCOPES = ["page", "list", "site"] as const;
 export const RUN_STATUSES = ["queued", "running", "done", "failed", "partial"] as const;
 export const TERMINAL_RUN_STATUSES = ["done", "failed", "partial"] as const;
+export const FINDING_SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;
 export const INTEGRATION_TYPES = ["slack", "jira", "asana", "clickup", "monday"] as const;
 export const SLACK_TEMPLATES = ["summary", "list"] as const;
 export const WEBHOOK_EVENTS = [

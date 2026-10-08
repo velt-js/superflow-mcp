@@ -3,13 +3,14 @@ import { randomUUID } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
-import type { Finding, IdName, ListEnvelope, Run, RunEstimate } from "../client/types.ts";
+import type { Finding, ListEnvelope, Ref, Run, RunEstimate } from "../client/types.ts";
 import { ADD_CREDITS_HINT, CONFIRM_RUN_AGENTS_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { DATE_HELP, isValidDateFilter } from "../lib/dates.ts";
-import { confirmationResult, errorResult, invalidInput, okResult, paginationNote, plural } from "../lib/format.ts";
+import { confirmationResult, errorResult, invalidInput, okResult, paginationNote, plural, scanNote } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join, nameList } from "./helpers.ts";
 import {
+  FINDING_SEVERITIES,
   RUN_STATUSES,
   TERMINAL_RUN_STATUSES,
   agentListSchema,
@@ -60,7 +61,7 @@ function runBody(args: RunInput): Record<string, unknown> {
   return compact({ project: args.project, scope: args.scope, pages: args.pages, agents: args.agents, pack: args.pack });
 }
 
-function agentNames(agents: readonly IdName[] | undefined): string {
+function agentNames(agents: readonly Ref[] | undefined): string {
   const names = (agents ?? []).map((agent) => agent.name ?? agent.id);
   return names.length > 0 ? `${plural(names.length, "agent")} (${nameList(names)})` : "the default agents";
 }
@@ -70,7 +71,7 @@ function estimateLine(estimate: RunEstimate): string {
   if (estimate.pricing_mode === "token" || estimate.credits === null || estimate.credits === undefined) {
     return join(
       `A run with ${agentNames(estimate.agents)} on ${estimate.page_count === null || estimate.page_count === undefined ? "the site" : plural(estimate.page_count, "page")}.`,
-      estimate.note ?? TOKEN_NOTE,
+      estimate.note || TOKEN_NOTE,
       estimate.balance !== null && estimate.balance !== undefined && `Balance: ${count(estimate.balance)} credits.`,
     );
   }
@@ -125,7 +126,7 @@ function isCreditsRefusal(error: unknown): error is SuperflowApiError {
 }
 
 export function runSummary(run: Run, lead = "Run"): string {
-  const project = typeof run.project === "string" ? run.project : run.project?.name ?? run.project?.id;
+  const project = run.project?.name ?? run.project?.id;
   const executions = run.executions ?? [];
   const finished = executions.filter((e) => e.status !== "running").length;
   const terminal = (TERMINAL_RUN_STATUSES as readonly string[]).includes(run.status);
@@ -209,7 +210,7 @@ export const getRun = defineTool({
   name: "superflow_get_run",
   title: "Get a run",
   description: [
-    "Get an agent run's live status: overall status, each agent's status and findings count, credits charged, and start and finish times.",
+    "Get an agent run's live status: overall status, each agent's status and findings count, credits charged, and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution), which covers runs started in the Superflow portal.",
     `The run is finished when status is done, failed or partial (partial: some agents did not finish). While it is queued or running, call again no more often than every ${POLL_SECONDS} seconds; a full site run can take several minutes.`,
     "To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs.",
     'Example: {"run": "run_8f3k2"}',
@@ -228,12 +229,16 @@ export const listRuns = defineTool({
   title: "List runs",
   description: [
     "List agent runs started through the API, this server or a schedule, newest first, with status, findings count and credits. Filter by project, status or start date.",
-    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings.',
-    'Example: {"project": "Acme Dental", "limit": 5}',
+    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live. Runs started in the Superflow portal are not in this list: their findings carry a run_ id that superflow_get_run reads.',
+    'Example: {"project": "Acme Dental", "status": ["done", "partial"], "limit": 5}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema.optional().describe("Only this project's runs (name, site URL or id)."),
-    status: z.enum(RUN_STATUSES).optional().describe("Only runs with this status: queued, running, done, failed or partial."),
+    status: z
+      .array(z.enum(RUN_STATUSES))
+      .min(1)
+      .optional()
+      .describe("Only runs with these statuses: queued, running, done, failed or partial. done, failed and partial are finished."),
     since: dateSchema("Only runs started at or after."),
     limit: limitSchema,
     cursor: cursorSchema,
@@ -284,10 +289,10 @@ export const listFindings = defineTool({
   inputSchema: {
     run: runRefSchema,
     severity: z
-      .array(z.string().min(1))
+      .array(z.enum(FINDING_SEVERITIES))
       .min(1)
       .optional()
-      .describe("Only these severities, for example critical, high, medium, low."),
+      .describe("Only these severities: critical, high, medium, low or info."),
     limit: limitSchema,
     cursor: cursorSchema,
   },
@@ -304,7 +309,7 @@ export const listFindings = defineTool({
         ? `Run ${args.run} has ${plural(list.total, "finding")}${args.severity ? ` with severity ${args.severity.join(", ")}` : ""}.`
         : `Found ${plural(items.length, "finding")} from run ${args.run}${args.severity ? ` with severity ${args.severity.join(", ")}` : ""}.`;
     return okResult(
-      join(head, items.length > 0 && `By severity: ${severityCounts(items)}.`, paginationNote(list)),
+      join(head, items.length > 0 && `By severity: ${severityCounts(items)}.`, paginationNote(list), scanNote(list.scan)),
       asData(list),
     );
   },
