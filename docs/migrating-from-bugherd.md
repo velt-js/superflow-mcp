@@ -100,5 +100,6 @@ signs every delivery (see [webhooks.md](webhooks.md)).
 | `task_destroy` | `comment.deleted` |
 
 Superflow also sends project, page, member, guest and agent run events. Events cover
-changes made through the API, the MCP server and agent runs. Comments made in the
-Superflow toolbar do not send events yet.
+single changes made through the API or the MCP server, and agent runs. Comments made in
+the Superflow toolbar, bulk updates, restores, project deletes and guest removals do not
+send events yet.
