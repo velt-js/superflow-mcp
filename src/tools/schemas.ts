@@ -25,7 +25,7 @@ export const GROUP_BY = [
 export const METRICS = ["count", "avg_hours_to_resolve", "median_hours_to_first_reply"] as const;
 export const EXPORT_FORMATS = ["csv", "json", "markdown"] as const;
 
-const DATE_DESCRIPTION = "ISO date (2026-10-01 or 2026-10-01T09:00:00Z) or a relative token: 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week.";
+const DATE_DESCRIPTION = "ISO date (2026-10-01) or a token: 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week.";
 
 export const limitSchema = z
   .number()
