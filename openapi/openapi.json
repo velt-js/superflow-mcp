@@ -1574,6 +1574,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

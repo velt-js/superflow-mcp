@@ -13,13 +13,13 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, {
       project: "Acme Dental",
       settings: { guest_comments: true, guest_sign_in: false },
-      add_domains: ["staging.acme.com"],
+      add_domains: ["https://staging.acme.com"],
     });
     expect(result.isError).toBeFalsy();
     expect(data(result)).toEqual(projectDetail);
     expect(recorded[0]?.body).toEqual({
       settings: { guest_comments: true, guest_sign_in: false },
-      add_domains: ["staging.acme.com"],
+      add_domains: ["https://staging.acme.com"],
     });
     expect(summaryOf(result)).toMatch(/^Updated\. Project Acme Dental \(https:\/\/acme\.com\): /);
   });
@@ -30,6 +30,12 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "prj_1a2b", name: "Acme Dental Group" });
     expect(recorded[0]?.body).toEqual({ name: "Acme Dental Group" });
     expect(summaryOf(result)).toContain("Updated. Project Acme Dental Group");
+  });
+
+  it("needs full URLs in add_domains", async () => {
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { project: "Acme Dental", add_domains: ["staging.acme.com"] })).code).toBe("invalid");
+    expect(seen).toEqual([]);
   });
 
   it("refuses an empty change, and explains that the site URL cannot change", async () => {

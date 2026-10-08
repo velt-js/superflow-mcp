@@ -77,6 +77,12 @@ function readPlatform(value: string | undefined): string | undefined {
   return platform;
 }
 
+/** A site URL with a scheme: the API takes only http or https URLs. */
+function fullUrl(siteUrl: string): string {
+  const value = siteUrl.trim();
+  return /^https?:\/\//i.test(value) ? value : `https://${value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")}`;
+}
+
 /** The bare host of a site URL or domain, for a project search. */
 function hostOf(siteUrl: string): string {
   const value = siteUrl.trim();
@@ -368,7 +374,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
           `3. If it does not exist, list what to set up in Superflow: the project "${name}" for ${site_url}${emails.length > 0 ? `, and guest invites for ${emails.join(", ")}` : ""}. Then the install snippet and an install check.`,
         ];
       } else {
-        const createArgs = { name, site_url, ...(builtWith ? { platform: builtWith } : {}) };
+        const createArgs = { name, site_url: fullUrl(site_url), ...(builtWith ? { platform: builtWith } : {}) };
         lines = [
           intro,
           "",

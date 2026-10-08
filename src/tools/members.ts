@@ -17,6 +17,12 @@ import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, join, nameList, ofTotal } from "./helpers.ts";
 import { confirmSchema, idempotencySchema, inviteEmailsSchema, projectRefSchema } from "./schemas.ts";
 
+const SKIP_REASONS: Record<string, string> = {
+  already_member: "already a member",
+  already_guest: "already a guest",
+  duplicate: "listed twice",
+};
+
 /** "Invited 2 members: a, b. Skipped 1: c (already a member). Member seats: 5 of 10 used (was 3)." */
 function inviteSummary(result: InviteResponse, kind: "member" | "guest", where: string): string {
   const invited = result.invited ?? [];
@@ -30,7 +36,7 @@ function inviteSummary(result: InviteResponse, kind: "member" | "guest", where: 
     skipped.length > 0 &&
       `Skipped ${skipped.length}: ${skipped
         .slice(0, 10)
-        .map((s) => `${s.email} (${s.reason})`)
+        .map((s) => `${s.email} (${SKIP_REASONS[s.reason] ?? s.reason})`)
         .join(", ")}.`,
     unsent.length > 0 && `The invite email could not be sent to ${nameList(unsent, 10)}. Tell the user so they can let those people know.`,
     seats?.after &&
@@ -45,7 +51,7 @@ export const inviteMember = defineTool({
   title: "Invite members",
   description: [
     "Invite people to the Superflow workspace as members (your team). Members see and work on every project. This sends each person a real invite email right away, and each new member takes a member seat.",
-    "Emails that already belong to members are skipped, not invited again. Up to 10 emails per call.",
+    "Emails that already belong to members are skipped, not invited again (and nothing is sent to them). Up to 10 emails per call.",
     "For clients and reviewers who should see one project only use superflow_invite_guest. Ask the user before inviting anyone.",
     'Example: {"emails": ["jen@agency.com"]}',
   ].join("\n"),
@@ -66,15 +72,14 @@ export const inviteMember = defineTool({
 
 function memberLabel(member: RemoveMemberPreview["member"] | undefined, fallback: string): string {
   if (!member) return fallback;
-  const email = "email" in member && member.email ? ` (${member.email})` : "";
-  return `${member.name ?? member.id}${email}`;
+  return `${member.name ?? member.id}${member.email ? ` (${member.email})` : ""}`;
 }
 
 export const removeMember = defineTool({
   name: "superflow_remove_member",
   title: "Remove a member",
   description: [
-    "Remove a member from the workspace: they lose access to every project. Only the workspace owner can do this, and neither the owner nor you can be removed.",
+    "Remove a member from the workspace: they lose access to every project, and their unused invite links stop working. Only the workspace owner can do this, and neither the owner nor you can be removed.",
     "Open comments assigned to them stay assigned unless you pass reassign_to (another member); up to 200 are moved.",
     "Without confirm: true nothing is removed: you get the member and how many open comments are assigned to them as a preview. Call again with confirm: true only after the user says yes.",
     "To take a guest off one project use superflow_remove_guest.",
@@ -121,9 +126,10 @@ export const removeMember = defineTool({
       if (!(error instanceof SuperflowApiError) || error.code !== "needs_confirmation") throw error;
       const preview = (error.preview ?? {}) as Partial<RemoveMemberPreview>;
       const open = preview.open_assigned_count;
+      const atLeast = preview.scan?.complete === false ? "at least " : "";
       const assigned =
         typeof open === "number"
-          ? `${plural(open, "open comment")} ${open === 1 ? "is" : "are"} assigned to them`
+          ? `${atLeast}${plural(open, "open comment")} ${open === 1 && !atLeast ? "is" : "are"} assigned to them`
           : "Their open assigned comments could not be counted";
       const where = args.reassign_to ? ` and would move to ${args.reassign_to}` : typeof open === "number" && open > 0 ? " and would stay assigned to them" : "";
       return confirmationResult(
@@ -160,7 +166,7 @@ export const inviteGuest = defineTool({
   title: "Invite guests",
   description: [
     "Invite clients or reviewers as guests of one project. Guests see and comment on that project only. This sends each person a real invite email right away.",
-    "Emails that are already guests of the project, or members, are skipped. Up to 10 emails per call.",
+    "Emails that are already guests of the project, or members, are skipped (and nothing is sent to them). Up to 10 emails per call.",
     "For teammates who should see every project use superflow_invite_member. Ask the user before inviting anyone.",
     'Example: {"project": "Acme Dental", "emails": ["dana@acme.com"]}',
   ].join("\n"),

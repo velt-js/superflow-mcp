@@ -28,14 +28,18 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
-  it("revokes with confirm: true, and says when it was already revoked", async () => {
-    on("delete", "/review-links/:link", ok({ revoked: true, id: "lnk_8a7b6c", changed: true }), ok({ revoked: true, id: "lnk_8a7b6c", changed: false }));
+  it("revokes with confirm: true, and answers the same when repeated", async () => {
+    on("delete", "/review-links/:link", ok({ revoked: true, id: "lnk_8a7b6c" }));
     const h = await connect();
-    expect(summaryOf(await h.call(TOOL, { link: "lnk_8a7b6c", confirm: true }))).toBe("Revoked review link lnk_8a7b6c. It no longer works.");
-    expect(summaryOf(await h.call(TOOL, { link: "lnk_8a7b6c", confirm: true }))).toBe(
-      "Review link lnk_8a7b6c was already revoked. Nothing changed.",
-    );
-    expect(recorded.map((r) => r.method)).toEqual(["DELETE", "DELETE"]);
+    for (let i = 0; i < 2; i++) {
+      const result = await h.call(TOOL, { link: "8a7b6c", confirm: true });
+      expect(data(result)).toEqual({ revoked: true, id: "lnk_8a7b6c" });
+      expect(summaryOf(result)).toBe("Revoked review link lnk_8a7b6c. It no longer works.");
+    }
+    expect(recorded.map((r) => [r.method, r.path])).toEqual([
+      ["DELETE", "/review-links/8a7b6c"],
+      ["DELETE", "/review-links/8a7b6c"],
+    ]);
   });
 
   standardErrorCases({

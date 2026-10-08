@@ -81,6 +81,8 @@ describe("prompts", () => {
     const text = await promptText("onboard_client", { name: "Acme Dental", site_url: "acme.com" });
     expect(text.match(/After a clear yes|after a clear yes|After a yes/g)?.length).toBeGreaterThanOrEqual(3);
     expect(text).toContain("Ask the user whether to invite client reviewers as guests.");
+    // The API takes only full http or https site URLs.
+    expect(text).toContain('"site_url":"https://acme.com"');
     expect(text).not.toContain('"platform"');
   });
 

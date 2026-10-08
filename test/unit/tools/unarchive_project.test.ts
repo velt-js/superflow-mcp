@@ -15,6 +15,7 @@ describe(TOOL, () => {
     expect(data(result)).toEqual(restored);
     expect(summaryOf(result)).toBe(`Unarchived project Acme Dental. Install status: installed. Link: ${project.url}`);
     expect(recorded[0]?.operationId).toBe("unarchiveProject");
+    expect(recorded[0]?.body).toBeUndefined();
   });
 
   it("is a no-op when the project is active", async () => {
