@@ -19,7 +19,7 @@ call).
 | task comment | reply | Replies support @mentions of members and guests. |
 | attachment | attachment | Added by URL. Superflow downloads and stores the file. |
 | local_task_id | comment number | `#4821`, scoped to a project. |
-| external_id | external link | Planned (Phase 3). `has_external_link` matches nothing yet. |
+| external_id | external link | Push a comment to Jira, Asana, ClickUp or Monday with `superflow_push_comment`. The new issue's link is saved on the comment (`external_links`), and `has_external_link` finds linked comments. |
 | admin / member | member | Superflow members are workspace owners or admins of every project. There are no per-project member roles. |
 
 You can name things the way people do: a project by name or domain, a person by name
@@ -63,8 +63,13 @@ planned are not in this release.
 | Managing tags | `superflow_create_tag`, `superflow_update_tag`, `superflow_delete_tag`, `superflow_merge_tags` | available |
 | Install code for a project | `superflow_get_install_snippet`, `superflow_verify_install` | available |
 | `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | removing an attachment (not offered by the API yet) | planned |
-| `GET /webhooks.json`, `POST /webhooks.json`, `DELETE /webhooks/{id}.json` | webhooks | planned (Phase 3) |
-| `external_id` on tasks | external links (Jira, Linear and others) | planned (Phase 3) |
+| `GET /webhooks.json` | `superflow_list_webhooks`, `superflow_get_webhook`, `superflow_list_webhook_deliveries` | available |
+| `POST /webhooks.json` | `superflow_create_webhook` (returns the signing secret once) | available |
+| `DELETE /webhooks/{id}.json` | `superflow_delete_webhook` (with `confirm: true`) | available |
+| Changing or testing a webhook | `superflow_update_webhook`, `superflow_test_webhook` | available |
+| `external_id` on tasks | `superflow_push_comment` (creates the Jira issue, Asana, ClickUp or Monday task and stores its link on the comment) | available |
+| Sending a task to Jira or another tracker (BugHerd integrations) | `superflow_push_comment`; connect the tool with `superflow_connect_integration` | available |
+| Slack notifications | `superflow_post_to_slack` (with `confirm: true`), or a webhook | available |
 
 ## Filters you used in BugHerd
 
@@ -81,3 +86,19 @@ planned are not in this release.
 Superflow adds filters BugHerd does not have: `page_url` with `page_match`, `query`
 (full-text over the thread), `unanswered`, `stale_days`, `author_type`, `device`,
 `source`, `agent` and `agent_run`.
+
+## Webhook events
+
+BugHerd sends four webhook events. Superflow splits them into finer events, and
+signs every delivery (see [webhooks.md](webhooks.md)).
+
+| BugHerd event | Superflow events |
+|---|---|
+| `task_create` | `comment.created` |
+| `task_update` | `comment.updated`, `comment.resolved`, `comment.reopened` |
+| `comment` | `reply.created` (also `reply.updated`, `reply.deleted`) |
+| `task_destroy` | `comment.deleted` |
+
+Superflow also sends project, page, member, guest and agent run events. Events cover
+changes made through the API, the MCP server and agent runs. Comments made in the
+Superflow toolbar do not send events yet.

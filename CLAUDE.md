@@ -62,12 +62,22 @@ sentences, no jargon.
   is `superflow_remove_member`, which asks the API without confirm and shows its 409
   preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
+- Two tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
+  (it spends AI credits; without confirm it calls the estimate and returns it as the
+  preview) and `superflow_post_to_slack` (people see the post). A credits refusal is
+  explained with Settings > Billing and never retried.
+- Run polling: `superflow_get_run` asks for at most one call every 20 seconds
+  (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
+- `superflow_create_webhook` returns the signing secret once: the summary tells the user
+  to save it. Never log it.
+- `superflow_estimate_run` and `superflow_connect_integration` are POSTs that only read,
+  so they are read-only tools (`write: false`) and stay in read-only mode.
 - Invite tools send real email, and their descriptions say so. Creates and invites send a
   generated `idempotency_key` when the caller gave none.
 - Results: `okResult(summary, data)`. One-line summary, the untrusted-content notice when
   comment text is present, then the JSON. Text is capped at 30,000 characters.
 - `idempotency_key`: generated per call for create comment, add reply, create project,
-  invites and create review link when missing.
+  invites, create review link, create agent, run agents and push comment when missing.
 - Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
   create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
   accept `low`, `none` and `unassigned`.
