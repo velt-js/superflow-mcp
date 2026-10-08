@@ -1,13 +1,18 @@
 // Contract-shaped sample data (CONTRACT section 5).
 import type {
+  ActivityEntry,
   CommentCompact,
   CommentFull,
+  InviteResponse,
   ListEnvelope,
   Me,
   Member,
+  NotificationSettings,
+  Organization,
   Page,
   Project,
   Reply,
+  ReviewLink,
   Status,
   Tag,
 } from "../../src/client/types.ts";
@@ -189,3 +194,84 @@ export const notFound = {
 
 /** A comment in a project the API has not numbered yet (number is null). */
 export const unnumberedComment: CommentFull = { ...fullComment, number: null };
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2 (CONTRACT-P2).
+// ---------------------------------------------------------------------------------------------
+
+/** GET /projects/{project} in Phase 2: the full shape plus settings and install. */
+export const projectDetail: Project = {
+  ...projectFull,
+  settings: {
+    guest_comments: true,
+    guest_sign_in: false,
+    comments_disabled: false,
+    toolbar_enabled: true,
+    query_params_as_pages: false,
+  },
+  install: { platform: "webflow", status: "verified", verified_by: "script_tag", script_tag_detected_at: "2026-09-02T10:00:00Z" },
+};
+
+export const customStatus: Status = {
+  id: "sts_IN_REVIEW",
+  project_id: "prj_1a2b",
+  name: "In review",
+  color: "#7c3aed",
+  order: 1,
+  is_resolved: false,
+  is_default: false,
+};
+
+export const projectStatuses: Status[] = [statuses[0] as Status, customStatus, statuses[2] as Status];
+
+export const memberInvite: InviteResponse = {
+  invited: [{ email: "jen@agency.com", sent: true }],
+  skipped: [{ email: "rakesh@agency.com", reason: "already a member" }],
+  seats: { before: { used: 3, total: 10 }, after: { used: 4, total: 10 } },
+};
+
+export const guestInvite: InviteResponse = {
+  invited: [
+    { email: "dana@acme.com", sent: true },
+    { email: "lee@acme.com", sent: false },
+  ],
+  skipped: [],
+  seats: { before: { used: 2, total: null }, after: { used: 4, total: null } },
+};
+
+export const organization: Organization = {
+  id: "org_key1",
+  name: "Wonderist",
+  plan: "scale",
+  owner: { name: "Rakesh", email: "rakesh@agency.com" },
+  seats: {
+    members: { used: 4, invited: 1, total: 10 },
+    guests: { used: 12, invited: 0, total: null },
+  },
+  projects: { used: 7, total: 20 },
+  credits: { balance: 1234, included_remaining: 1000, purchased_remaining: 234, auto_refill: { enabled: true, threshold: 100, pack: "pack_500" } },
+  created_at: "2026-01-05T09:00:00Z",
+};
+
+export const activityEntry: ActivityEntry = {
+  id: "act_1",
+  at: "2026-10-08T10:00:00Z",
+  actor: { id: "usr_7", email: "rakesh@agency.com", name: "Rakesh" },
+  action: "updateComment",
+  entity: { type: "comment", ids: ["cmt_8f3k2"] },
+  via: "mcp",
+};
+
+export const reviewLink: ReviewLink = {
+  id: "lnk_8a7b6c",
+  project_id: "prj_1a2b",
+  url: "https://acme.com/?sfShare=8a7b6c",
+  created_at: "2026-10-01T12:00:00Z",
+  created_by: { id: "usr_7", name: "Rakesh", email: "rakesh@velt.dev" },
+};
+
+export const notificationSettings: NotificationSettings = {
+  email_digest: { enabled: true, cadence: "daily" },
+  inbox: "all",
+  email: "mine",
+};
