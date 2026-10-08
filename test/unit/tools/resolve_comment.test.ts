@@ -29,6 +29,13 @@ describe(TOOL, () => {
     expect(recorded[0]?.body).toEqual({ note: "Again" });
   });
 
+  it("labels a comment without a number by its id", async () => {
+    on("post", "/comments/:comment/resolve", ok({ comment: { ...resolvedComment, number: null }, changed: true, note_reply_id: null }));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2" });
+    expect(summaryOf(result)).toBe("Resolved comment cmt_8f3k2. Link: https://acme.com/pricing?scommentId=8f3k2");
+  });
+
   standardErrorCases({
     tool: TOOL,
     args: { comment: "4821", project: "Acme" },

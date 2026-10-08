@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fullComment } from "../../helpers/fixtures.ts";
-import { connect, data, ok, on, recorded, standardErrorCases, summaryOf, useMsw } from "../../helpers/harness.ts";
+import { connect, data, errorOf, fail, ok, on, recorded, standardErrorCases, summaryOf, useMsw } from "../../helpers/harness.ts";
 
 useMsw();
 
@@ -55,6 +55,50 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi", assignees: ["Jen", "Bob"] });
     expect(result.isError).toBe(true);
     expect(recorded).toHaveLength(0);
+  });
+
+  it("accepts the three priorities and none, and refuses low", async () => {
+    on("post", "/comments", ok(created, 201));
+    const h = await connect();
+    for (const priority of ["critical", "high", "medium", "none"]) {
+      const result = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi", priority });
+      expect(result.isError, priority).toBeFalsy();
+    }
+    expect(recorded.map((r) => (r.body as { priority: string }).priority)).toEqual(["critical", "high", "medium", "none"]);
+    const low = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi", priority: "low" });
+    expect(errorOf(low).code).toBe("invalid");
+    expect(recorded).toHaveLength(4);
+  });
+
+  it("says the comment is public and that Superflow has three priorities", async () => {
+    const h = await connect();
+    const { tools } = await h.client.listTools();
+    const description = tools.find((t) => t.name === TOOL)?.description ?? "";
+    expect(description).toContain("public");
+    expect(description).toContain("Superflow has three priorities");
+  });
+
+  it("waits and retries when the same idempotency key is still running (429, Retry-After: 2)", async () => {
+    on(
+      "post",
+      "/comments",
+      fail(429, { code: "rate_limited", message: "A request with this idempotency key is still running." }, { "Retry-After": "2" }),
+      ok(created, 201),
+    );
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi", idempotency_key: "k-7" });
+    expect(result.isError).toBeFalsy();
+    expect(h.sleeps).toEqual([2000]);
+    expect(recorded.map((r) => (r.body as { idempotency_key: string }).idempotency_key)).toEqual(["k-7", "k-7"]);
+  });
+
+  it("labels a new comment without a number by its id", async () => {
+    on("post", "/comments", ok({ ...created, number: null }, 201));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi" });
+    expect(summaryOf(result)).toBe(
+      "Created comment cmt_8f3k2 on https://acme.com/pricing in Acme Dental. Link: https://acme.com/pricing?scommentId=8f3k2",
+    );
   });
 
   standardErrorCases({

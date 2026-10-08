@@ -255,11 +255,16 @@ export interface BulkPreview {
 
 export interface BulkDryRunResponse extends BulkPreview {
   dry_run: true;
+  /** Selected comments already in the target state (skipped). */
+  already_in_state: number;
   applied_filters?: Record<string, unknown>;
+  scan?: Scan;
 }
 
 export interface BulkRunResponse {
   dry_run: false;
   updated: number;
+  /** Selected comments already in the target state (skipped, no note posted). */
+  unchanged: number;
   failed: Array<{ id: string; error: string }>;
 }

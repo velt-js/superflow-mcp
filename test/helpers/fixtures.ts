@@ -186,3 +186,6 @@ export const notFound = {
   hint: "List comments with superflow_list_comments to find the number.",
   candidates: [],
 };
+
+/** A comment in a project the API has not numbered yet (number is null). */
+export const unnumberedComment: CommentFull = { ...fullComment, number: null };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UNTRUSTED_NOTICE } from "../../../src/lib/format.ts";
-import { fullComment } from "../../helpers/fixtures.ts";
+import { fullComment, unnumberedComment } from "../../helpers/fixtures.ts";
 import { connect, data, ok, on, recorded, standardErrorCases, summaryOf, textOf, useMsw } from "../../helpers/harness.ts";
 
 useMsw();
@@ -34,6 +34,14 @@ describe(TOOL, () => {
     await h.call(TOOL, { comment: "cmt_8f3k2" });
     expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2");
     expect(recorded[0]?.query).toEqual({ include_replies: "true" });
+  });
+
+  it("labels a comment without a number by its id, never #null", async () => {
+    on("get", "/comments/:comment", ok(unnumberedComment));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2" });
+    expect(summaryOf(result)).toMatch(/^Comment cmt_8f3k2 in Acme Dental/);
+    expect(summaryOf(result)).not.toContain("#null");
   });
 
   standardErrorCases({

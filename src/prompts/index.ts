@@ -69,7 +69,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         "Steps:",
         `1. Call superflow_list_statuses and superflow_list_members with ${json({ project })} to learn the status names and who can be assigned.`,
         `2. Call superflow_list_comments with ${json(listArgs)}. Follow next_cursor until you have every open comment (stop at 300 and say so).`,
-        "3. Group the comments by page. For each comment propose a priority (none, low, medium, high or critical) and an assignee, with a short reason.",
+        "3. Group the comments by page. For each comment propose a priority (critical, high or medium: Superflow has three) and an assignee, with a short reason. Comments that already have the right priority and assignee need no change.",
         "4. Show the plan as one table per page with columns: comment (number and link), short text, current priority, proposed priority, proposed assignee, reason.",
       ];
       if (options.readOnly) {

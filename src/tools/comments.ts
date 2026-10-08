@@ -1,5 +1,6 @@
 // The 15 comment tools: read, filter, count, export, write, reply, delete, restore, bulk.
 import { randomUUID } from "node:crypto";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
 import type {
@@ -43,7 +44,6 @@ import {
   EXPORT_FORMATS,
   GROUP_BY,
   METRICS,
-  PRIORITIES,
   anchorSchema,
   attachmentInputSchema,
   commentRefSchema,
@@ -85,12 +85,40 @@ const statusInput = z
   .min(1)
   .optional()
   .describe('Status name or id. "open" means the default status and "resolved" the resolved status.');
-const priorityInput = z.enum(PRIORITIES).optional().describe('Priority. "none" clears it.');
-const assigneesInput = z
+const PRIORITY_NOTE = "Superflow has three priorities: critical (P0), high (P1) and medium (P2).";
+const UNASSIGN_NOTE = "Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar.";
+
+const createPriorityInput = z
+  .enum(["critical", "high", "medium", "none"])
+  .optional()
+  .describe(`${PRIORITY_NOTE} "none", or leaving it out, creates the comment without a priority.`);
+const setPriorityInput = z
+  .enum(["critical", "high", "medium"])
+  .optional()
+  .describe(`${PRIORITY_NOTE} Clearing a priority is not supported yet.`);
+const createAssigneesInput = z
   .array(z.string().min(1))
+  .min(1)
   .max(1)
   .optional()
-  .describe('Replace the assignee: one name, email or id, or "me". A comment has one assignee. [] or ["unassigned"] clears it.');
+  .describe('The assignee: one name, email or id, or "me". A comment has one assignee. Leave it out for no assignee.');
+const setAssigneesInput = (what: string) =>
+  z
+    .array(z.string().min(1))
+    .min(1)
+    .max(1)
+    .optional()
+    .describe(`${what}: one name, email or id, or "me". It replaces the current assignee, since a comment has one. ${UNASSIGN_NOTE}`);
+
+/** Clearing the assignee is not supported yet (CONTRACT 6.3). Refuse it before calling the API. */
+function refuseUnassign(...lists: Array<readonly string[] | undefined>): CallToolResult | undefined {
+  const clears = lists.some((list) => list?.some((value) => value.trim().toLowerCase() === "unassigned"));
+  if (!clears) return undefined;
+  return invalidInput(
+    "Removing the assignee is not supported yet.",
+    "Assign someone else, or tell the user to unassign the comment in the Superflow toolbar.",
+  );
+}
 const tagsInput = (what: string) =>
   z.array(z.string().min(1)).optional().describe(`${what} Unknown tag names are created in the comment's project.`);
 const idempotencyInput = z
@@ -256,6 +284,8 @@ export const createComment = defineTool({
   title: "Create a comment",
   description: [
     "Create a new comment on a page of a project, as the key's member. Optionally pin it to an element, and set priority, status, assignee, tags and attachments.",
+    "The comment is public, the same as a comment left with the Superflow toolbar in normal (not private) mode: everyone with access to the project can see it.",
+    `${PRIORITY_NOTE} Use "none" or leave priority out for no priority.`,
     "Use it when the user asks to leave or log feedback on a page. To answer an existing thread use superflow_add_reply instead.",
     "Ask the user before creating comments they did not ask for.",
     'Example: {"project": "Acme Dental", "page_url": "https://acme.com/pricing", "text": "The CTA button overlaps the nav on mobile.", "priority": "high", "tags": ["mobile"]}',
@@ -265,9 +295,9 @@ export const createComment = defineTool({
     page_url: z.string().min(1).describe("Full URL of the page the comment is about."),
     text: z.string().min(1).max(10_000).describe("The comment text. @Name or @email mentions notify those people."),
     anchor: anchorSchema.optional(),
-    priority: priorityInput,
+    priority: createPriorityInput,
     status: statusInput,
-    assignees: assigneesInput,
+    assignees: createAssigneesInput,
     tags: tagsInput("Tags to add."),
     attachments: z.array(attachmentInputSchema).max(10).optional().describe("Files to attach, by public URL."),
     on_behalf_of: z
@@ -309,6 +339,7 @@ export const updateComment = defineTool({
   title: "Update a comment",
   description: [
     "Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.",
+    `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.`,
     "Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.",
     "Ask the user before changing comments they did not ask about.",
     'Example: {"comment": "4821", "project": "Acme Dental", "priority": "high", "assignees": ["Jen"], "add_tags": ["mobile"]}',
@@ -317,15 +348,10 @@ export const updateComment = defineTool({
     comment: commentRefSchema,
     project: projectForNumberSchema,
     text: z.string().min(1).max(10_000).optional().describe("New text for the comment's first message."),
-    priority: priorityInput,
+    priority: setPriorityInput,
     status: statusInput,
-    assignees: assigneesInput,
-    add_assignees: z
-      .array(z.string().min(1))
-      .max(1)
-      .optional()
-      .describe("Set the assignee (replaces any existing one, since a comment has one assignee)."),
-    remove_assignees: z.array(z.string().min(1)).optional().describe("Remove this assignee if set."),
+    assignees: setAssigneesInput("The new assignee"),
+    add_assignees: setAssigneesInput("Same as assignees"),
     tags: tagsInput("Replace all tags with these. [] removes every tag."),
     add_tags: tagsInput("Tags to add."),
     remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove."),
@@ -338,9 +364,11 @@ export const updateComment = defineTool({
     const { comment: ref, project: _project, ...changes } = args;
     if (Object.values(changes).every((value) => value === undefined)) {
       return invalidInput(
-        "Nothing to change. Give at least one of text, priority, status, assignees, add_assignees, remove_assignees, tags, add_tags, remove_tags, page_url or anchor.",
+        "Nothing to change. Give at least one of text, priority, status, assignees, add_assignees, tags, add_tags, remove_tags, page_url or anchor.",
       );
     }
+    const unassign = refuseUnassign(args.assignees, args.add_assignees);
+    if (unassign) return unassign;
     const comment = await api.call<CommentFull>("updateComment", {
       path: { comment: normalizeCommentRef(ref) },
       body: compact({ project: projectForComment(ref, args.project, config.defaultProject), ...changes }),
@@ -577,10 +605,9 @@ export const restoreComment = defineTool({
 const bulkPatchSchema = z
   .object({
     status: statusInput,
-    priority: priorityInput,
-    assignees: assigneesInput,
-    add_assignees: z.array(z.string().min(1)).max(1).optional().describe("Set the assignee (replaces any existing one)."),
-    remove_assignees: z.array(z.string().min(1)).optional().describe("Remove this assignee where set."),
+    priority: setPriorityInput,
+    assignees: setAssigneesInput("The new assignee for every selected comment"),
+    add_assignees: setAssigneesInput("Same as assignees"),
     add_tags: z.array(z.string().min(1)).optional().describe("Tags to add. Unknown names are created."),
     remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove."),
     resolve: z.boolean().optional().describe("true: resolve every selected comment. Not with reopen or status."),
@@ -589,13 +616,24 @@ const bulkPatchSchema = z
   })
   .describe("The change to apply to every selected comment. At least one field.");
 
+/** "Would change 44 comments in Acme Dental (tags: copy). 3 already match." */
+function dryRunCounts(preview: BulkDryRunResponse): string {
+  const filters = describeFilters(preview.applied_filters);
+  const where = filters ? ` ${filters}` : "";
+  const would = preview.would_update ?? 0;
+  const already = preview.already_in_state ?? 0;
+  const head = would === 0 ? `No comments${where} would change.` : `Would change ${plural(would, "comment")}${where}.`;
+  return already > 0 ? `${head} ${already} already match.` : head;
+}
+
 export const bulkUpdateComments = defineTool({
   name: "superflow_bulk_update_comments",
   title: "Bulk update comments",
   description: [
     "Change many comments at once (up to 200): set status, priority or assignee, add or remove tags, or resolve or reopen with an optional note.",
-    "Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments).",
-    "It is a dry run by default: you get how many would change and a sample, and nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.",
+    `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet.`,
+    "Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments). A filter that matches more comments than the API can scan is refused: narrow it, for example by project or date.",
+    "It is a dry run by default: you get how many comments would change, how many already match, and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.",
     "For one comment use superflow_update_comment or superflow_resolve_comment.",
     'Example: {"filter": {"project": "Acme Dental", "tags": ["copy"], "page_url": "acme.com/", "status": ["open"]}, "patch": {"resolve": true, "note": "Copy updated."}}',
   ].join("\n"),
@@ -607,7 +645,7 @@ export const bulkUpdateComments = defineTool({
       .optional()
       .describe("Comments to change: numbers (\"4821\") or ids (cmt_...). Give this or filter, not both."),
     project: projectForNumberSchema.describe(
-      "Project for comment numbers in comment_ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set.",
+      "Project for comment numbers in comment_ids (defaults to SUPERFLOW_DEFAULT_PROJECT when set). With filter, it is used as the filter's project when the filter has none.",
     ),
     filter: z
       .object(filterShape)
@@ -641,7 +679,7 @@ export const bulkUpdateComments = defineTool({
       }
       const badDate = findInvalidDate(filter, "filter.");
       if (badDate) return invalidInput(badDate);
-      select = { filter };
+      select = compact({ filter, project: args.project });
     }
     const patch = compact(args.patch);
     if (Object.keys(patch).length === 0) {
@@ -651,6 +689,8 @@ export const bulkUpdateComments = defineTool({
     if ((patch.resolve || patch.reopen) && patch.status !== undefined) {
       return invalidInput("Use status or resolve/reopen, not both.");
     }
+    const unassign = refuseUnassign(patch.assignees, patch.add_assignees);
+    if (unassign) return unassign;
 
     const mode = bulkMode(args);
     if (mode !== "apply") {
@@ -658,16 +698,18 @@ export const bulkUpdateComments = defineTool({
       const preview = await api.call<BulkDryRunResponse>("bulkUpdateComments", {
         body: { select, patch, dry_run: true, confirm: false },
       });
-      const filters = describeFilters(preview.applied_filters);
-      const count = plural(preview.would_update ?? 0, "comment");
+      const counts = dryRunCounts(preview);
+      if (preview.would_update === 0) {
+        return okResult(`Dry run. ${counts} Nothing was written and there is nothing to apply.`, asData(preview));
+      }
       if (mode === "dry_run") {
         return okResult(
-          `Dry run: ${count}${filters ? ` ${filters}` : ""} would change. Nothing was written. To apply it, ask the user, then call again with dry_run: false and confirm: true.`,
+          `Dry run. ${counts} Nothing was written. To apply it, ask the user, then call again with dry_run: false and confirm: true.`,
           asData(preview),
         );
       }
       return confirmationResult(
-        `${count}${filters ? ` ${filters}` : ""} would change. Nothing was written because confirm was not true. Ask the user to confirm.`,
+        `${counts} Nothing was written because confirm was not true. Ask the user to confirm.`,
         { preview, message: CONFIRM_BULK_MESSAGE },
       );
     }
@@ -677,8 +719,10 @@ export const bulkUpdateComments = defineTool({
         body: compact({ select, patch, dry_run: false, confirm: true, idempotency_key: args.idempotency_key }),
       });
       const failed = result.failed ?? [];
+      const unchanged = result.unchanged ?? 0;
       const summary = join(
         `Updated ${plural(result.updated ?? 0, "comment")}.`,
+        unchanged > 0 && `${unchanged} already matched and were skipped.`,
         failed.length > 0 &&
           `${failed.length} failed: ${failed
             .slice(0, 3)

@@ -66,7 +66,7 @@ describe.skipIf(!enabled)("integration: comment lifecycle against the real API",
         page_url: pageUrl,
         text: `superflow-mcp integration test ${runId}`,
         tags: [tag],
-        priority: "low",
+        priority: "medium",
       }),
     );
     commentId = comment.id;
@@ -111,13 +111,14 @@ describe.skipIf(!enabled)("integration: comment lifecycle against the real API",
   });
 
   it("previews a bulk change without writing", async () => {
-    const preview = data<{ dry_run: boolean; would_update: number }>(
-      await call("superflow_bulk_update_comments", { filter: { project: PROJECT, tags: [tag] }, patch: { priority: "medium" } }),
+    const preview = data<{ dry_run: boolean; would_update: number; already_in_state: number }>(
+      await call("superflow_bulk_update_comments", { filter: { project: PROJECT, tags: [tag] }, patch: { priority: "high" } }),
     );
     expect(preview.dry_run).toBe(true);
     expect(preview.would_update).toBe(1);
+    expect(preview.already_in_state).toBe(0);
     const comment = data<CommentFull>(await call("superflow_get_comment", { comment: commentId }));
-    expect(comment.priority).toBe("low");
+    expect(comment.priority).toBe("medium");
   });
 
   it("does not delete without confirm", async () => {

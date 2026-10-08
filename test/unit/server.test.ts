@@ -76,6 +76,20 @@ describe("tool registration", () => {
     }
   });
 
+  it("explains the write limits: three priorities, and no unassigning yet", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    for (const name of ["superflow_create_comment", "superflow_update_comment", "superflow_bulk_update_comments"]) {
+      expect(listed.find((t) => t.name === name)?.description, name).toContain("Superflow has three priorities");
+    }
+    for (const name of ["superflow_update_comment", "superflow_bulk_update_comments"]) {
+      expect(listed.find((t) => t.name === name)?.description, name).toContain("removing the assignee is not supported yet");
+    }
+    const filters = listed.find((t) => t.name === "superflow_list_comments")?.inputSchema.properties as Record<string, unknown>;
+    expect(JSON.stringify(filters.priority)).toContain('"low"');
+    expect(JSON.stringify(filters.assignee)).toContain("unassigned");
+  });
+
   it("describes every input field", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
