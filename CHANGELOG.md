@@ -7,6 +7,61 @@ There are two release lines: the `superflow-mcp` npm package (local stdio server
 versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
 (versions 1.x).
 
+## [0.3.0] - Unreleased
+
+Agents, integrations and webhooks (Phase 3): run the AI review agents, send their
+findings where your team works, and connect Superflow to other systems.
+
+### Added
+- 30 tools, 84 in total:
+  - Agents: `superflow_list_agents`, `superflow_get_agent`, `superflow_create_agent`,
+    `superflow_update_agent`, `superflow_delete_agent`, `superflow_duplicate_agent`,
+    `superflow_list_agent_packs`, `superflow_create_agent_pack`,
+    `superflow_update_agent_pack`.
+  - Runs: `superflow_estimate_run`, `superflow_run_agents`, `superflow_get_run`,
+    `superflow_list_runs`, `superflow_list_findings`.
+  - Schedules: `superflow_set_schedule`, `superflow_list_schedules`,
+    `superflow_delete_schedule`.
+  - Integrations: `superflow_list_integrations`, `superflow_get_integration`,
+    `superflow_connect_integration`, `superflow_update_integration`,
+    `superflow_push_comment`, `superflow_post_to_slack`.
+  - Webhooks: `superflow_list_webhooks`, `superflow_get_webhook`,
+    `superflow_create_webhook`, `superflow_update_webhook`, `superflow_delete_webhook`,
+    `superflow_test_webhook`, `superflow_list_webhook_deliveries`.
+- Runs spend AI credits, so `superflow_run_agents` asks for an estimate first: without
+  `confirm: true` it returns the estimate (credits, pages, agents, balance) as a preview
+  and starts nothing. When the balance is too low it says so, points to Settings >
+  Billing, and does not retry. `superflow_get_run` names the finished statuses
+  (`done`, `failed`, `partial`) and asks for at most one check every 20 seconds.
+- Confirm gates on `superflow_delete_agent`, `superflow_delete_schedule`,
+  `superflow_delete_webhook` and `superflow_post_to_slack`: without `confirm: true` they
+  only read and return a preview.
+- `superflow_create_webhook` returns the signing secret once and says to store it.
+  [`docs/webhooks.md`](docs/webhooks.md) lists the events and the payload and shows how
+  to verify the Svix signature in Node.
+- `superflow_push_comment` creates a Jira issue or an Asana, ClickUp or Monday task from
+  a comment and saves the link on the comment, so `external_links` and the
+  `has_external_link` filter now work. Targets are ids: Jira `KEY:12345`, Asana
+  `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`.
+  `superflow_connect_integration` returns a link the user opens to connect a tool.
+- The `prelaunch_run` prompt: estimate, ask, run, follow the run, summarize the findings
+  by severity, and offer to push the critical ones to Jira. `agent_findings_review` now
+  reads runs and findings, and picks the latest finished run when none is given.
+- The `superflow://runs/{run}` resource.
+- New scopes: `integrations:read`, `integrations:write`, `webhooks:read`,
+  `webhooks:write`. The agent tools use `agents:read`, `agents:write` and `agents:run`.
+- Read-only mode keeps the 33 read tools, including `superflow_estimate_run` and
+  `superflow_connect_integration`, which only read.
+
+### Not yet
+- Cancelling a run (the engine has no way to stop one), schedules that run when a page
+  changes, and disconnecting a tool (use the Superflow portal).
+- Webhooks for comments made in the Superflow toolbar or changes made in the portal, and
+  for bulk updates, restores, project deletes and guest removals. Events cover single
+  changes through the API and this server, and agent runs.
+- Exact prices outside scan pricing: flat pricing is an estimate, and workspaces billed
+  by model usage cannot be priced in advance.
+
 ## [0.2.0] - Unreleased
 
 Admin tools (Phase 2): run the setup side of Superflow from the assistant.

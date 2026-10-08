@@ -61,6 +61,24 @@ show a preview first.
 - Switch my email digest to weekly and only email me about my own threads.
 - Archive the Acme project, we are done with it.
 
+## Agents, integrations and webhooks
+
+Runs spend AI credits: the assistant estimates first and asks. Pushes and Slack posts land
+in your team's own tools, so it asks before those too.
+
+- Estimate a full run of the Pre-Launch pack on Acme, then run it.
+- Is the run finished yet? What did it find, by severity?
+- Which findings from the last run look like false positives?
+- Create a custom agent that checks every footer has the copyright line and a privacy link.
+- Add the Legal footer agent to the Pre-Launch pack and make that pack the default for runs.
+- Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
+- Which schedules do we have, and did the last runs go through?
+- Push comment 4821 on Acme to Jira, project WEB.
+- Connect our Jira to Superflow.
+- Post the open critical comments on Acme to #design-feedback in Slack.
+- Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
+- Why is our webhook not receiving events? Show me the last deliveries.
+
 ## Prompts that ship with the server
 
 Your client may show these as slash commands or templates.
@@ -68,7 +86,8 @@ Your client may show these as slash commands or templates.
 - `triage`: group open comments by page and propose priority and assignee.
 - `stale_threads`: threads waiting on your team for N days, with one nudge per assignee.
 - `client_update`: what closed, what is open, what we need from the client.
-- `agent_findings_review`: review an agent run and flag likely false positives.
+- `agent_findings_review`: review an agent run (the latest one by default) and flag likely false positives.
 - `find_duplicates`: near-duplicate comments and which to keep.
 - `launch_checklist`: install status, guests, open comments by priority, and pages nobody has reviewed.
 - `onboard_client`: create a project for a new client, invite their reviewers, hand over the install snippet and check it.
+- `prelaunch_run`: estimate the credits, run the agents, summarize the findings by severity, and offer to push the critical ones to Jira.

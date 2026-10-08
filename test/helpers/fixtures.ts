@@ -1,6 +1,16 @@
 // Contract-shaped sample data (CONTRACT section 5).
 import type {
   ActivityEntry,
+  Agent,
+  AgentPack,
+  CreatedWebhook,
+  Finding,
+  Integration,
+  Run,
+  RunEstimate,
+  Schedule,
+  Webhook,
+  WebhookDelivery,
   CommentCompact,
   CommentFull,
   InviteResponse,
@@ -274,4 +284,184 @@ export const notificationSettings: NotificationSettings = {
   email_digest: { enabled: true, cadence: "daily" },
   inbox: "all",
   email: "mine",
+};
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 (CONTRACT-P3).
+// ---------------------------------------------------------------------------------------------
+
+export const customAgent: Agent = {
+  id: "agt_legal1",
+  name: "Legal footer",
+  description: "Checks the footer for the legal lines.",
+  kind: "custom",
+  enabled: true,
+  packs: [{ id: "pck_pre", name: "Pre-Launch" }],
+  is_default: false,
+  created_at: "2026-09-10T10:00:00Z",
+  updated_at: "2026-09-12T10:00:00Z",
+};
+
+export const customAgentDetail: Agent = {
+  ...customAgent,
+  instructions: "Check that every page footer has the copyright line and links to the privacy policy and terms.",
+};
+
+export const builtInAgent: Agent = {
+  id: "agt_proof",
+  name: "Proofreader",
+  description: "Finds typos and grammar mistakes.",
+  kind: "built_in",
+  enabled: true,
+  packs: [{ id: "pck_copy", name: "Copy QA" }],
+  is_default: true,
+  created_at: null,
+  updated_at: null,
+};
+
+export const agentPack: AgentPack = {
+  id: "pck_pre",
+  name: "Pre-Launch",
+  description: "Everything to check before a site goes live.",
+  agent_ids: ["agt_proof", "agt_legal1"],
+  agent_count: 2,
+  system: false,
+  is_default_for_runs: true,
+};
+
+export const systemPack: AgentPack = {
+  id: "pck_copy",
+  name: "Copy QA",
+  description: "",
+  agent_ids: ["agt_proof"],
+  agent_count: 1,
+  system: true,
+  is_default_for_runs: false,
+};
+
+export const estimate: RunEstimate = {
+  credits: 10,
+  credits_display: "10 credits",
+  pricing_mode: "scan",
+  page_count: 42,
+  band: "medium",
+  is_rescan: false,
+  balance: 1234,
+  sufficient: true,
+  auto_refill_enabled: false,
+  agents: [
+    { id: "agt_proof", name: "Proofreader" },
+    { id: "agt_legal1", name: "Legal footer" },
+  ],
+  note: "",
+};
+
+export const lowBalanceEstimate: RunEstimate = { ...estimate, balance: 4, sufficient: false };
+
+export const runningRun: Run = {
+  id: "run_8f3k2",
+  project: { id: "prj_1a2b", name: "Acme Dental" },
+  agents: estimate.agents,
+  scope: "site",
+  pages_requested: [],
+  status: "running",
+  credits_charged: 10,
+  findings_count: 3,
+  started_at: "2026-10-08T10:00:00Z",
+  finished_at: null,
+  trigger: "api",
+  created_by: { id: "usr_7", email: "owner@example.com" },
+  executions: [
+    { id: "run_exec1", agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
+    { id: "run_exec2", agent: { id: "agt_legal1", name: "Legal footer" }, status: "running", findings: null },
+  ],
+};
+
+export const doneRun: Run = {
+  ...runningRun,
+  status: "done",
+  findings_count: 5,
+  finished_at: "2026-10-08T10:06:00Z",
+  executions: [
+    { id: "run_exec1", agent: { id: "agt_proof", name: "Proofreader" }, status: "passed", findings: 3 },
+    { id: "run_exec2", agent: { id: "agt_legal1", name: "Legal footer" }, status: "passed", findings: 2 },
+  ],
+};
+
+export const finding: Finding = {
+  ...compactComment,
+  id: "cmt_f1",
+  number: 4900,
+  text: "Typo: \"recieve\" should be \"receive\".",
+  author: "Proofreader (agent)",
+  severity: "high",
+  confidence: 0.92,
+};
+
+export const schedule: Schedule = {
+  id: "sch_4d5e6f",
+  project: { id: "prj_1a2b", name: "Acme Dental" },
+  cron: "0 9 * * 1",
+  timezone: "Europe/Berlin",
+  agents: null,
+  pack: { id: "pck_pre", name: "Pre-Launch" },
+  scope: "site",
+  pages: [],
+  enabled: true,
+  next_run_at: "2026-10-12T07:00:00Z",
+  last_run: { run_id: "run_8f3k2", at: "2026-10-05T07:00:00Z", status: "done" },
+  created_by: { id: "usr_7", email: "owner@example.com" },
+};
+
+export const agentSchedule: Schedule = {
+  ...schedule,
+  id: "sch_7g8h9i",
+  agents: [{ id: "agt_legal1", name: "Legal footer" }],
+  pack: null,
+};
+
+export const slackIntegration: Integration = {
+  id: "int_1a2b3c",
+  type: "slack",
+  name: "Acme workspace",
+  detail: "#design-feedback",
+  status: "connected",
+  connected_at: "2026-09-01T10:00:00Z",
+  settings: { default_project: null },
+};
+
+export const jiraIntegration: Integration = {
+  id: "int_7g8h9i",
+  type: "jira",
+  name: "Acme Jira",
+  detail: "example.atlassian.net",
+  status: "connected",
+  connected_at: "2026-09-02T10:00:00Z",
+  settings: { default_project: "WEB:10001" },
+};
+
+export const webhook: Webhook = {
+  id: "whk_2b3c4d",
+  url: "https://hooks.example.com/superflow",
+  events: ["comment.created", "comment.resolved", "agent_run.completed"],
+  project_id: "prj_1a2b",
+  active: true,
+  description: null,
+  secret_hint: "x9Qz",
+  created_at: "2026-10-08T09:00:00Z",
+  last_delivery: { status: "succeeded", at: "2026-10-08T09:30:00Z" },
+};
+
+export const createdWebhook: CreatedWebhook = {
+  ...webhook,
+  last_delivery: null,
+  secret: "whsec_dGVzdC1zZWNyZXQtbm90LXJlYWw=",
+};
+
+export const delivery: WebhookDelivery = {
+  id: "msg_1",
+  event: "comment.created",
+  status: "succeeded",
+  response_code: 200,
+  at: "2026-10-08T09:30:00Z",
 };

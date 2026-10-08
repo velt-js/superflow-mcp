@@ -23,7 +23,9 @@ export type Check =
   | { tool: string; arg_includes: Record<string, unknown> }
   | { result_path_nonempty: string }
   | { tool_not_called: string }
-  | { no_confirmed_writes: true };
+  | { no_confirmed_writes: true }
+  /** When `then` is called, `tool_before` must have been called earlier in the same run. */
+  | { tool_before: string; then: string };
 
 export interface EvalPrompt {
   id: string;

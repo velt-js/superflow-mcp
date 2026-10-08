@@ -32,6 +32,24 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  connectIntegration: {
+    method: "POST",
+    path: "/integrations/connect",
+    pathParams: [],
+    queryParams: [],
+  },
+  createAgent: {
+    method: "POST",
+    path: "/agents",
+    pathParams: [],
+    queryParams: [],
+  },
+  createAgentPack: {
+    method: "POST",
+    path: "/agent-packs",
+    pathParams: [],
+    queryParams: [],
+  },
   createComment: {
     method: "POST",
     path: "/comments",
@@ -62,6 +80,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  createSchedule: {
+    method: "POST",
+    path: "/schedules",
+    pathParams: [],
+    queryParams: [],
+  },
   createStatus: {
     method: "POST",
     path: "/statuses",
@@ -73,6 +97,18 @@ export const operations = {
     path: "/tags",
     pathParams: [],
     queryParams: [],
+  },
+  createWebhook: {
+    method: "POST",
+    path: "/webhooks",
+    pathParams: [],
+    queryParams: [],
+  },
+  deleteAgent: {
+    method: "DELETE",
+    path: "/agents/{agent}",
+    pathParams: ["agent"],
+    queryParams: ["confirm"],
   },
   deleteComment: {
     method: "DELETE",
@@ -92,6 +128,12 @@ export const operations = {
     pathParams: ["reply"],
     queryParams: [],
   },
+  deleteSchedule: {
+    method: "DELETE",
+    path: "/schedules/{schedule}",
+    pathParams: ["schedule"],
+    queryParams: [],
+  },
   deleteStatus: {
     method: "DELETE",
     path: "/statuses/{status}",
@@ -104,11 +146,35 @@ export const operations = {
     pathParams: ["tag"],
     queryParams: ["confirm"],
   },
+  deleteWebhook: {
+    method: "DELETE",
+    path: "/webhooks/{webhook}",
+    pathParams: ["webhook"],
+    queryParams: ["confirm"],
+  },
+  duplicateAgent: {
+    method: "POST",
+    path: "/agents/{agent}/duplicate",
+    pathParams: ["agent"],
+    queryParams: [],
+  },
+  estimateRun: {
+    method: "POST",
+    path: "/runs/estimate",
+    pathParams: [],
+    queryParams: [],
+  },
   exportComments: {
     method: "GET",
     path: "/comments/export",
     pathParams: [],
     queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "format", "has_attachments", "has_external_link", "has_replies", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+  },
+  getAgent: {
+    method: "GET",
+    path: "/agents/{agent}",
+    pathParams: ["agent"],
+    queryParams: [],
   },
   getComment: {
     method: "GET",
@@ -133,6 +199,12 @@ export const operations = {
     path: "/projects/{project}/install",
     pathParams: ["project"],
     queryParams: ["platform"],
+  },
+  getIntegration: {
+    method: "GET",
+    path: "/integrations/{integration}",
+    pathParams: ["integration"],
+    queryParams: [],
   },
   getMe: {
     method: "GET",
@@ -170,6 +242,18 @@ export const operations = {
     pathParams: ["project"],
     queryParams: [],
   },
+  getRun: {
+    method: "GET",
+    path: "/runs/{run}",
+    pathParams: ["run"],
+    queryParams: [],
+  },
+  getWebhook: {
+    method: "GET",
+    path: "/webhooks/{webhook}",
+    pathParams: ["webhook"],
+    queryParams: [],
+  },
   inviteGuests: {
     method: "POST",
     path: "/projects/{project}/guests",
@@ -188,11 +272,29 @@ export const operations = {
     pathParams: [],
     queryParams: ["action", "actor", "cursor", "entity", "limit", "since", "until"],
   },
+  listAgentPacks: {
+    method: "GET",
+    path: "/agent-packs",
+    pathParams: [],
+    queryParams: [],
+  },
+  listAgents: {
+    method: "GET",
+    path: "/agents",
+    pathParams: [],
+    queryParams: [],
+  },
   listComments: {
     method: "GET",
     path: "/comments",
     pathParams: [],
     queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+  },
+  listIntegrations: {
+    method: "GET",
+    path: "/integrations",
+    pathParams: [],
+    queryParams: [],
   },
   listMembers: {
     method: "GET",
@@ -248,6 +350,24 @@ export const operations = {
     pathParams: [],
     queryParams: ["project"],
   },
+  listRunFindings: {
+    method: "GET",
+    path: "/runs/{run}/findings",
+    pathParams: ["run"],
+    queryParams: ["cursor", "limit", "severity"],
+  },
+  listRuns: {
+    method: "GET",
+    path: "/runs",
+    pathParams: [],
+    queryParams: ["cursor", "limit", "project", "since", "status"],
+  },
+  listSchedules: {
+    method: "GET",
+    path: "/schedules",
+    pathParams: [],
+    queryParams: ["project"],
+  },
   listStatuses: {
     method: "GET",
     path: "/statuses",
@@ -260,10 +380,34 @@ export const operations = {
     pathParams: [],
     queryParams: ["project"],
   },
+  listWebhookDeliveries: {
+    method: "GET",
+    path: "/webhooks/{webhook}/deliveries",
+    pathParams: ["webhook"],
+    queryParams: [],
+  },
+  listWebhooks: {
+    method: "GET",
+    path: "/webhooks",
+    pathParams: [],
+    queryParams: [],
+  },
   mergeTags: {
     method: "POST",
     path: "/tags/{tag}/merge",
     pathParams: ["tag"],
+    queryParams: [],
+  },
+  postToSlack: {
+    method: "POST",
+    path: "/integrations/slack/post",
+    pathParams: [],
+    queryParams: [],
+  },
+  pushComment: {
+    method: "POST",
+    path: "/comments/{comment}/push",
+    pathParams: ["comment"],
     queryParams: [],
   },
   removeGuest: {
@@ -314,16 +458,46 @@ export const operations = {
     pathParams: ["link"],
     queryParams: [],
   },
+  runAgents: {
+    method: "POST",
+    path: "/runs",
+    pathParams: [],
+    queryParams: [],
+  },
+  testWebhook: {
+    method: "POST",
+    path: "/webhooks/{webhook}/test",
+    pathParams: ["webhook"],
+    queryParams: [],
+  },
   unarchiveProject: {
     method: "POST",
     path: "/projects/{project}/unarchive",
     pathParams: ["project"],
     queryParams: [],
   },
+  updateAgent: {
+    method: "PATCH",
+    path: "/agents/{agent}",
+    pathParams: ["agent"],
+    queryParams: [],
+  },
+  updateAgentPack: {
+    method: "PATCH",
+    path: "/agent-packs/{pack}",
+    pathParams: ["pack"],
+    queryParams: [],
+  },
   updateComment: {
     method: "PATCH",
     path: "/comments/{comment}",
     pathParams: ["comment"],
+    queryParams: [],
+  },
+  updateIntegration: {
+    method: "PATCH",
+    path: "/integrations/{integration}",
+    pathParams: ["integration"],
     queryParams: [],
   },
   updateNotificationSettings: {
@@ -350,6 +524,12 @@ export const operations = {
     pathParams: ["reply"],
     queryParams: [],
   },
+  updateSchedule: {
+    method: "PATCH",
+    path: "/schedules/{schedule}",
+    pathParams: ["schedule"],
+    queryParams: [],
+  },
   updateStatus: {
     method: "PATCH",
     path: "/statuses/{status}",
@@ -360,6 +540,12 @@ export const operations = {
     method: "PATCH",
     path: "/tags/{tag}",
     pathParams: ["tag"],
+    queryParams: [],
+  },
+  updateWebhook: {
+    method: "PATCH",
+    path: "/webhooks/{webhook}",
+    pathParams: ["webhook"],
     queryParams: [],
   },
   verifyInstall: {

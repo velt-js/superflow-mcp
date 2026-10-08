@@ -102,7 +102,7 @@ export interface CommentFull {
   metadata: Record<string, unknown> | null;
   source: CommentSource;
   agent: { id: string; name: string; run_id: string | null; severity: string | null; confidence: number | null } | null;
-  external_links: unknown[];
+  external_links: ExternalLink[];
   attachments: Attachment[];
   replies?: Reply[];
   reply_count: number;
@@ -471,4 +471,206 @@ export interface NotificationSettings {
   email_digest: { enabled: boolean; cadence: "daily" | "weekly" | "monthly" };
   inbox: NotificationLevel;
   email: NotificationLevel;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3: agents, runs, schedules, integrations, webhooks (the backend's OpenAPI document).
+// ---------------------------------------------------------------------------------------------
+
+/** An issue or task created from a comment in a connected tool (Phase 3 push). */
+export interface ExternalLink {
+  /** jira, asana, clickup or monday. */
+  type: string;
+  /** Issue key or task id. */
+  key: string | null;
+  url: string | null;
+}
+
+export interface IdName {
+  id: string;
+  name: string;
+}
+
+/** A reference whose name the API may not know. */
+export interface Ref {
+  id: string;
+  name: string | null;
+}
+
+export type AgentKind = "built_in" | "custom";
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  kind: AgentKind;
+  enabled: boolean;
+  packs: IdName[];
+  /** In Superflow's default run set. */
+  is_default: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  /** GET /agents/{agent} and writes: the custom agent's instructions; null for built-in agents. */
+  instructions?: string | null;
+  /** Duplicate only: what was not copied. */
+  note?: string | null;
+}
+
+export interface DeleteAgentResponse {
+  deleted: true;
+  id: string;
+  /** Schedules the agent was taken out of. A schedule left with no agents is turned off. */
+  schedules_updated: number;
+}
+
+export interface AgentPack {
+  id: string;
+  name: string;
+  description: string;
+  agent_ids: string[];
+  agent_count: number;
+  system: boolean;
+  is_default_for_runs: boolean;
+}
+
+export type PricingMode = "scan" | "flat" | "token";
+export type RunScope = "page" | "list" | "site";
+
+export interface RunEstimate {
+  /** null in token pricing mode. */
+  credits: number | null;
+  credits_display: string;
+  pricing_mode: PricingMode;
+  page_count: number | null;
+  band: string | null;
+  is_rescan: boolean;
+  balance: number | null;
+  sufficient: boolean;
+  auto_refill_enabled: boolean;
+  agents: IdName[];
+  note: string;
+}
+
+export type RunStatus = "queued" | "running" | "done" | "failed" | "partial";
+
+export interface RunExecution {
+  /** run_<executionId>: readable on its own with GET /runs/{run}. */
+  id: string;
+  agent: Ref | null;
+  /** running, passed, failed, partial, error or skipped. */
+  status: string;
+  findings: number | null;
+}
+
+export interface Run {
+  id: string;
+  project: Ref;
+  agents: Ref[];
+  scope: RunScope;
+  pages_requested: string[];
+  status: RunStatus;
+  credits_charged: number | null;
+  findings_count: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  trigger: "manual" | "schedule" | "api";
+  created_by: { id: string | null; email: string | null };
+  executions: RunExecution[];
+}
+
+/** A run finding: a compact comment plus the agent's severity and confidence. */
+export interface Finding extends CommentCompact {
+  severity: string | null;
+  confidence: number | null;
+}
+
+export interface Schedule {
+  id: string;
+  project: Ref;
+  cron: string;
+  timezone: string;
+  agents: Ref[] | null;
+  pack: Ref | null;
+  scope: RunScope;
+  pages: string[];
+  enabled: boolean;
+  next_run_at: string | null;
+  /** status is a run status, skipped_insufficient_credits or failed_to_start. */
+  last_run: { run_id: string | null; at: string | null; status: string } | null;
+  created_by: { id: string | null; email: string | null };
+}
+
+export interface DeleteScheduleResponse {
+  deleted: true;
+  id: string;
+}
+
+export type IntegrationType = "slack" | "jira" | "asana" | "clickup" | "monday";
+
+export interface Integration {
+  id: string;
+  type: IntegrationType;
+  name: string;
+  /** Slack channel or Jira site. */
+  detail: string | null;
+  status: "connected" | "needs_reauth";
+  connected_at: string | null;
+  settings: { default_project: string | null };
+}
+
+export interface ConnectLink {
+  type: IntegrationType;
+  url: string;
+  note: string;
+}
+
+export interface PushCommentResponse {
+  comment: CommentFull;
+  link: ExternalLink;
+}
+
+/** A refused post is a 502 upstream error, so a 200 always has ok: true. */
+export interface SlackPostResponse {
+  ok: boolean;
+  permalink: string | null;
+  channel: string | null;
+  comments_posted: number;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  project_id: string | null;
+  active: boolean;
+  /** The last 4 characters of the signing secret. */
+  secret_hint: string | null;
+  description: string | null;
+  created_at: string | null;
+  last_delivery: { status: string; at: string | null } | null;
+}
+
+/** POST /webhooks: the signing secret is returned this once. */
+export interface CreatedWebhook extends Webhook {
+  secret: string;
+}
+
+export interface DeleteWebhookResponse {
+  deleted: true;
+  id: string;
+}
+
+export interface WebhookTestResponse {
+  sent: boolean;
+  id: string;
+  event: "ping";
+  message_id: string | null;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  event: string | null;
+  status: string;
+  response_code: number | null;
+  at: string | null;
 }

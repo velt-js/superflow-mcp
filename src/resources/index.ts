@@ -1,5 +1,5 @@
-// Resources (spec 6.3, plus superflow://organization in Phase 2). Each returns the same JSON
-// as the matching tool.
+// Resources (spec 6.3, plus superflow://organization in Phase 2 and superflow://runs/{run} in
+// Phase 3). Each returns the same JSON as the matching tool.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
@@ -11,6 +11,7 @@ import { getComment, listComments } from "../tools/comments.ts";
 import type { ToolContext, ToolDefinition } from "../tools/define.ts";
 import { listProjects } from "../tools/lookups.ts";
 import { getOrganization } from "../tools/organization.ts";
+import { getRun } from "../tools/runs.ts";
 import type { z } from "zod";
 
 const JSON_MIME = "application/json";
@@ -165,6 +166,21 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       const comment = decode(variables.comment);
       if (!comment) throw new SuperflowApiError({ status: 400, code: "invalid", message: "The URI has no comment." });
       return jsonContents(uri, await runTool(getComment, { comment, include_replies: true }, ctx));
+    },
+  );
+
+  server.registerResource(
+    "run",
+    new ResourceTemplate("superflow://runs/{run}", { list: undefined }),
+    {
+      title: "Superflow agent run",
+      description: "One agent run with its live status per agent, same JSON as superflow_get_run.",
+      mimeType: JSON_MIME,
+    },
+    async (uri, variables) => {
+      const run = decode(variables.run);
+      if (!run) throw new SuperflowApiError({ status: 400, code: "invalid", message: "The URI has no run." });
+      return jsonContents(uri, await runTool(getRun, { run }, ctx));
     },
   );
 }

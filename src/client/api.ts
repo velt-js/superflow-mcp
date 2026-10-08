@@ -90,6 +90,19 @@ const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
   "deleteTag",
   "mergeTags",
   "getCreditUsage",
+  // Phase 3: agent writes call a model, estimates read the sitemap, runs read every
+  // execution, findings scan comments, and a push waits up to 20 s for the tracker.
+  "createAgent",
+  "updateAgent",
+  "duplicateAgent",
+  "deleteAgent",
+  "listAgentPacks",
+  "estimateRun",
+  "runAgents",
+  "getRun",
+  "listRunFindings",
+  "pushComment",
+  "postToSlack",
 ]);
 const MAX_RETRIES = 2;
 const BACKOFF_MS = [500, 1500] as const;

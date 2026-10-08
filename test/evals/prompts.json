@@ -33,8 +33,8 @@
   {
     "id": "done-agent-findings-last-run",
     "prompt": "What did the agents find in the last run? Which ones look like false positives?",
-    "expect_first_tool": "superflow_list_comments",
-    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "author_type": ["agent"] } }]
+    "expect_first_tool": ["superflow_list_runs", "superflow_list_comments"],
+    "check": [{ "result_path_nonempty": "items" }]
   },
   {
     "id": "done-reply-to-number",
@@ -238,5 +238,72 @@
     "read_only": true,
     "expect_first_tool": [null, "superflow_list_projects"],
     "check": [{ "tool_not_called": "superflow_create_project" }]
+  },
+  {
+    "id": "p3-estimate-then-run",
+    "prompt": "Estimate a full run of the Pre-Launch pack on Acme, then run it.",
+    "expect_first_tool": "superflow_estimate_run",
+    "check": [
+      { "tool": "superflow_estimate_run", "arg_includes": { "pack": "Pre-Launch" } },
+      { "tool_before": "superflow_estimate_run", "then": "superflow_run_agents" },
+      { "no_confirmed_writes": true }
+    ]
+  },
+  {
+    "id": "p3-last-run-findings-by-severity",
+    "prompt": "What did the agents find in the last run on {project}? Group the findings by severity.",
+    "expect_first_tool": "superflow_list_runs",
+    "expect_tools_any_order": ["superflow_list_findings"]
+  },
+  {
+    "id": "p3-run-status",
+    "prompt": "Is agent run run_8f3k2 finished yet?",
+    "expect_first_tool": "superflow_get_run",
+    "check": [{ "tool": "superflow_get_run", "arg_includes": { "run": "run_8f3k2" } }]
+  },
+  {
+    "id": "p3-create-agent",
+    "prompt": "Create a custom agent called Legal footer that checks every page footer has the copyright line and a link to the privacy policy. You have my go-ahead.",
+    "expect_first_tool": ["superflow_create_agent", "superflow_list_agents"],
+    "check": [{ "tool": "superflow_create_agent", "arg_includes": { "name": "Legal footer" } }]
+  },
+  {
+    "id": "p3-weekly-schedule",
+    "prompt": "Run the Pre-Launch pack on {project} every Monday at 9am Berlin time. The cost is fine, go ahead.",
+    "expect_first_tool": ["superflow_estimate_run", "superflow_set_schedule", "superflow_list_schedules", "superflow_list_agent_packs"],
+    "check": [{ "tool": "superflow_set_schedule", "arg_includes": { "cron": "0 9 * * 1", "timezone": "Europe/Berlin" } }]
+  },
+  {
+    "id": "p3-push-comment-to-jira",
+    "prompt": "Push comment 4821 on {project} to our Jira, project WEB.",
+    "expect_first_tool": ["superflow_list_integrations", "superflow_push_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_push_comment", "arg_includes": { "project_key": "WEB" } }]
+  },
+  {
+    "id": "p3-slack-post-needs-confirmation",
+    "prompt": "Post a summary of the open critical comments on {project} to our #design-feedback Slack channel.",
+    "expect_first_tool": ["superflow_list_integrations", "superflow_list_comments", "superflow_comment_stats", "superflow_post_to_slack"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p3-connect-jira",
+    "prompt": "Connect our Jira to Superflow.",
+    "expect_first_tool": ["superflow_connect_integration", "superflow_list_integrations"],
+    "check": [{ "tool": "superflow_connect_integration", "arg_includes": { "type": "jira" } }]
+  },
+  {
+    "id": "p3-create-webhook",
+    "prompt": "Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved on {project}. Go ahead and set it up.",
+    "expect_first_tool": ["superflow_create_webhook", "superflow_list_webhooks"],
+    "check": [
+      { "tool": "superflow_create_webhook", "arg_includes": { "url": "https://hooks.example.com/superflow", "events": ["comment.resolved"] } }
+    ]
+  },
+  {
+    "id": "p3-read-only-run-refusal",
+    "prompt": "Run the AI agents on {project} now.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_estimate_run", "superflow_list_agents", "superflow_list_agent_packs"],
+    "check": [{ "tool_not_called": "superflow_run_agents" }]
   }
 ]

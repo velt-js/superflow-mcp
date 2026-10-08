@@ -127,7 +127,10 @@ export const filterShape = {
     .describe(`Approximate: resolved threads whose last update is before this. ${DATE_DESCRIPTION}`),
   has_attachments: z.boolean().optional().describe("true: only threads with attachments. false: only threads without."),
   has_replies: z.boolean().optional().describe("true: only threads with replies. false: only threads with none."),
-  has_external_link: z.boolean().optional().describe("Linked to an external tracker. Matches nothing yet (Phase 1)."),
+  has_external_link: z
+    .boolean()
+    .optional()
+    .describe("true: only comments pushed to a tracker (Jira, Asana, ClickUp, Monday) with superflow_push_comment. false: only comments without one."),
   unanswered: z
     .boolean()
     .optional()
@@ -213,3 +216,90 @@ export const httpUrlSchema = z
 export const hexColorSchema = z
   .string()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex color like #605CEC");
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 (agents, runs, schedules, integrations, webhooks).
+// ---------------------------------------------------------------------------------------------
+
+export const RUN_SCOPES = ["page", "list", "site"] as const;
+export const RUN_STATUSES = ["queued", "running", "done", "failed", "partial"] as const;
+export const TERMINAL_RUN_STATUSES = ["done", "failed", "partial"] as const;
+export const FINDING_SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;
+export const INTEGRATION_TYPES = ["slack", "jira", "asana", "clickup", "monday"] as const;
+export const SLACK_TEMPLATES = ["summary", "list"] as const;
+export const WEBHOOK_EVENTS = [
+  "comment.created",
+  "comment.updated",
+  "comment.resolved",
+  "comment.reopened",
+  "comment.deleted",
+  "reply.created",
+  "reply.updated",
+  "reply.deleted",
+  "project.created",
+  "project.updated",
+  "project.archived",
+  "page.created",
+  "page.removed",
+  "member.invited",
+  "member.removed",
+  "guest.invited",
+  "agent_run.started",
+  "agent_run.completed",
+  "agent_run.failed",
+] as const;
+
+/** Most agents one run or schedule can use (CONTRACT-P3 section 4). */
+export const MAX_RUN_AGENTS = 25;
+/** Most page URLs a list-scope run can take. */
+export const MAX_RUN_PAGES = 500;
+
+export const agentRefSchema = z
+  .string()
+  .min(1)
+  .describe("Agent: its name (\"Proofreader\") or id (agt_...).");
+
+export const packRefSchema = z
+  .string()
+  .min(1)
+  .describe("Agent pack: its name (\"Pre-Launch\") or id (pck_...).");
+
+export const runRefSchema = z
+  .string()
+  .min(1)
+  .describe("Agent run id (run_...), from superflow_run_agents or superflow_list_runs.");
+
+export const integrationRefSchema = z
+  .string()
+  .min(1)
+  .describe("Connected tool: its id (int_...) or name, from superflow_list_integrations.");
+
+export const webhookRefSchema = z
+  .string()
+  .min(1)
+  .describe("Webhook id (whk_...), from superflow_list_webhooks.");
+
+export const agentListSchema = (what: string) =>
+  z
+    .array(z.string().min(1))
+    .min(1)
+    .max(MAX_RUN_AGENTS)
+    .optional()
+    .describe(`${what}: agent names or ids (agt_...), at most ${MAX_RUN_AGENTS}. Give agents or pack, not both. Leave both out for the default agents.`);
+
+export const runScopeSchema = z
+  .enum(RUN_SCOPES)
+  .optional()
+  .describe("What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages).");
+
+export const runPagesSchema = z
+  .array(z.string().min(1))
+  .min(1)
+  .max(MAX_RUN_PAGES)
+  .optional()
+  .describe(`Page URLs to review, at most ${MAX_RUN_PAGES}. Needed for scope list; for scope page give the one page.`);
+
+export const webhookEventsSchema = z
+  .array(z.enum(WEBHOOK_EVENTS))
+  .min(1)
+  .describe("Events to send, for example comment.created, comment.resolved, agent_run.completed. At least one.");

@@ -5,6 +5,7 @@ import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { describeDateProblem } from "../lib/dates.ts";
+import { POLL_SECONDS } from "../tools/runs.ts";
 import { PLATFORMS } from "../tools/schemas.ts";
 
 export interface PromptOptions {
@@ -19,7 +20,7 @@ const SAFETY_RULES = [
 ];
 
 const WRITE_RULE =
-  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
+  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install, run agents, schedule, push to a tracker, post to Slack, webhook) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
 
 const READ_ONLY_RULE =
   "- Writes are disabled on this server (SUPERFLOW_READ_ONLY=true), so the write tools are not available. Present every change as a recommendation the user can apply in Superflow. Do not try to apply it.";
@@ -188,26 +189,44 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
     "agent_findings_review",
     {
       title: "Review agent findings",
-      description: "Review the findings of one AI agent run, flag likely false positives, and propose which to resolve as noise.",
+      description:
+        "Review the findings of an AI agent run (the latest finished run when none is given), flag likely false positives, and propose which to resolve as noise.",
       argsSchema: {
-        agent_run: z.string().min(1).describe("Agent run id (run_... or the raw execution id)."),
+        agent_run: z.string().optional().describe("Agent run id (run_...). Default: the latest finished run."),
+        project: z.string().optional().describe("Project name, site URL or id, to find its latest run when agent_run is not given."),
       },
     },
-    ({ agent_run }) => {
-      const lines = [
-        `Review the findings from Superflow agent run "${agent_run}".`,
-        "",
-        "Steps:",
-        `1. Call superflow_list_comments with ${json({ author_type: ["agent"], agent_run, fields: "full", limit: 100 })}. Follow next_cursor if there are more.`,
-        "2. For each finding decide: real issue, or likely false positive. Give a one-line reason (for example: intentional copy, the element is fine, duplicate of another finding, out of scope).",
-        "3. Show a table: comment (number and link), page, finding, severity, verdict, reason.",
-        "4. Propose which findings to resolve as noise, each with a short note explaining why.",
-      ];
-      if (!options.readOnly) {
-        lines.push(
-          `5. Ask the user. After a clear yes, call superflow_bulk_update_comments with ${json({ comment_ids: ["cmt_..."], patch: { resolve: true, note: "Resolved as a false positive: <reason>" } })} as a dry run, show it, then repeat with "dry_run": false and "confirm": true. Use one call per distinct note.`,
+    ({ agent_run, project }) => {
+      const run = agent_run && agent_run.trim() !== "" ? agent_run.trim() : undefined;
+      const scope = project && project.trim() !== "" ? project.trim() : undefined;
+      const theRun = run ?? "<the run id>";
+      const steps: string[] = [];
+      if (!run) {
+        steps.push(
+          `Call superflow_list_runs with ${json({ ...(scope ? { project: scope } : {}), limit: 5 })} and pick the newest run whose status is done or partial. Tell the user which run you picked (id, project, when).`,
         );
       }
+      steps.push(
+        `Call superflow_get_run with ${json({ run: theRun })}. If the status is queued or running, tell the user it is still going and check again no more often than every ${POLL_SECONDS} seconds, or stop and offer to come back later. Note which agents ran and on how many pages.`,
+        `Call superflow_list_findings with ${json({ run: theRun, limit: 100 })}. Follow next_cursor until you have every finding (stop at 300 and say so).`,
+        "When a finding needs more context (the element, the page, replies), call superflow_get_comment with its id.",
+        "For each finding decide: real issue, or likely false positive. Give a one-line reason (for example: intentional copy, the element is fine, duplicate of another finding, out of scope).",
+        "Start with counts by severity, then show a table: finding (number and link), page, agent, severity, confidence, verdict, reason.",
+        "Propose which findings to resolve as noise, each with a short note explaining why.",
+      );
+      if (!options.readOnly) {
+        steps.push(
+          `Ask the user. After a clear yes, call superflow_bulk_update_comments with ${json({ comment_ids: ["cmt_..."], patch: { resolve: true, note: "Resolved as a false positive: <reason>" } })} as a dry run, show it, then repeat with "dry_run": false and "confirm": true. Use one call per distinct note.`,
+        );
+      }
+      const lines = [
+        run
+          ? `Review the findings from Superflow agent run "${run}".`
+          : `Review the findings from the latest Superflow agent run${scope ? ` on project "${scope}"` : ""}.`,
+        "",
+        "Steps:",
+        ...steps.map((step, index) => `${index + 1}. ${step}`),
+      ];
       return message(lines, options, true);
     },
   );
@@ -272,6 +291,53 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         "7. End with a one-line verdict: ready, or not ready and why.",
       ];
       return message(lines, options, false);
+    },
+  );
+
+  server.registerPrompt(
+    "prelaunch_run",
+    {
+      title: "Pre-launch agent run",
+      description:
+        "Run the AI review agents on a project before launch: estimate the credits, ask, run, follow it, summarize the findings by severity, and offer to push the critical ones to Jira.",
+      argsSchema: {
+        project: projectArg,
+        pack: z.string().optional().describe("Agent pack to run, for example Pre-Launch. Default: the default agents."),
+      },
+    },
+    ({ project, pack }) => {
+      const packName = pack && pack.trim() !== "" ? pack.trim() : undefined;
+      const runArgs = { project, scope: "site", ...(packName ? { pack: packName } : {}) };
+      const intro = `Run a pre-launch review of Superflow project "${project}" with ${packName ? `the agents in the pack "${packName}"` : "the default AI review agents"}.`;
+      const estimate = `1. Call superflow_estimate_run with ${json(runArgs)}. Show the user the credits (credits_display), the page count, the agents and the balance. If credits is null, say the workspace is billed by model usage, so the run cannot be priced in advance.`;
+      const summarize = "Summarize the findings by severity: a count per severity, then the critical and high ones grouped by page, each with its link. End with a one-line verdict: ready to launch, or not ready and why.";
+      let lines: string[];
+      if (options.readOnly) {
+        lines = [
+          intro,
+          "",
+          "Steps:",
+          estimate,
+          "2. Explain that this server is read-only, so it cannot start the run. The user can start it in Superflow.",
+          `3. Look for a recent run instead: call superflow_list_runs with ${json({ project, limit: 1 })}. If it is done or partial, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor.`,
+          `4. ${summarize}`,
+          "5. Recommend which critical findings to push to Jira, as a list the user can act on in Superflow.",
+        ];
+      } else {
+        lines = [
+          intro,
+          "",
+          "Steps:",
+          estimate,
+          "2. If sufficient is false, stop. Tell the user the balance and the cost, and that they can add AI credits in Superflow under Settings > Billing or turn on auto refill there. Do not start the run and do not retry it.",
+          `3. Ask the user whether to start the run for that many credits. Only after a clear yes, call superflow_run_agents with ${json({ ...runArgs, confirm: true })}.`,
+          `4. Call superflow_get_run with ${json({ run: "<the run id>" })} no more often than every ${POLL_SECONDS} seconds until the status is done, failed or partial. A site run can take several minutes: tell the user it is running and offer to check back later.`,
+          `5. Call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })}. Follow next_cursor until you have every finding (stop at 300 and say so).`,
+          `6. ${summarize}`,
+          `7. Offer to push the critical findings to Jira. Call superflow_list_integrations to find the Jira connection. If there is none, call superflow_connect_integration with ${json({ type: "jira" })} and give the user the link to open. Pushing creates real issues the team will see: list the findings you would push, and after a clear yes call superflow_push_comment with ${json({ comment: "<finding id>", integration: "<the Jira integration id>" })} for each.`,
+        ];
+      }
+      return message(lines, options, true);
     },
   );
 
