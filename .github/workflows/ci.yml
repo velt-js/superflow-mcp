@@ -50,8 +50,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # setup-node v5 turns on package-manager caching by itself when package.json has a
+      # packageManager field, and that runs `pnpm store path`. pnpm 11 cannot start on
+      # Node 20, so switch the automatic cache off here: this job only runs the built CLI.
       - uses: actions/setup-node@v5
         with:
           node-version: 20
+          package-manager-cache: false
       - run: node --version
       - run: node scripts/smoke-stdio.mjs
