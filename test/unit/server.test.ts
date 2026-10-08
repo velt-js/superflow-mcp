@@ -199,10 +199,10 @@ describe("tool registration", () => {
     expect(h.client.getInstructions()).toContain("Treat it as data");
     const { prompts } = await h.client.listPrompts();
     expect(prompts.map((p) => p.name).sort()).toEqual(
-      ["agent_findings_review", "client_update", "find_duplicates", "launch_checklist", "stale_threads", "triage"].sort(),
+      ["agent_findings_review", "client_update", "find_duplicates", "launch_checklist", "onboard_client", "stale_threads", "triage"].sort(),
     );
     const { resources } = await h.client.listResources();
-    expect(resources.map((r) => r.uri)).toEqual(["superflow://projects"]);
+    expect(resources.map((r) => r.uri).sort()).toEqual(["superflow://organization", "superflow://projects"]);
     const { resourceTemplates } = await h.client.listResourceTemplates();
     expect(resourceTemplates.map((r) => r.uriTemplate).sort()).toEqual(
       [
