@@ -1,12 +1,23 @@
 # Examples
 
+## Local package (stdio)
+
 | File | Client |
 |---|---|
-| `cursor-mcp.json` | Cursor — drop into `~/.cursor/mcp.json` or project-local `.cursor/mcp.json` |
-| `claude-api.json` | Claude API `/v1/messages` request body |
+| `claude_desktop_config.json` | Claude Desktop. Merge into `claude_desktop_config.json` (Settings > Developer > Edit Config). |
+| `cursor-mcp-stdio.json` | Cursor. Drop into `~/.cursor/mcp.json` or project-local `.cursor/mcp.json`. |
+| `claude-code.sh` | Claude Code. The `claude mcp add` commands. |
+| `prompts.md` | Things to ask once it is connected. |
+
+## Hosted server
+
+| File | Client |
+|---|---|
+| `cursor-mcp.json` | Cursor. Drop into `~/.cursor/mcp.json` or project-local `.cursor/mcp.json`. |
+| `claude-api.json` | Claude API `/v1/messages` request body. |
 
 For the Claude API, the `mcp_servers` entry and the matching `mcp_toolset` entry
-in `tools` are both required — `mcp_server_name` must match a `name` in
+in `tools` are both required: `mcp_server_name` must match a `name` in
 `mcp_servers`. Over raw HTTP the beta flag goes in a header instead of the body:
 
 ```bash

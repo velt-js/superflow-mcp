@@ -1,0 +1,5426 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Superflow API",
+    "version": "1.0.0",
+    "description": "Read, filter, search, update, resolve, reply to and bulk-edit Superflow comments. Authenticate with a Superflow API key (sf_pat_) or an OAuth access token (sf_at_). Rate limit: 600 requests per minute per key."
+  },
+  "servers": [
+    {
+      "url": "https://api.usesuperflow.ai/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi",
+        "summary": "This OpenAPI document",
+        "tags": [
+          "meta"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "The key, its member, workspace and scopes",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "summary": "List projects",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "description": "Default false.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from next_cursor.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}": {
+      "get": {
+        "operationId": "getProject",
+        "summary": "Get a project",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectFull"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/pages": {
+      "get": {
+        "operationId": "listProjectPages",
+        "summary": "List the pages of a project",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "with_counts",
+            "in": "query",
+            "required": false,
+            "description": "Default true.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from next_cursor.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/members": {
+      "get": {
+        "operationId": "listProjectMembers",
+        "summary": "List the members and guests of a project",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/members": {
+      "get": {
+        "operationId": "listMembers",
+        "summary": "List workspace members (and a project's guests)",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/statuses": {
+      "get": {
+        "operationId": "listProjectStatuses",
+        "summary": "List the statuses of a project",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/statuses": {
+      "get": {
+        "operationId": "listStatuses",
+        "summary": "List the workspace statuses",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/tags": {
+      "get": {
+        "operationId": "listProjectTags",
+        "summary": "List the tags of a project",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "operationId": "listTags",
+        "summary": "List tags",
+        "tags": [
+          "lookups"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments": {
+      "get": {
+        "operationId": "listComments",
+        "summary": "List comments",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/filter_project"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_url"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_status"
+          },
+          {
+            "$ref": "#/components/parameters/filter_priority"
+          },
+          {
+            "$ref": "#/components/parameters/filter_assignee"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author_type"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_query"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_attachments"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_replies"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_external_link"
+          },
+          {
+            "$ref": "#/components/parameters/filter_unanswered"
+          },
+          {
+            "$ref": "#/components/parameters/filter_stale_days"
+          },
+          {
+            "$ref": "#/components/parameters/filter_device"
+          },
+          {
+            "$ref": "#/components/parameters/filter_source"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent_run"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Default updated_desc.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updated_desc",
+                "created_desc",
+                "created_asc",
+                "priority_desc",
+                "page",
+                "number"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from next_cursor.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Default compact.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "compact",
+                "full"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createComment",
+        "summary": "Create a comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "page_url": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "anchor": {
+                    "type": "object",
+                    "properties": {
+                      "selector": {
+                        "type": "string"
+                      },
+                      "xpath": {
+                        "type": "string"
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "element_text": {
+                        "type": "string"
+                      },
+                      "viewport": {
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "height"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "device": {
+                        "type": "string",
+                        "enum": [
+                          "desktop",
+                          "mobile",
+                          "tablet",
+                          "unknown"
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "critical",
+                      "high",
+                      "medium",
+                      "low",
+                      "none"
+                    ],
+                    "description": "critical (P0), high (P1) or medium (P2). none (or leaving it out) creates the comment without a priority. low is 400 invalid: Superflow has three priorities (use medium)."
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "assignees": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Public https URL (image, video or PDF, at most 25 MB)."
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "on_behalf_of": {
+                    "type": "string",
+                    "description": "Guest email; needs users:invite."
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "project",
+                  "page_url",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/stats": {
+      "get": {
+        "operationId": "getCommentStats",
+        "summary": "Count comments by a dimension",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/filter_project"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_url"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_status"
+          },
+          {
+            "$ref": "#/components/parameters/filter_priority"
+          },
+          {
+            "$ref": "#/components/parameters/filter_assignee"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author_type"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_query"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_attachments"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_replies"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_external_link"
+          },
+          {
+            "$ref": "#/components/parameters/filter_unanswered"
+          },
+          {
+            "$ref": "#/components/parameters/filter_stale_days"
+          },
+          {
+            "$ref": "#/components/parameters/filter_device"
+          },
+          {
+            "$ref": "#/components/parameters/filter_source"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent_run"
+          },
+          {
+            "name": "group_by",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "status",
+                "priority",
+                "assignee",
+                "author",
+                "author_type",
+                "page",
+                "tag",
+                "project",
+                "source",
+                "device",
+                "day",
+                "week"
+              ]
+            }
+          },
+          {
+            "name": "metrics",
+            "in": "query",
+            "required": false,
+            "description": "Comma separated. Default count.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "count",
+                  "avg_hours_to_resolve",
+                  "median_hours_to_first_reply"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stats"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/export": {
+      "get": {
+        "operationId": "exportComments",
+        "summary": "Export comments as CSV, JSON or Markdown",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/filter_project"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_url"
+          },
+          {
+            "$ref": "#/components/parameters/filter_page_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_status"
+          },
+          {
+            "$ref": "#/components/parameters/filter_priority"
+          },
+          {
+            "$ref": "#/components/parameters/filter_assignee"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author"
+          },
+          {
+            "$ref": "#/components/parameters/filter_author_type"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags"
+          },
+          {
+            "$ref": "#/components/parameters/filter_tags_match"
+          },
+          {
+            "$ref": "#/components/parameters/filter_query"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_created_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_updated_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_after"
+          },
+          {
+            "$ref": "#/components/parameters/filter_resolved_before"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_attachments"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_replies"
+          },
+          {
+            "$ref": "#/components/parameters/filter_has_external_link"
+          },
+          {
+            "$ref": "#/components/parameters/filter_unanswered"
+          },
+          {
+            "$ref": "#/components/parameters/filter_stale_days"
+          },
+          {
+            "$ref": "#/components/parameters/filter_device"
+          },
+          {
+            "$ref": "#/components/parameters/filter_source"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent"
+          },
+          {
+            "$ref": "#/components/parameters/filter_agent_run"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "markdown"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updated_desc",
+                "created_desc",
+                "created_asc",
+                "priority_desc",
+                "page",
+                "number"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/bulk": {
+      "post": {
+        "operationId": "bulkUpdateComments",
+        "summary": "Change up to 200 comments at once",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "select": {
+                    "type": "object",
+                    "properties": {
+                      "comment_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "project": {
+                        "type": "string"
+                      },
+                      "filter": {
+                        "type": "object",
+                        "description": "The comment filters, with JSON types."
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "patch": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "string",
+                        "enum": [
+                          "critical",
+                          "high",
+                          "medium",
+                          "low",
+                          "none"
+                        ],
+                        "description": "critical (P0), high (P1) or medium (P2). low is 400 invalid: Superflow has three priorities (use medium). Clearing a priority (none) is not supported yet: 400 invalid."
+                      },
+                      "assignees": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "One person. Removing the assignee ([] or [\"unassigned\"]) is not supported yet: 400 invalid."
+                      },
+                      "add_assignees": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "One person. Removing the assignee ([] or [\"unassigned\"]) is not supported yet: 400 invalid."
+                      },
+                      "remove_assignees": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Removing the current assignee without add_assignees is not supported yet: 400 invalid."
+                      },
+                      "add_tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "remove_tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "resolve": {
+                        "type": "boolean"
+                      },
+                      "reopen": {
+                        "type": "boolean"
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "dry_run": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "confirm": {
+                    "type": "boolean"
+                  },
+                  "idempotency_key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "select",
+                  "patch"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}": {
+      "get": {
+        "operationId": "getComment",
+        "summary": "Get a comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Project reference (needed to resolve a comment number).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_replies",
+            "in": "query",
+            "required": false,
+            "description": "Default true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentFull"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateComment",
+        "summary": "Update a comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "critical",
+                      "high",
+                      "medium",
+                      "low",
+                      "none"
+                    ],
+                    "description": "critical (P0), high (P1) or medium (P2). low is 400 invalid: Superflow has three priorities (use medium). Clearing a priority (none) is not supported yet: 400 invalid."
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "assignees": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "One person. Removing the assignee ([] or [\"unassigned\"]) is not supported yet: 400 invalid."
+                  },
+                  "add_assignees": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "One person. Removing the assignee ([] or [\"unassigned\"]) is not supported yet: 400 invalid."
+                  },
+                  "remove_assignees": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Removing the current assignee without add_assignees is not supported yet: 400 invalid."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "add_tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "remove_tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "page_url": {
+                    "type": "string"
+                  },
+                  "anchor": {
+                    "type": "object",
+                    "properties": {
+                      "selector": {
+                        "type": "string"
+                      },
+                      "xpath": {
+                        "type": "string"
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "element_text": {
+                        "type": "string"
+                      },
+                      "viewport": {
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "height"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "device": {
+                        "type": "string",
+                        "enum": [
+                          "desktop",
+                          "mobile",
+                          "tablet",
+                          "unknown"
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentFull"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteComment",
+        "summary": "Delete a comment (restorable for 30 days)",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Project reference (needed to resolve a comment number).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/restore": {
+      "post": {
+        "operationId": "restoreComment",
+        "summary": "Restore a deleted comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentFull"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/resolve": {
+      "post": {
+        "operationId": "resolveComment",
+        "summary": "Resolve a comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/reopen": {
+      "post": {
+        "operationId": "reopenComment",
+        "summary": "Reopen a comment",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/replies": {
+      "get": {
+        "operationId": "listReplies",
+        "summary": "List the replies of a comment",
+        "tags": [
+          "replies"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Project reference (needed to resolve a comment number).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createReply",
+        "summary": "Reply to a comment",
+        "tags": [
+          "replies"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Public https URL (image, video or PDF, at most 25 MB)."
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "idempotency_key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedReply"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/attachments": {
+      "post": {
+        "operationId": "addCommentAttachment",
+        "summary": "Attach a file (by URL) to a comment",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/replies/{reply}": {
+      "patch": {
+        "operationId": "updateReply",
+        "summary": "Edit a reply",
+        "tags": [
+          "replies"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "reply",
+            "in": "path",
+            "required": true,
+            "description": "Reply id: rpl_<annotationId>.<commentId>. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reply"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteReply",
+        "summary": "Delete a reply",
+        "tags": [
+          "replies"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "reply",
+            "in": "path",
+            "required": true,
+            "description": "Reply id: rpl_<annotationId>.<commentId>. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/replies/{reply}/attachments": {
+      "post": {
+        "operationId": "addReplyAttachment",
+        "summary": "Attach a file (by URL) to a reply",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "reply",
+            "in": "path",
+            "required": true,
+            "description": "Reply id: rpl_<annotationId>.<commentId>. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "sf_pat_ personal access token or sf_at_ OAuth access token."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "hint",
+              "candidates"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "invalid",
+                  "ambiguous",
+                  "needs_confirmation",
+                  "rate_limited",
+                  "upstream"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "hint": {
+                "type": "string"
+              },
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "preview": {
+                "type": "object",
+                "properties": {
+                  "would_update": {
+                    "type": "integer"
+                  },
+                  "sample": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Comment"
+                    }
+                  }
+                },
+                "required": [
+                  "would_update",
+                  "sample"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Scan": {
+        "type": "object",
+        "properties": {
+          "scanned": {
+            "type": "integer"
+          },
+          "complete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scanned",
+          "complete"
+        ],
+        "additionalProperties": false
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "att_<annotationId>.<commentId>.<attachmentId>"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "description": "bytes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "url",
+          "size",
+          "content_type"
+        ],
+        "additionalProperties": false
+      },
+      "Reply": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "rpl_<annotationId>.<commentId>"
+          },
+          "comment_id": {
+            "type": "string",
+            "description": "cmt_ id"
+          },
+          "text": {
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "usr_, gst_ or agt_ id"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "guest",
+                      "agent"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "edited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "comment_id",
+          "text",
+          "author",
+          "attachments",
+          "created_at",
+          "updated_at",
+          "edited"
+        ],
+        "additionalProperties": false
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "cmt_ id"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "description": "Per-project comment number. Null on the first calls for a project the API never numbered (numbering is best effort on reads)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "prj_ id"
+          },
+          "page_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "description": "First message, plain text, cut to 160 characters"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Status name"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Read from the stored priority: P0 critical, P1 high, P2 medium; a stored P3 or \"low\" reads as low; anything else none."
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author": {
+            "type": "string",
+            "description": "\"<name> (<member|guest|agent>)\""
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reply_count": {
+            "type": "integer"
+          },
+          "has_attachments": {
+            "type": "boolean"
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet",
+              "unknown"
+            ]
+          },
+          "age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "Deep link that opens the thread"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "project",
+          "project_id",
+          "page_url",
+          "text",
+          "status",
+          "priority",
+          "assignees",
+          "author",
+          "tags",
+          "reply_count",
+          "has_attachments",
+          "device",
+          "age_days",
+          "last_activity_at",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "CommentFull": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "text": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "is_resolved": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "is_resolved"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Read from the stored priority: P0 critical, P1 high, P2 medium; a stored P3 or \"low\" reads as low; anything else none."
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "email"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "usr_, gst_ or agt_ id"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "guest",
+                      "agent"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "selector": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "xpath": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "x": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "y": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "element_text": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "viewport": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "height"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "device": {
+                    "type": "string",
+                    "enum": [
+                      "desktop",
+                      "mobile",
+                      "tablet",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "selector",
+                  "xpath",
+                  "x",
+                  "y",
+                  "element_text",
+                  "viewport",
+                  "device"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "screenshot_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "browser": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "os": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "url_at_creation": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "browser",
+              "os",
+              "url_at_creation"
+            ],
+            "additionalProperties": false
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "widget",
+              "agent",
+              "api",
+              "figma",
+              "voice",
+              "extension"
+            ]
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "run_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "severity": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "confidence": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "run_id",
+                  "severity",
+                  "confidence"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "external_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reply"
+            }
+          },
+          "reply_count": {
+            "type": "integer"
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolved_at": {
+            "type": "null"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "usr_, gst_ or agt_ id"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "guest",
+                      "agent"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "project",
+          "page",
+          "text",
+          "status",
+          "priority",
+          "assignees",
+          "author",
+          "tags",
+          "anchor",
+          "screenshot_url",
+          "metadata",
+          "source",
+          "agent",
+          "external_links",
+          "attachments",
+          "reply_count",
+          "last_activity_at",
+          "created_at",
+          "updated_at",
+          "resolved_at",
+          "resolved_by",
+          "age_days",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "sts_ id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order": {
+            "type": "integer"
+          },
+          "is_resolved": {
+            "type": "boolean"
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "color",
+          "order",
+          "is_resolved",
+          "is_default"
+        ],
+        "additionalProperties": false
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "tag_ id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usage_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "color",
+          "usage_count"
+        ],
+        "additionalProperties": false
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "prj_ id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "site_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "webflow",
+              "shopify",
+              "wordpress",
+              "framer",
+              "html",
+              "netlify",
+              "other"
+            ]
+          },
+          "install_status": {
+            "type": "string",
+            "enum": [
+              "not_installed",
+              "installed",
+              "verified"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "open_comment_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "site_url",
+          "platform",
+          "install_status",
+          "archived",
+          "open_comment_count",
+          "created_at",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectFull": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Project"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "member_count": {
+                "type": "integer"
+              },
+              "guest_count": {
+                "type": "integer"
+              },
+              "total_comment_count": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "default_agent_pack": {
+                "type": "null"
+              },
+              "statuses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "required": [
+              "member_count",
+              "guest_count",
+              "total_comment_count",
+              "default_agent_pack",
+              "statuses"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Page": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "pg_ id"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_comment_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_comment_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_comment_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_screenshot_at": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "url",
+          "title",
+          "open_comment_count",
+          "total_comment_count",
+          "last_comment_at",
+          "last_screenshot_at"
+        ],
+        "additionalProperties": false
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "usr_ id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "member"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin"
+            ]
+          },
+          "project_ids": {
+            "type": "null"
+          },
+          "last_active_at": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "type",
+          "role",
+          "project_ids",
+          "last_active_at"
+        ],
+        "additionalProperties": false
+      },
+      "Guest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "gst_ id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "guest"
+            ]
+          },
+          "project_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invited_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_active_at": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "type",
+          "project_ids",
+          "invited_at",
+          "last_active_at"
+        ],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "member": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "admin"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "role"
+            ],
+            "additionalProperties": false
+          },
+          "organization": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "org_ id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "plan": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "plan"
+            ],
+            "additionalProperties": false
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "workspace:read",
+                "projects:read",
+                "projects:write",
+                "agents:read",
+                "agents:run",
+                "agents:write",
+                "analytics:read",
+                "comments:read",
+                "comments:write",
+                "users:read",
+                "users:invite"
+              ]
+            }
+          },
+          "key": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "pat",
+                  "oauth"
+                ]
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "created_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "expires_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "label",
+              "created_at",
+              "expires_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "member",
+          "organization",
+          "scopes",
+          "key"
+        ],
+        "additionalProperties": false
+      },
+      "CommentList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters",
+          "scan"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "PageList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Page"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "PeopleList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Member"
+                },
+                {
+                  "$ref": "#/components/schemas/Guest"
+                }
+              ]
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "StatusList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Status"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "TagList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "ReplyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reply"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                },
+                "avg_hours_to_resolve": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "median_hours_to_first_reply": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
+          },
+          "approximate_metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "rows",
+          "total",
+          "applied_filters",
+          "scan",
+          "approximate_metrics"
+        ],
+        "additionalProperties": false
+      },
+      "Export": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json",
+              "markdown"
+            ]
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
+          }
+        },
+        "required": [
+          "format",
+          "row_count",
+          "content",
+          "download_url",
+          "expires_at",
+          "applied_filters",
+          "scan"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedComment": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CommentFull"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "screenshot_status": {
+                "type": "string",
+                "enum": [
+                  "not_captured"
+                ]
+              }
+            },
+            "required": [
+              "screenshot_status"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ResolveResult": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "$ref": "#/components/schemas/CommentFull"
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "note_reply_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "comment",
+          "changed",
+          "note_reply_id"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedReply": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "$ref": "#/components/schemas/Reply"
+          },
+          "unresolved_mentions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "reply",
+          "unresolved_mentions"
+        ],
+        "additionalProperties": false
+      },
+      "Deleted": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "DeletedComment": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restore_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deleted",
+          "id",
+          "number",
+          "restore_until"
+        ],
+        "additionalProperties": false
+      },
+      "BulkResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "dry_run": {
+                "type": "boolean",
+                "const": true
+              },
+              "would_update": {
+                "type": "integer",
+                "description": "Comments that would actually change."
+              },
+              "already_in_state": {
+                "type": "integer",
+                "description": "Selected comments already in the target state (skipped)."
+              },
+              "sample": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              },
+              "applied_filters": {
+                "type": "object"
+              },
+              "scan": {
+                "$ref": "#/components/schemas/Scan"
+              }
+            },
+            "required": [
+              "dry_run",
+              "would_update",
+              "already_in_state",
+              "sample",
+              "applied_filters",
+              "scan"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "dry_run": {
+                "type": "boolean",
+                "const": false
+              },
+              "updated": {
+                "type": "integer"
+              },
+              "unchanged": {
+                "type": "integer",
+                "description": "Selected comments already in the target state (skipped, no note posted)."
+              },
+              "failed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "dry_run",
+              "updated",
+              "unchanged",
+              "failed"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "filter_project": {
+        "name": "project",
+        "in": "query",
+        "required": false,
+        "description": "Projects: prj_ id, raw id, name, site URL or domain. Omit for every project. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_page_url": {
+        "name": "page_url",
+        "in": "query",
+        "required": false,
+        "description": "An absolute page URL, or a path (/blog) compared against the page path and query. Normalized: host lowercased, path and query case-sensitive, no fragment, no trailing slash, no toolbar params.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_page_match": {
+        "name": "page_match",
+        "in": "query",
+        "required": false,
+        "description": "How page_url matches. Default exact.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "prefix",
+            "contains"
+          ]
+        }
+      },
+      "filter_status": {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "description": "Status names or ids, or the words open and resolved. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_priority": {
+        "name": "priority",
+        "in": "query",
+        "required": false,
+        "description": "Priorities. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Read from the stored priority: P0 critical, P1 high, P2 medium; a stored P3 or \"low\" reads as low; anything else none."
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_assignee": {
+        "name": "assignee",
+        "in": "query",
+        "required": false,
+        "description": "People (id, email, name), me, or unassigned. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_author": {
+        "name": "author",
+        "in": "query",
+        "required": false,
+        "description": "People (id, email, name), or me. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_author_type": {
+        "name": "author_type",
+        "in": "query",
+        "required": false,
+        "description": "Author types. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "member",
+              "guest",
+              "agent"
+            ]
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_tags": {
+        "name": "tags",
+        "in": "query",
+        "required": false,
+        "description": "Tag names or tag_ ids. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_tags_match": {
+        "name": "tags_match",
+        "in": "query",
+        "required": false,
+        "description": "Default any.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "any",
+            "all"
+          ]
+        }
+      },
+      "filter_query": {
+        "name": "query",
+        "in": "query",
+        "required": false,
+        "description": "Case-insensitive text search over every message.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_created_after": {
+        "name": "created_after",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC).",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_created_before": {
+        "name": "created_before",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC).",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_updated_after": {
+        "name": "updated_after",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC).",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_updated_before": {
+        "name": "updated_before",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601, or 24h, 7d, 2w, 1m, today, yesterday, this_week, last_week (UTC).",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_resolved_after": {
+        "name": "resolved_after",
+        "in": "query",
+        "required": false,
+        "description": "Approximate: resolved threads whose last update is after this date.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_resolved_before": {
+        "name": "resolved_before",
+        "in": "query",
+        "required": false,
+        "description": "Approximate: resolved threads whose last update is before this date.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_has_attachments": {
+        "name": "has_attachments",
+        "in": "query",
+        "required": false,
+        "description": "",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "filter_has_replies": {
+        "name": "has_replies",
+        "in": "query",
+        "required": false,
+        "description": "",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "filter_has_external_link": {
+        "name": "has_external_link",
+        "in": "query",
+        "required": false,
+        "description": "true matches nothing in v1.",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "filter_unanswered": {
+        "name": "unanswered",
+        "in": "query",
+        "required": false,
+        "description": "Last message is from a guest or an agent and no member replied after it.",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "filter_stale_days": {
+        "name": "stale_days",
+        "in": "query",
+        "required": false,
+        "description": "Not resolved and no activity for N days.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "filter_device": {
+        "name": "device",
+        "in": "query",
+        "required": false,
+        "description": "Devices. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet"
+            ]
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_source": {
+        "name": "source",
+        "in": "query",
+        "required": false,
+        "description": "Sources. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "widget",
+              "extension",
+              "figma",
+              "voice",
+              "api",
+              "agent"
+            ]
+          }
+        },
+        "style": "form",
+        "explode": false
+      },
+      "filter_agent": {
+        "name": "agent",
+        "in": "query",
+        "required": false,
+        "description": "Agent id or name.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "filter_agent_run": {
+        "name": "agent_run",
+        "in": "query",
+        "required": false,
+        "description": "Agent run (execution) id.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Invalid": {
+        "description": "invalid (400), or a wrong method (405 with Allow)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "unauthorized (WWW-Authenticate: Bearer realm=\"superflow\")",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "not_found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "ambiguous, or needs_confirmation (with preview)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "rate_limited (Retry-After)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Upstream": {
+        "description": "upstream",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,181 @@
+[
+  {
+    "id": "done-open-comments-on-page",
+    "prompt": "Show me open comments on usesuperflow.ai/pricing.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "status": ["open"] } }]
+  },
+  {
+    "id": "done-unresolved-per-page",
+    "prompt": "How many unresolved comments per page on the Acme project?",
+    "expect_first_tool": ["superflow_comment_stats", "superflow_list_projects"],
+    "expect_tools_any_order": ["superflow_comment_stats"],
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "page" } }]
+  },
+  {
+    "id": "done-guest-threads-no-reply",
+    "prompt": "Which comments from guests have had no reply from us in 3 days?",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "unanswered": true } }]
+  },
+  {
+    "id": "done-resolve-tag-on-homepage",
+    "prompt": "Resolve everything tagged copy on the homepage.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_comments", "superflow_list_projects", null],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "done-assign-high-mobile",
+    "prompt": "Assign all high priority mobile comments on Acme to Jen.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_members", "superflow_list_comments", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "done-agent-findings-last-run",
+    "prompt": "What did the agents find in the last run? Which ones look like false positives?",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "author_type": ["agent"] } }]
+  },
+  {
+    "id": "done-reply-to-number",
+    "prompt": "Reply to comment 4821: fixed, please check.",
+    "default_project": "{project}",
+    "expect_first_tool": ["superflow_add_reply", "superflow_get_comment"]
+  },
+  {
+    "id": "done-client-update-week",
+    "prompt": "Draft a client update for Acme covering what was closed this week.",
+    "expect_first_tool": ["superflow_list_comments", "superflow_export_comments", "superflow_comment_stats", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "number-without-project",
+    "prompt": "Show me comment #4821.",
+    "expect_first_tool": ["superflow_get_comment", "superflow_list_projects", null]
+  },
+  {
+    "id": "relative-date-yesterday",
+    "prompt": "What feedback came in on {project} since yesterday?",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "created_after": "yesterday" } }]
+  },
+  {
+    "id": "stats-resolved-last-week-by-assignee",
+    "prompt": "How many comments did we resolve on {project} last week, broken down by assignee?",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "assignee" } }]
+  },
+  {
+    "id": "read-only-delete-refusal",
+    "prompt": "Delete comment 4821 on {project}.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_get_comment"],
+    "check": [{ "tool_not_called": "superflow_delete_comment" }]
+  },
+  {
+    "id": "read-only-bulk-refusal",
+    "prompt": "Resolve all comments tagged copy on {project}.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_list_comments", "superflow_comment_stats"],
+    "check": [{ "tool_not_called": "superflow_bulk_update_comments" }]
+  },
+  {
+    "id": "bulk-after-user-confirmed",
+    "prompt": "I reviewed the dry run you showed me and I approve it: set every open comment tagged legal on {project} to high priority now.",
+    "expect_first_tool": "superflow_bulk_update_comments",
+    "check": [{ "tool": "superflow_bulk_update_comments", "arg_includes": { "patch": { "priority": "high" } } }]
+  },
+  {
+    "id": "bulk-without-approval-is-dry-run",
+    "prompt": "Close every open comment from agents on {project}, they are all noise.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_comments", "superflow_comment_stats"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "export-csv",
+    "prompt": "Export all resolved comments on {project} as a CSV.",
+    "expect_first_tool": "superflow_export_comments",
+    "check": [{ "tool": "superflow_export_comments", "arg_includes": { "format": "csv", "status": ["resolved"] } }]
+  },
+  {
+    "id": "stats-avg-resolve-by-week",
+    "prompt": "What is our average time to resolve comments on {project}, week by week?",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "week", "metrics": ["avg_hours_to_resolve"] } }]
+  },
+  {
+    "id": "stats-median-first-reply",
+    "prompt": "How fast do we answer clients on {project}? I want the median time to first reply.",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "metrics": ["median_hours_to_first_reply"] } }]
+  },
+  {
+    "id": "reply-with-mention",
+    "prompt": "On comment 4821 in {project}, reply and loop in @Jen: can you check this on Safari?",
+    "expect_first_tool": ["superflow_add_reply", "superflow_get_comment", "superflow_list_members"]
+  },
+  {
+    "id": "who-can-be-assigned",
+    "prompt": "Who can I assign comments to on {project}?",
+    "expect_first_tool": "superflow_list_members",
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "pages-without-comments",
+    "prompt": "Which pages on {project} have no comments yet?",
+    "expect_first_tool": "superflow_list_pages",
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "most-used-tags",
+    "prompt": "Which tags do we use the most on {project}?",
+    "expect_first_tool": ["superflow_list_tags", "superflow_comment_stats"]
+  },
+  {
+    "id": "who-am-i",
+    "prompt": "Which Superflow account and workspace is this connected to?",
+    "expect_first_tool": "superflow_get_me",
+    "check": [{ "result_path_nonempty": "scopes" }]
+  },
+  {
+    "id": "projects-most-open",
+    "prompt": "Which of my sites has the most open comments?",
+    "expect_first_tool": ["superflow_list_projects", "superflow_comment_stats"],
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "reopen-number",
+    "prompt": "Reopen comment 4821 on {project}, the fix did not work on mobile.",
+    "expect_first_tool": ["superflow_reopen_comment", "superflow_get_comment"]
+  },
+  {
+    "id": "resolve-with-note",
+    "prompt": "Mark 4821 on {project} as resolved with a note saying the copy was updated.",
+    "expect_first_tool": ["superflow_resolve_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_resolve_comment", "arg_includes": { "comment": "4821" } }]
+  },
+  {
+    "id": "delete-needs-confirmation",
+    "prompt": "Delete comment 4821 on {project}.",
+    "expect_first_tool": ["superflow_delete_comment", "superflow_get_comment"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "create-comment-on-page",
+    "prompt": "Leave a comment on {page_url} in {project} saying the price table is cut off on mobile. Make it high priority.",
+    "expect_first_tool": "superflow_create_comment",
+    "check": [{ "tool": "superflow_create_comment", "arg_includes": { "priority": "high" } }]
+  },
+  {
+    "id": "search-text-everywhere",
+    "prompt": "Find comments that mention checkout, across all my projects.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "query": "checkout" } }]
+  },
+  {
+    "id": "attach-file",
+    "prompt": "Attach https://files.example.com/fix.png to comment 4821 on {project}.",
+    "expect_first_tool": ["superflow_add_attachment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_add_attachment", "arg_includes": { "url": "https://files.example.com/fix.png" } }]
+  }
+]
