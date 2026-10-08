@@ -711,7 +711,7 @@ export const addAttachment = defineTool({
     comment: commentRefSchema.optional(),
     reply: z.string().min(1).optional().describe("Reply id (rpl_...). Give this or comment, not both."),
     project: projectForNumberSchema,
-    url: z.string().url().describe("Public https URL of the file."),
+    url: z.string().url().describe("Public https URL of an image, video or PDF, at most 25 MB."),
     name: z.string().min(1).optional().describe("File name to show. Defaults to the URL's file name."),
   },
   annotations: hints(false, false, false, true),

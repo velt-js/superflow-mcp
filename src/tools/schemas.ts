@@ -67,8 +67,8 @@ export const anchorSchema = z
   .object({
     selector: z.string().optional().describe("CSS selector of the element."),
     xpath: z.string().optional().describe("XPath of the element."),
-    x: z.number().optional().describe("Horizontal position as a fraction of the width, 0 to 1."),
-    y: z.number().optional().describe("Vertical position as a fraction of the height, 0 to 1."),
+    x: z.number().min(0).max(1).optional().describe("Horizontal position as a fraction of the width, 0 to 1."),
+    y: z.number().min(0).max(1).optional().describe("Vertical position as a fraction of the height, 0 to 1."),
     element_text: z.string().optional().describe("Visible text of the element."),
     viewport: z
       .object({
@@ -82,7 +82,7 @@ export const anchorSchema = z
   .describe("Where on the page the comment is pinned. Omit for a page-level comment.");
 
 export const attachmentInputSchema = z.object({
-  url: z.string().url().describe("Public https URL of the file. Superflow downloads it."),
+  url: z.string().url().describe("Public https URL of an image, video or PDF, at most 25 MB. Superflow downloads it."),
   name: z.string().min(1).optional().describe("File name to show. Defaults to the URL's file name."),
 });
 

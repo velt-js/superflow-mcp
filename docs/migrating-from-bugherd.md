@@ -54,7 +54,7 @@ planned are not in this release.
 | `POST /projects.json`, `PUT /projects/{id}.json`, `DELETE /projects/{id}.json` | project admin tools | planned (Phase 2) |
 | `POST /projects/{id}/add_member.json`, `/add_guest.json` | member and guest admin tools (the hosted server has `invite_team_member` and `invite_guest` today) | planned (Phase 2) |
 | `POST /projects/{id}/columns.json` | status admin tools | planned (Phase 2) |
-| `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | attachment delete tool (the REST API has `DELETE /attachments/{id}` today) | planned |
+| `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | removing an attachment (not offered by the API yet) | planned |
 | `GET /webhooks.json`, `POST /webhooks.json`, `DELETE /webhooks/{id}.json` | webhooks | planned (Phase 3) |
 | `external_id` on tasks | external links (Jira, Linear and others) | planned (Phase 3) |
 
