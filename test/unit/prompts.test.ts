@@ -18,7 +18,28 @@ const CASES: Array<[string, Record<string, string>, string[], boolean]> = [
   ["triage", { project: "Acme Dental", since: "7d" }, ["superflow_list_comments", "superflow_bulk_update_comments", '"created_after":"7d"'], true],
   ["stale_threads", { project: "Acme Dental" }, ["superflow_list_comments", '"stale_days":3', '"unanswered":true'], true],
   ["client_update", { project: "Acme Dental" }, ['"updated_after":"this_week"', '"author_type":["guest"]', "superflow_comment_stats"], false],
-  ["agent_findings_review", { agent_run: "run_42" }, ['"agent_run":"run_42"', '"author_type":["agent"]'], true],
+  [
+    "agent_findings_review",
+    { agent_run: "run_42" },
+    ['superflow_get_run with {"run":"run_42"}', 'superflow_list_findings with {"run":"run_42","limit":100}', "every 20 seconds"],
+    true,
+  ],
+  [
+    "prelaunch_run",
+    { project: "Acme Dental", pack: "Pre-Launch" },
+    [
+      'superflow_estimate_run with {"project":"Acme Dental","scope":"site","pack":"Pre-Launch"}',
+      "Settings > Billing",
+      "Do not start the run and do not retry it.",
+      'superflow_run_agents with {"project":"Acme Dental","scope":"site","pack":"Pre-Launch","confirm":true}',
+      "no more often than every 20 seconds until the status is done, failed or partial",
+      "superflow_list_findings",
+      "by severity",
+      "superflow_connect_integration",
+      "superflow_push_comment",
+    ],
+    true,
+  ],
   ["find_duplicates", { project: "Acme Dental", page_url: "https://acme.com/pricing" }, ['"fields":"full"', '"page_match":"exact"'], true],
   [
     "launch_checklist",
@@ -81,6 +102,32 @@ describe("prompts", () => {
     await expect(h.client.getPrompt({ name: "onboard_client", arguments: { ...base, platform: "squarespace" } })).rejects.toThrow(
       /platform must be one of/,
     );
+  });
+
+  it("agent_findings_review picks the latest finished run when none is given", async () => {
+    const text = await promptText("agent_findings_review", { project: "Acme Dental" });
+    expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","limit":5}');
+    expect(text).toContain("done or partial");
+    expect(text).toContain('2. Call superflow_get_run with {"run":"<the run id>"}');
+    expect(text).not.toContain("superflow_list_comments");
+  });
+
+  it("prelaunch_run asks before running and before pushing, and estimates first", async () => {
+    const text = await promptText("prelaunch_run", { project: "Acme Dental" });
+    expect(text.indexOf("superflow_estimate_run")).toBeLessThan(text.indexOf("superflow_run_agents"));
+    expect(text).toContain("Only after a clear yes, call superflow_run_agents");
+    expect(text).toContain("after a clear yes call superflow_push_comment");
+    expect(text).toContain("the default AI review agents");
+    expect(text).not.toContain('"pack"');
+  });
+
+  it("prelaunch_run in read-only mode estimates and reviews the last run, without running or pushing", async () => {
+    const text = await promptText("prelaunch_run", { project: "Acme Dental", pack: "Pre-Launch" }, true);
+    expect(text).toContain("superflow_estimate_run");
+    expect(text).toContain("superflow_list_runs");
+    expect(text).not.toContain("superflow_run_agents");
+    expect(text).not.toContain("superflow_push_comment");
+    expect(text).toContain("Writes are disabled on this server");
   });
 
   it("stale_threads takes days", async () => {

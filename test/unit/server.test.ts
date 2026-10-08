@@ -272,7 +272,16 @@ describe("tool registration", () => {
     expect(h.client.getInstructions()).toContain("get a yes before calling superflow_run_agents with confirm true");
     const { prompts } = await h.client.listPrompts();
     expect(prompts.map((p) => p.name).sort()).toEqual(
-      ["agent_findings_review", "client_update", "find_duplicates", "launch_checklist", "onboard_client", "stale_threads", "triage"].sort(),
+      [
+        "agent_findings_review",
+        "client_update",
+        "find_duplicates",
+        "launch_checklist",
+        "onboard_client",
+        "prelaunch_run",
+        "stale_threads",
+        "triage",
+      ].sort(),
     );
     const { resources } = await h.client.listResources();
     expect(resources.map((r) => r.uri).sort()).toEqual(["superflow://organization", "superflow://projects"]);
@@ -282,6 +291,7 @@ describe("tool registration", () => {
         "superflow://comments/{comment}",
         "superflow://projects/{project}",
         "superflow://projects/{project}/comments{?status,page_url,assignee}",
+        "superflow://runs/{run}",
       ].sort(),
     );
   });

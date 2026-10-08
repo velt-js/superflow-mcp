@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compactComment, fullComment, list, organization, page, project, projectFull } from "../helpers/fixtures.ts";
+import { compactComment, doneRun, fullComment, list, organization, page, project, projectFull } from "../helpers/fixtures.ts";
 import { connect, ok, on, recorded, useMsw } from "../helpers/harness.ts";
 
 useMsw();
@@ -58,6 +58,14 @@ describe("resources", () => {
     const h = await connect({ defaultProject: "Acme Dental" });
     expect(json(await h.client.readResource({ uri: "superflow://comments/4821" }))).toEqual(fullComment);
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "true" });
+  });
+
+  it("superflow://runs/{run} returns the same JSON as superflow_get_run", async () => {
+    on("get", "/runs/:run", ok(doneRun));
+    const h = await connect();
+    expect(json(await h.client.readResource({ uri: "superflow://runs/run_8f3k2" }))).toEqual(doneRun);
+    expect(recorded[0]?.operationId).toBe("getRun");
+    expect(recorded[0]?.path).toBe("/runs/run_8f3k2");
   });
 
   it("fails the read with the API message on an error", async () => {
