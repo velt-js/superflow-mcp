@@ -1,4 +1,5 @@
-// Resources (spec 6.3). Each returns the same JSON as the matching tool.
+// Resources (spec 6.3, plus superflow://organization in Phase 2). Each returns the same JSON
+// as the matching tool.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
@@ -9,6 +10,7 @@ import type { ListEnvelope, Page, Project } from "../client/types.ts";
 import { getComment, listComments } from "../tools/comments.ts";
 import type { ToolContext, ToolDefinition } from "../tools/define.ts";
 import { listProjects } from "../tools/lookups.ts";
+import { getOrganization } from "../tools/organization.ts";
 import type { z } from "zod";
 
 const JSON_MIME = "application/json";
@@ -90,6 +92,17 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       mimeType: JSON_MIME,
     },
     async (uri) => jsonContents(uri, await runTool(listProjects, { include_archived: false, limit: 25 }, ctx)),
+  );
+
+  server.registerResource(
+    "organization",
+    "superflow://organization",
+    {
+      title: "Superflow workspace",
+      description: "The workspace: plan, owner, seats, projects and AI credits. Same JSON as superflow_get_organization.",
+      mimeType: JSON_MIME,
+    },
+    async (uri) => jsonContents(uri, await runTool(getOrganization, {}, ctx)),
   );
 
   server.registerResource(

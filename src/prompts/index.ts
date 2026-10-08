@@ -5,6 +5,7 @@ import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { describeDateProblem } from "../lib/dates.ts";
+import { PLATFORMS } from "../tools/schemas.ts";
 
 export interface PromptOptions {
   readOnly: boolean;
@@ -18,7 +19,7 @@ const SAFETY_RULES = [
 ];
 
 const WRITE_RULE =
-  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
+  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
 
 const READ_ONLY_RULE =
   "- Writes are disabled on this server (SUPERFLOW_READ_ONLY=true), so the write tools are not available. Present every change as a recommendation the user can apply in Superflow. Do not try to apply it.";
@@ -48,6 +49,48 @@ function readDays(value: string | undefined): number {
 }
 
 const projectArg = z.string().min(1).describe("Project name, site URL or id.");
+
+const MAX_GUESTS = 10;
+const EMAIL = z.string().email();
+
+/** Splits "a@x.com, b@y.com" into emails; throws InvalidParams on a bad one or more than 10. */
+function readGuests(value: string | undefined): string[] {
+  if (value === undefined || value.trim() === "") return [];
+  const emails = [...new Set(value.split(/[\s,;]+/).filter(Boolean))];
+  const bad = emails.filter((email) => !EMAIL.safeParse(email).success);
+  if (bad.length > 0) {
+    throw new McpError(ErrorCode.InvalidParams, `guests must be email addresses separated by commas. Not an email: ${bad.join(", ")}.`);
+  }
+  if (emails.length > MAX_GUESTS) {
+    throw new McpError(ErrorCode.InvalidParams, `guests takes at most ${MAX_GUESTS} emails, got ${emails.length}.`);
+  }
+  return emails;
+}
+
+function readPlatform(value: string | undefined): string | undefined {
+  if (value === undefined || value.trim() === "") return undefined;
+  const platform = value.trim().toLowerCase();
+  if (!(PLATFORMS as readonly string[]).includes(platform)) {
+    throw new McpError(ErrorCode.InvalidParams, `platform must be one of ${PLATFORMS.join(", ")}, got "${value}".`);
+  }
+  return platform;
+}
+
+/** A site URL with a scheme: the API takes only http or https URLs. */
+function fullUrl(siteUrl: string): string {
+  const value = siteUrl.trim();
+  return /^https?:\/\//i.test(value) ? value : `https://${value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")}`;
+}
+
+/** The bare host of a site URL or domain, for a project search. */
+function hostOf(siteUrl: string): string {
+  const value = siteUrl.trim();
+  try {
+    return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`).hostname.replace(/^www\./, "");
+  } catch {
+    return value;
+  }
+}
 
 export function registerPrompts(server: McpServer, options: PromptOptions): void {
   server.registerPrompt(
@@ -210,7 +253,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
     "launch_checklist",
     {
       title: "Launch checklist",
-      description: "Pre-launch check: open comments by priority, and pages nobody has reviewed yet.",
+      description: "Pre-launch check: install status, guests, open comments by priority, and pages nobody has reviewed yet.",
       argsSchema: {
         project: projectArg,
       },
@@ -220,13 +263,67 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         `Build a launch checklist for Superflow project "${project}".`,
         "",
         "Steps:",
-        `1. Call superflow_comment_stats with ${json({ project, status: ["open"], group_by: "priority" })}.`,
-        `2. Call superflow_list_comments with ${json({ project, status: ["open"], sort: "priority_desc", limit: 100 })}.`,
-        `3. Call superflow_list_pages with ${json({ project, with_counts: true, limit: 100 })}. Pages with total_comment_count 0 have not been reviewed.`,
-        "4. Write the checklist: blockers (critical and high), other open items grouped by page, and pages with no comments. Link every item.",
-        "5. End with a one-line verdict: ready, or not ready and why.",
+        `1. Call superflow_get_project with ${json({ project })}. Check the install status: if the toolbar is not installed, that is a blocker. Point to superflow_get_install_snippet for the script tag.`,
+        `2. Call superflow_list_guests with ${json({ project })}. If there are no guests, the client cannot review the site yet: say so.`,
+        `3. Call superflow_comment_stats with ${json({ project, status: ["open"], group_by: "priority" })}.`,
+        `4. Call superflow_list_comments with ${json({ project, status: ["open"], sort: "priority_desc", limit: 100 })}.`,
+        `5. Call superflow_list_pages with ${json({ project, with_counts: true, limit: 100 })}. Pages with total_comment_count 0 have not been reviewed.`,
+        "6. Write the checklist: install status, who on the client side has access, blockers (critical and high), other open items grouped by page, and pages with no comments. Link every item.",
+        "7. End with a one-line verdict: ready, or not ready and why.",
       ];
       return message(lines, options, false);
+    },
+  );
+
+  server.registerPrompt(
+    "onboard_client",
+    {
+      title: "Onboard a client",
+      description: "Set up a new client: create the project, invite their reviewers as guests, hand over the install snippet, and check the install. Asks before every write.",
+      argsSchema: {
+        name: z.string().min(1).describe("Client or project name, for example Acme Dental."),
+        site_url: z.string().min(1).describe("The client's site URL or domain, for example https://acme.com."),
+        platform: z
+          .string()
+          .optional()
+          .describe(`What the site is built with: ${PLATFORMS.join(", ")}.`),
+        guests: z.string().optional().describe("Emails of client reviewers to invite as guests, separated by commas (at most 10)."),
+      },
+    },
+    ({ name, site_url, platform, guests }) => {
+      const builtWith = readPlatform(platform);
+      const emails = readGuests(guests);
+      const host = hostOf(site_url);
+      const created = "<the new project id>";
+      const intro = `Onboard a new client in Superflow: "${name}" at ${site_url}${builtWith ? `, built with ${builtWith}` : ""}.`;
+      const check = `1. Check for an existing project: call superflow_list_projects with ${json({ query: host })}. If a project already uses this site, show it and ask the user whether to use it instead of creating a new one.`;
+      let lines: string[];
+      if (options.readOnly) {
+        lines = [
+          intro,
+          "",
+          "Steps:",
+          check,
+          `2. If the project exists, call superflow_get_project and superflow_list_guests with ${json({ project: host })}, and superflow_get_install_snippet with ${json({ project: host, ...(builtWith ? { platform: builtWith } : {}) })}. Report its install status, its guests and the script tag.`,
+          `3. If it does not exist, list what to set up in Superflow: the project "${name}" for ${site_url}${emails.length > 0 ? `, and guest invites for ${emails.join(", ")}` : ""}. Then the install snippet and an install check.`,
+        ];
+      } else {
+        const createArgs = { name, site_url: fullUrl(site_url), ...(builtWith ? { platform: builtWith } : {}) };
+        lines = [
+          intro,
+          "",
+          "Steps:",
+          check,
+          `2. Show the user the project you will create: name, site URL and platform. After a clear yes, call superflow_create_project with ${json(createArgs)}. If it answers ambiguous with an existing project, use that project and tell the user.`,
+          emails.length > 0
+            ? `3. Tell the user that these people will get a real invite email as guests of the project: ${emails.join(", ")}. After a clear yes, call superflow_invite_guest with ${json({ project: created, emails })}. Report anyone skipped or whose email was not sent.`
+            : `3. Ask the user whether to invite client reviewers as guests. Invites send real email, so invite only after a clear yes, with superflow_invite_guest ${json({ project: created, emails: ["reviewer@client.com"] })}.`,
+          `4. Call superflow_get_install_snippet with ${json({ project: created, ...(builtWith ? { platform: builtWith } : {}) })}. Give the user the script tag and the steps for their platform.`,
+          `5. When the user says the snippet is on the site, ask whether to check it. After a yes, call superflow_verify_install with ${json({ project: created })} and explain the verdict. If it is not installed yet, say what to fix and offer to check again.`,
+          "6. Finish with a short summary: the project link, who was invited, and the install status.",
+        ];
+      }
+      return message(lines, options, true);
     },
   );
 }

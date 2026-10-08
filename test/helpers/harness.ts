@@ -16,7 +16,7 @@ import { createServer } from "../../src/server.ts";
 export const BASE = "https://api.superflow.test/v1";
 export const TEST_KEY = "sf_pat_TESTKEY0123456789";
 
-type Method = "get" | "post" | "patch" | "delete";
+type Method = "get" | "post" | "put" | "patch" | "delete";
 
 export interface Recorded {
   method: string;

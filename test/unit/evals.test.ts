@@ -5,9 +5,9 @@ import { TOOL_NAMES } from "../../src/tools/index.ts";
 describe("eval prompts", () => {
   const prompts = loadPrompts({ project: "Acme Dental", page_url: "https://acme.com/pricing" });
 
-  it("has 30 prompts with unique ids, filled placeholders and known tools", () => {
-    expect(prompts).toHaveLength(30);
-    expect(new Set(prompts.map((p) => p.id)).size).toBe(30);
+  it("has 40 prompts with unique ids, filled placeholders and known tools", () => {
+    expect(prompts).toHaveLength(40);
+    expect(new Set(prompts.map((p) => p.id)).size).toBe(40);
     for (const entry of prompts) {
       expect(entry.prompt, entry.id).not.toMatch(/\{(project|page_url)\}/);
       const firsts = Array.isArray(entry.expect_first_tool) ? entry.expect_first_tool : [entry.expect_first_tool];
@@ -22,6 +22,10 @@ describe("eval prompts", () => {
 
   it("includes the eight done prompts from the spec", () => {
     expect(prompts.filter((p) => p.id.startsWith("done-"))).toHaveLength(8);
+  });
+
+  it("includes ten Phase 2 admin prompts", () => {
+    expect(prompts.filter((p) => p.id.startsWith("p2-"))).toHaveLength(10);
   });
 });
 
@@ -42,7 +46,7 @@ describe("eval helpers", () => {
     const session = await startServer({ apiKey: "sf_pat_eval", readOnly: true });
     const tools = toClaudeTools(session.tools);
     await session.close();
-    expect(tools).toHaveLength(10);
+    expect(tools).toHaveLength(19);
     for (const tool of tools) {
       expect(tool.input_schema.type).toBe("object");
       expect(tool.input_schema).not.toHaveProperty("$schema");

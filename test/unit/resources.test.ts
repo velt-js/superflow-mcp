@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compactComment, fullComment, list, page, project, projectFull } from "../helpers/fixtures.ts";
+import { compactComment, fullComment, list, organization, page, project, projectFull } from "../helpers/fixtures.ts";
 import { connect, ok, on, recorded, useMsw } from "../helpers/harness.ts";
 
 useMsw();
@@ -16,6 +16,13 @@ describe("resources", () => {
     const h = await connect();
     expect(json(await h.client.readResource({ uri: "superflow://projects" }))).toEqual(list([project]));
     expect(recorded[0]?.query).toEqual({ include_archived: "false", limit: "25" });
+  });
+
+  it("superflow://organization returns the same JSON as superflow_get_organization", async () => {
+    on("get", "/organization", ok(organization));
+    const h = await connect();
+    expect(json(await h.client.readResource({ uri: "superflow://organization" }))).toEqual(organization);
+    expect(recorded[0]?.operationId).toBe("getOrganization");
   });
 
   it("superflow://projects/{project} returns { project, pages }", async () => {

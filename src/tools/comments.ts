@@ -40,6 +40,8 @@ import {
 } from "../lib/format.ts";
 import { anyCommentNumber, normalizeCommentRef, parseReplyId, projectForComment } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
+import type { Data } from "./helpers.ts";
+import { asData, compact, join } from "./helpers.ts";
 import {
   EXPORT_FORMATS,
   GROUP_BY,
@@ -50,6 +52,7 @@ import {
   cursorSchema,
   fieldsSchema,
   filterShape,
+  idempotencySchema,
   limitSchema,
   pickFilters,
   projectForNumberSchema,
@@ -57,17 +60,6 @@ import {
   sortSchema,
 } from "./schemas.ts";
 
-type Data = Record<string, unknown>;
-const asData = (value: unknown): Data => value as Data;
-
-/** Drops undefined values so request bodies only carry what the caller set. */
-function compact<T extends Data>(value: T): Partial<T> {
-  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as Partial<T>;
-}
-
-function join(...parts: Array<string | undefined | false>): string {
-  return parts.filter((p): p is string => typeof p === "string" && p.trim() !== "").join(" ");
-}
 
 function commentSummary(comment: CommentFull): string {
   const assignee = comment.assignees?.[0]?.name;
@@ -121,12 +113,7 @@ function refuseUnassign(...lists: Array<readonly string[] | undefined>): CallToo
 }
 const tagsInput = (what: string) =>
   z.array(z.string().min(1)).optional().describe(`${what} Unknown tag names are created in the comment's project.`);
-const idempotencyInput = z
-  .string()
-  .min(1)
-  .max(255)
-  .optional()
-  .describe("Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result.");
+const idempotencyInput = idempotencySchema;
 
 // ---------------------------------------------------------------------------------------------
 // Read tools

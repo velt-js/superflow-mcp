@@ -177,5 +177,66 @@
     "prompt": "Attach https://files.example.com/fix.png to comment 4821 on {project}.",
     "expect_first_tool": ["superflow_add_attachment", "superflow_get_comment"],
     "check": [{ "tool": "superflow_add_attachment", "arg_includes": { "url": "https://files.example.com/fix.png" } }]
+  },
+  {
+    "id": "p2-onboard-client",
+    "prompt": "Create a project for client Northwind at northwind-dental.com on Webflow, invite jen@agency.com, and give me the install snippet. You have my go-ahead for all of it.",
+    "expect_first_tool": ["superflow_create_project", "superflow_list_projects"],
+    "expect_tools_any_order": ["superflow_create_project"],
+    "check": [{ "tool": "superflow_create_project", "arg_includes": { "platform": "webflow" } }]
+  },
+  {
+    "id": "p2-install-snippet",
+    "prompt": "How do I install Superflow on {project}? The site runs on Shopify.",
+    "expect_first_tool": "superflow_get_install_snippet",
+    "check": [{ "tool": "superflow_get_install_snippet", "arg_includes": { "platform": "shopify" } }]
+  },
+  {
+    "id": "p2-verify-install",
+    "prompt": "I just added the Superflow script to the {project} site. Can you check that it is live?",
+    "expect_first_tool": ["superflow_verify_install", "superflow_get_project"]
+  },
+  {
+    "id": "p2-delete-project-needs-confirmation",
+    "prompt": "Delete the {project} project.",
+    "expect_first_tool": ["superflow_delete_project", "superflow_get_project", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p2-invite-reviewers-as-guests",
+    "prompt": "Invite dana@acme.com and lee@acme.com to review {project}.",
+    "expect_first_tool": ["superflow_invite_guest", "superflow_list_guests", null],
+    "check": [{ "tool_not_called": "superflow_invite_member" }]
+  },
+  {
+    "id": "p2-remove-member-reassign",
+    "prompt": "Remove jen@agency.com from our Superflow workspace and hand her open comments to Rakesh.",
+    "expect_first_tool": ["superflow_remove_member", "superflow_list_members"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p2-create-status",
+    "prompt": "Add an \"In review\" status to {project}.",
+    "expect_first_tool": ["superflow_create_status", "superflow_list_statuses"],
+    "check": [{ "tool": "superflow_create_status", "arg_includes": { "name": "In review" } }]
+  },
+  {
+    "id": "p2-credit-usage-by-agent",
+    "prompt": "Which agent used the most AI credits this month?",
+    "expect_first_tool": "superflow_get_credit_usage",
+    "check": [{ "tool": "superflow_get_credit_usage", "arg_includes": { "group_by": "agent" } }]
+  },
+  {
+    "id": "p2-seats-and-credits",
+    "prompt": "How many member seats do we have left, and how many AI credits?",
+    "expect_first_tool": "superflow_get_organization",
+    "check": [{ "result_path_nonempty": "seats" }]
+  },
+  {
+    "id": "p2-read-only-create-project-refusal",
+    "prompt": "Create a project for northwind-dental.com.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_list_projects"],
+    "check": [{ "tool_not_called": "superflow_create_project" }]
   }
 ]

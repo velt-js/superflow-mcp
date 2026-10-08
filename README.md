@@ -2,7 +2,7 @@
 
 Talk to your [Superflow](https://usesuperflow.ai) comments from Claude Code, Claude Desktop, Cursor, claude.ai, ChatGPT or any MCP client.
 
-Superflow is a visual feedback and AI review layer for websites. Your team, your clients and AI review agents leave comments pinned on live pages. With this MCP server your assistant can read that feedback, filter and count it, reply, resolve, triage in bulk, and draft client updates, without leaving the editor or the chat.
+Superflow is a visual feedback and AI review layer for websites. Your team, your clients and AI review agents leave comments pinned on live pages. With this MCP server your assistant can read that feedback, filter and count it, reply, resolve, triage in bulk, and draft client updates. It can also run the admin side: create a project for a new client, invite their reviewers, hand over the install snippet and check it, and manage statuses, tags and the team. All without leaving the editor or the chat.
 
 ## Two ways to connect
 
@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | An API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 21 comment tools: read, filter, search, count, export, update, resolve, reply, bulk | Workspace, project, agent, analytics and team tools |
+| Tools | 54 tools: comments (read, filter, search, count, export, update, resolve, reply, bulk) and admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications) | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -91,8 +91,14 @@ More examples: [`examples/`](examples/).
 
 1. Open the Superflow portal and go to **Settings > Integrations > API keys**.
 2. Check the workspace selector at the top. A key belongs to one workspace.
-3. Create a key, give it a name (for example `Cursor on my laptop`), and pick the scopes:
-   `comments:read`, `comments:write` and `projects:read`. Leave out `comments:write` for a read-only key.
+3. Create a key, give it a name (for example `Cursor on my laptop`), and pick the scopes for what the assistant should do:
+   - Comments: `comments:read`, `comments:write` and `projects:read`.
+   - Admin tools: `projects:write` (projects, pages, install checks, statuses, tags, review links),
+     `users:invite` (invite members and guests), `users:write` (remove members and guests),
+     `workspace:read` (workspace, credit usage, activity, your notification settings) and
+     `workspace:write` (rename the workspace, change your notification settings).
+
+   Leave out the write scopes for a read-only key. A tool whose scope the key lacks answers with a clear forbidden error.
 4. Pick an expiry, then copy the key. It is shown once. Superflow stores only a hash.
 
 The same key works for the local package, the hosted server and the REST API. Revoke it on the same screen.
@@ -113,7 +119,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 11 write tools are not registered at all. The assistant can still read, filter, count and export. The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without `comments:write`.
+Set `SUPERFLOW_READ_ONLY=true` and the 35 write tools are not registered at all. The 19 read tools stay: the assistant can still read, filter, count and export, and look up projects, guests, the workspace and credit usage. The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -122,6 +128,8 @@ claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=
 ### Tools
 
 Full parameters and examples: [`docs/tools.md`](docs/tools.md).
+
+#### Comments
 
 | Tool | What it does |
 |---|---|
@@ -147,11 +155,51 @@ Full parameters and examples: [`docs/tools.md`](docs/tools.md).
 | `superflow_bulk_update_comments` | Change up to 200 comments at once (dry run first, then confirm). |
 | `superflow_add_attachment` | Attach a file by URL to a comment or reply. |
 
+#### Admin
+
+| Tool | What it does |
+|---|---|
+| `superflow_get_project` | One project: install status, counts, statuses and settings. |
+| `superflow_create_project` | Create a project for a site, optionally inviting guests (sends email). |
+| `superflow_update_project` | Rename, change settings (guest comments, toolbar, commenting) or add domains. |
+| `superflow_archive_project` | Archive a project. Nothing is deleted. |
+| `superflow_unarchive_project` | Bring an archived project back. |
+| `superflow_delete_project` | Delete a project for good, with its comments (needs confirm). |
+| `superflow_get_install_snippet` | The script tag and install steps for the site's platform. |
+| `superflow_verify_install` | Check that the snippet is live on the site. |
+| `superflow_get_page` | One page with its comment counts. |
+| `superflow_add_page` | Add a page before anyone comments on it. |
+| `superflow_remove_page` | Remove a page and delete its comments, restorable for 30 days (needs confirm). |
+| `superflow_invite_member` | Invite teammates to the workspace (sends email). |
+| `superflow_remove_member` | Remove a teammate, optionally reassigning their open comments (owner only, needs confirm). |
+| `superflow_list_guests` | A project's guests. |
+| `superflow_invite_guest` | Invite clients or reviewers to one project (sends email). |
+| `superflow_remove_guest` | Take a guest off one project (needs confirm). |
+| `superflow_create_status` | Add a custom status, for the workspace or one project. |
+| `superflow_update_status` | Rename or recolor a status. |
+| `superflow_reorder_statuses` | Set the order of the statuses. |
+| `superflow_delete_status` | Delete a status, moving its comments to another (needs confirm). |
+| `superflow_create_tag` | Create a tag. |
+| `superflow_update_tag` | Rename or recolor a tag. |
+| `superflow_delete_tag` | Delete a tag from every comment (needs confirm). |
+| `superflow_merge_tags` | Fold one tag into another (needs confirm). |
+| `superflow_get_organization` | The workspace: plan, seats, projects and AI credits. |
+| `superflow_update_organization` | Rename the workspace (owner only). |
+| `superflow_get_credit_usage` | AI credits used, by project, agent or day. |
+| `superflow_list_activity` | Changes made through the API, newest first. |
+| `superflow_list_review_links` | Active public review links. |
+| `superflow_create_review_link` | Share a project with a public review link (Velt-internal accounts only for now). |
+| `superflow_revoke_review_link` | Turn a review link off (needs confirm). |
+| `superflow_get_notification_settings` | Your own digest, inbox and email settings. |
+| `superflow_update_notification_settings` | Change your own notification settings. |
+
 Superflow has three priorities you can set: critical (P0), high (P1) and medium (P2). Removing an assignee or clearing a priority is not supported yet, so the assistant will ask you to do that in the Superflow toolbar. Filters can still find `low` and `none` priority comments and `unassigned` ones.
 
 Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
-The server also ships six prompts (`triage`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`) and four resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`).
+Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent. While a project has an active review link it is in preview: archiving, install checks and settings changes wait until the link is revoked. Site, domain and page addresses are full `https://` URLs.
+
+The server also ships seven prompts (`triage`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`) and five resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`).
 
 ### Example prompts
 
@@ -165,12 +213,18 @@ The server also ships six prompts (`triage`, `stale_threads`, `client_update`, `
 8. Draft a client update for Acme covering what was closed this week.
 9. Export every resolved comment on Acme from last week as a CSV.
 10. What is our median time to first reply on client comments, week by week?
+11. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
+12. Is the Superflow snippet live on acme.com yet?
+13. How many member seats do we have left, and which agent used the most AI credits this month?
+14. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
 
 More in [`examples/prompts.md`](examples/prompts.md).
 
 ### Safety
 
-- Deletes need `confirm: true`. Without it the tool only shows what would be deleted.
+- Deletes, removals, tag merges and review link revokes need `confirm: true`. Without it the tool only reads and shows what would happen. Deleting a project is permanent; removed pages' comments can be restored for 30 days.
+- Invite tools (and guests on a new project) send real email. The assistant is told to ask you first.
+- A review link makes a project visible to anyone who has the link.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
 - The key is only ever sent as the bearer token to the Superflow API, and it is never logged. See [SECURITY.md](SECURITY.md).
@@ -231,9 +285,9 @@ The authenticated endpoint never serves these two, and this endpoint never serve
 
 | Scope | Grants |
 |---|---|
-| `workspace:read` | Read workspace plan, features and usage. |
+| `workspace:read` | Read workspace plan, features and usage. With the local package and REST API also: AI credit usage, the API activity log and your own notification settings. |
 | `projects:read` | Read projects, pages, members and install snippets. |
-| `projects:write` | Create projects, verify installs, set status. |
+| `projects:write` | Create projects, verify installs, set status. With the local package and REST API also: update, archive and delete projects, add and remove pages, and manage statuses, tags and review links. |
 | `agents:read` | Read agents and their run history. |
 | `agents:run` | Start agent runs (uses AI credits). |
 | `agents:write` | Create agents. |
@@ -241,6 +295,8 @@ The authenticated endpoint never serves these two, and this endpoint never serve
 | `comments:write` | Create, update, resolve, reply to and delete comments (local package and REST API). |
 | `analytics:read` | Read team, people and all-time analytics. |
 | `users:invite` | Send workspace and project invitations, and post as a project guest. |
+| `users:write` | Remove members and guests (local package and REST API). |
+| `workspace:write` | Rename the workspace and change your own notification settings (local package and REST API). |
 
 ## Migrating from BugHerd
 
@@ -250,7 +306,7 @@ See [`docs/migrating-from-bugherd.md`](docs/migrating-from-bugherd.md) for how B
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `pnpm install`, `pnpm test`, `pnpm build`, `pnpm check:drift`.
 
-The integration suite (`test/integration/`) runs against a real API when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project: the spec's step that creates its own test project waits for Phase 2, because Phase 1 has no create-project endpoint.
+The integration suite (`test/integration/`) runs against a real API when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project. The admin tools can now create and delete a throwaway project, but the suite does not do that yet.
 
 ## Support
 
