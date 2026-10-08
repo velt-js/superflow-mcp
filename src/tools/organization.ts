@@ -146,7 +146,8 @@ export const listActivity = defineTool({
     const latest = items[0];
     const summary = join(
       `Found ${plural(items.length, "change")}.`,
-      latest && `Latest: ${latest.action} by ${latest.actor?.name ?? latest.actor?.email ?? "unknown"} at ${latest.at}.`,
+      latest &&
+        `Latest: ${latest.action} by ${latest.actor?.name ?? latest.actor?.email ?? "unknown"}${latest.at ? ` at ${latest.at}` : ""}.`,
       paginationNote(list),
     );
     return okResult(summary, asData(list));

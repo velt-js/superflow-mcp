@@ -7,10 +7,10 @@ import { confirmationResult, invalidInput, okResult, plural } from "../lib/forma
 import { findOne } from "../lib/match.ts";
 import { defineTool, hints } from "./define.ts";
 import { asData, compact, count } from "./helpers.ts";
-import { confirmSchema, projectRefSchema } from "./schemas.ts";
+import { confirmSchema, hexColorSchema, projectRefSchema } from "./schemas.ts";
 
 const tagRefSchema = z.string().min(1).describe("Tag: its name (\"copy\") or id (tag_...).");
-const colorSchema = z.string().min(1).optional().describe("Hex color, for example #b3261e.");
+const colorSchema = hexColorSchema.optional().describe("Hex color, for example #b3261e.");
 const lookupProject = projectRefSchema
   .optional()
   .describe("Project the tag belongs to (name, site URL or id). Needed to find a project tag by name; omit for workspace tags.");
@@ -38,13 +38,13 @@ export const createTag = defineTool({
   name: "superflow_create_tag",
   title: "Create a tag",
   description: [
-    "Create a comment tag for the workspace, or for one project when project is given. Names are unique per workspace or project, ignoring case: an existing name comes back as an error with that tag as the candidate.",
+    "Create a comment tag for the workspace, or for one project when project is given. Names are unique per workspace or project, ignoring case, and a project tag cannot reuse the name of a workspace tag: a clash comes back as an error with the existing tag as the candidate.",
     "You rarely need this: tagging a comment with a new name creates the tag. Use it to set tags up before a review, or to pick a color.",
     "To rename or recolor use superflow_update_tag.",
     'Example: {"name": "copy", "color": "#b3261e", "project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {
-    name: z.string().min(1).max(50).describe("Tag name."),
+    name: z.string().min(1).max(64).describe("Tag name, up to 64 characters."),
     color: colorSchema,
     project: projectRefSchema
       .optional()
@@ -71,7 +71,7 @@ export const updateTag = defineTool({
   ].join("\n"),
   inputSchema: {
     tag: tagRefSchema,
-    name: z.string().min(1).max(50).optional().describe("New name."),
+    name: z.string().min(1).max(64).optional().describe("New name, up to 64 characters."),
     color: colorSchema,
   },
   annotations: hints(false, false, true, false),
@@ -120,7 +120,7 @@ export const mergeTags = defineTool({
   name: "superflow_merge_tags",
   title: "Merge tags",
   description: [
-    "Merge one tag into another: every comment tagged tag gets into instead, then tag is deleted. Use it to clean up near-duplicates such as \"Copy text\" and \"copy\".",
+    "Merge one tag into another: every comment tagged tag gets into instead, then tag is deleted. Use it to clean up near-duplicates such as \"Copy text\" and \"copy\". into must be a workspace tag or a tag of the same project.",
     "Without confirm: true nothing changes: you get both tags and how many comments would change as a preview. Call again with confirm: true only after the user says yes.",
     "To just rename a tag use superflow_update_tag.",
     'Example: {"tag": "Copy text", "into": "copy", "project": "Acme Dental"}',

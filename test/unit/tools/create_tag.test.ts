@@ -24,6 +24,12 @@ describe(TOOL, () => {
     expect(recorded[0]?.body).toEqual({ name: "copy" });
   });
 
+  it("refuses a color that is not hex before calling the API", async () => {
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { name: "mobile", color: "red" })).code).toBe("invalid");
+    expect(recorded).toHaveLength(0);
+  });
+
   it("surfaces an existing tag with the same name as the candidate", async () => {
     on("post", "/tags", fail(409, { code: "invalid", message: 'A tag named "Copy" already exists.', candidates: [{ id: "tag_copy", name: "copy" }] }));
     const h = await connect();

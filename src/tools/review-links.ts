@@ -44,7 +44,7 @@ export const createReviewLink = defineTool({
   title: "Create a review link",
   description: [
     `Create a public review link for a project. ${VISIBILITY_NOTE} The project becomes visible to anyone who has the link.`,
-    "Only available to Velt-internal accounts for now: other workspaces get a forbidden error. A project has at most one active link.",
+    "Creating links is only available to Velt-internal accounts for now: other callers get a forbidden error. A project has at most one active link; creating again returns it. While the link is active the project is in preview, which blocks archiving, install checks and settings changes.",
     "Ask the user before creating one, and tell them who will be able to see the project. To invite specific people instead use superflow_invite_guest. To stop sharing use superflow_revoke_review_link.",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
@@ -83,11 +83,7 @@ export const revokeReviewLink = defineTool({
     const ref = args.link.trim();
     if (isConfirmed(args.confirm)) {
       const result = await api.call<RevokeReviewLinkResponse>("revokeReviewLink", { path: { link: ref } });
-      const summary =
-        result.changed === false || result.revoked === false
-          ? `Review link ${ref} was already revoked. Nothing changed.`
-          : `Revoked review link ${ref}. It no longer works.`;
-      return okResult(summary, asData(result));
+      return okResult(`Revoked review link ${result.id ?? ref}. It no longer works.`, asData(result));
     }
     // Preview: one read. Nothing that could revoke is sent without confirm.
     const list = await api.call<ListEnvelope<ReviewLink>>("listReviewLinks");

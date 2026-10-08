@@ -5,7 +5,7 @@ import { CONFIRM_REMOVE_PAGE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join } from "./helpers.ts";
-import { confirmSchema, projectRefSchema } from "./schemas.ts";
+import { confirmSchema, httpUrlSchema, projectRefSchema } from "./schemas.ts";
 
 /** The API removes a page only when it has at most this many comments (CONTRACT-P2 section 3). */
 export const REMOVE_PAGE_COMMENT_CAP = 200;
@@ -53,25 +53,21 @@ export const addPage = defineTool({
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
-    url: z.string().min(1).describe("Full URL of the page, on the project's domain."),
-    title: z.string().min(1).optional().describe("Page title to show. Defaults to the URL."),
+    url: httpUrlSchema.describe("Full URL of the page with http or https, on the project's domain."),
+    title: z.string().min(1).max(300).optional().describe("Page title to show. Defaults to the URL."),
   },
   annotations: hints(false, false, true, false),
   write: true,
   async run(args, { api }) {
-    const result = await api.call<AddedPage | { page: AddedPage; created?: boolean }>("addPage", {
+    const page = await api.call<AddedPage>("addPage", {
       path: { project: args.project },
       body: compact({ url: args.url, title: args.title }),
     });
-    // The page is the body itself, or under "page", with created next to it.
-    const wrapped = "page" in result && result.page && typeof result.page === "object" ? result : undefined;
-    const page = (wrapped?.page ?? result) as AddedPage;
-    const created = wrapped?.created ?? page.created;
     const summary =
-      created === false
+      page.created === false
         ? `Page ${page.url ?? args.url} already exists in ${args.project}. Nothing changed.`
         : `Added page ${page.url ?? args.url} to ${args.project}${page.id ? ` (${page.id})` : ""}.`;
-    return okResult(summary, asData(result));
+    return okResult(summary, asData(page));
   },
 });
 

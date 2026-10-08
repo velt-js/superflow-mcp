@@ -48,12 +48,25 @@ describe(TOOL, () => {
   });
 
   it("refuses the default or resolved status, and the same target, without writing", async () => {
+    on("get", "/statuses", ok(list(statuses)));
     on("get", "/projects/:project/statuses", ok(list(projectStatuses)));
     const h = await connect();
-    const fixed = errorOf(await h.call(TOOL, { ...args, status: "Resolved" }));
+    const fixed = errorOf(await h.call(TOOL, { status: "Resolved", move_comments_to: "Open" }));
     expect(fixed.code).toBe("invalid");
     expect(fixed.message).toContain("cannot be deleted");
     expect(errorOf(await h.call(TOOL, { ...args, move_comments_to: "sts_IN_REVIEW" })).code).toBe("invalid");
+    expect(writes()).toEqual([]);
+  });
+
+  it("with a project, only deletes that project's own statuses", async () => {
+    on("get", "/projects/:project/statuses", ok(list(projectStatuses)));
+    const h = await connect();
+    const error = errorOf(await h.call(TOOL, { ...args, status: "Open", move_comments_to: "In review" }));
+    expect(error).toMatchObject({
+      code: "invalid",
+      message: "Open is a workspace status, not one added to project Acme Dental.",
+      hint: "Call again without project to delete it from the workspace statuses.",
+    });
     expect(writes()).toEqual([]);
   });
 
@@ -67,7 +80,7 @@ describe(TOOL, () => {
   });
 
   it("deletes with confirm: true, sending the target status", async () => {
-    on("delete", "/statuses/:status", ok({ deleted: true, id: "sts_IN_REVIEW", comments_moved: 12 }));
+    on("delete", "/statuses/:status", ok({ deleted: true, id: "sts_IN_REVIEW", comments_moved: 12, custom_statuses_enabled: true, hint: null }));
     const h = await connect();
     const result = await h.call(TOOL, { ...args, confirm: true });
     expect(summaryOf(result)).toBe(
@@ -87,6 +100,6 @@ describe(TOOL, () => {
     args: { ...args, confirm: true },
     method: "delete",
     path: "/statuses/:status",
-    success: ok({ deleted: true, id: "sts_IN_REVIEW", comments_moved: 0 }),
+    success: ok({ deleted: true, id: "sts_IN_REVIEW", comments_moved: 0, custom_statuses_enabled: true, hint: null }),
   });
 });

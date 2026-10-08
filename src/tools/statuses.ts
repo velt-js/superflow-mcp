@@ -1,35 +1,46 @@
 // Status admin tools: create, update, reorder, delete (with the comments moved).
 import { z } from "zod";
-import type { DeleteStatusResponse, ListEnvelope, StatsResponse, Status, StatusWriteResponse } from "../client/types.ts";
+import type {
+  CustomStatusFlag,
+  DeleteStatusResponse,
+  ListEnvelope,
+  StatsResponse,
+  Status,
+  StatusOrderResponse,
+  StatusWriteResponse,
+} from "../client/types.ts";
 import { CONFIRM_DELETE_STATUS_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { findOne } from "../lib/match.ts";
 import { defineTool, hints } from "./define.ts";
 import { asData, compact, join } from "./helpers.ts";
-import { confirmSchema, projectRefSchema } from "./schemas.ts";
+import { confirmSchema, hexColorSchema, projectRefSchema } from "./schemas.ts";
 
-const CUSTOM_STATUSES_OFF =
-  "Custom statuses are turned off for this workspace, so the toolbar will not show this status until someone turns them on in Superflow under Settings > Advanced features.";
+const CUSTOM_STATUSES_OFF = "Custom statuses are turned off for this workspace, so the toolbar does not show them yet.";
+const TURN_ON = "Turn them on in Superflow under Settings > Advanced features.";
 
 const VELT_WINDOW_NOTE =
   "Comments are moved through Velt, which can only update the newest 1,000 comments of a project, so on bigger projects some older comments may keep the deleted status.";
 
 const catalogProject = projectRefSchema
   .optional()
-  .describe("Project (name, site URL or id) whose own status list to change. Omit for the workspace list.");
+  .describe(
+    "Project (name, site URL or id) whose own statuses to change: the ones added to that project with superflow_create_status. Omit for the workspace statuses.",
+  );
 
 const statusRefSchema = z.string().min(1).describe("Status: its name (\"In review\") or id (sts_...).");
 
-const colorSchema = z.string().min(1).optional().describe("Hex color, for example #7c3aed.");
+const colorSchema = hexColorSchema.optional().describe("Hex color, for example #7c3aed.");
 
 function scopeLabel(project: string | undefined): string {
   return project ? `project ${project}` : "the workspace";
 }
 
-/** Adds the "custom statuses are off" note when the workspace flag is false. */
-function flagNote(result: { custom_statuses_enabled?: boolean; hint?: string }): string | undefined {
+/** The "custom statuses are off" note, with the API's hint, when the workspace switch is off. */
+function flagNote(result: Partial<CustomStatusFlag>): string | undefined {
   if (result.custom_statuses_enabled !== false) return undefined;
-  return result.hint && result.hint.trim() !== "" ? result.hint : CUSTOM_STATUSES_OFF;
+  const hint = typeof result.hint === "string" && result.hint.trim() !== "" ? result.hint.trim() : TURN_ON;
+  return `${CUSTOM_STATUSES_OFF} ${/[.!?]$/.test(hint) ? hint : `${hint}.`}`;
 }
 
 export const createStatus = defineTool({
@@ -65,7 +76,7 @@ export const updateStatus = defineTool({
   title: "Update a status",
   description: [
     "Rename or recolor one status. Its type (in progress, default or resolved) never changes, and comments keep the status.",
-    "Give project for a status in a project's own list. To add a status use superflow_create_status; to change the order use superflow_reorder_statuses.",
+    "Give project for a status that was added to that project; leave it out for a workspace status. To add a status use superflow_create_status; to change the order use superflow_reorder_statuses.",
     'Example: {"status": "In review", "project": "Acme Dental", "name": "Client review"}',
   ].join("\n"),
   inputSchema: {
@@ -94,15 +105,15 @@ export const reorderStatuses = defineTool({
   name: "superflow_reorder_statuses",
   title: "Reorder statuses",
   description: [
-    "Set the order of the statuses (the workflow columns). List every status of that list exactly once, in the new order: the workspace list, or a project's list when project is given.",
-    "Get the current statuses and their ids with superflow_list_statuses first.",
+    "Set the order of the statuses (the workflow columns). List every status of that list exactly once, in the new order: the workspace statuses, or, when project is given, the statuses added to that project.",
+    "Get the current statuses and their ids with superflow_list_statuses first (a project's own statuses are the ones with a project_id).",
     'Example: {"project": "Acme Dental", "status_ids": ["sts_OPEN", "sts_IN_REVIEW", "sts_RESOLVED"]}',
   ].join("\n"),
   inputSchema: {
     status_ids: z
       .array(z.string().min(1))
       .min(1)
-      .max(60)
+      .max(50)
       .describe("Every status of the list, by id or name, in the new order."),
     project: catalogProject,
   },
@@ -113,13 +124,13 @@ export const reorderStatuses = defineTool({
     if (seen.size !== args.status_ids.length) {
       return invalidInput("Each status may appear only once in status_ids.");
     }
-    const result = await api.call<ListEnvelope<Status> | Status[]>("reorderStatuses", {
+    const result = await api.call<StatusOrderResponse>("reorderStatuses", {
       query: { project: args.project },
       body: { status_ids: args.status_ids },
     });
-    const items = Array.isArray(result) ? result : (result.items ?? []);
+    const items = result.items ?? [];
     const order = items.length > 0 ? items.map((s) => s.name).join(", ") : args.status_ids.join(", ");
-    return okResult(`New status order in ${scopeLabel(args.project)}: ${order}.`, asData(Array.isArray(result) ? { items: result } : result));
+    return okResult(join(`New status order in ${scopeLabel(args.project)}: ${order}.`, flagNote(result)), asData(result));
   },
 });
 
@@ -127,7 +138,7 @@ export const deleteStatus = defineTool({
   name: "superflow_delete_status",
   title: "Delete a status",
   description: [
-    "Delete a custom status. Its comments move to move_comments_to (another status in the same list), which is required. The default and the resolved status cannot be deleted.",
+    "Delete a custom status. Its comments move to move_comments_to, which is required: another status those comments can have. The default and the resolved status cannot be deleted. Give project to delete a status that was added to that project.",
     VELT_WINDOW_NOTE,
     "Without confirm: true nothing is deleted: you get the status, where its comments go and how many there are. Call again with confirm: true only after the user says yes.",
     'Example: {"status": "In review", "move_comments_to": "Open", "project": "Acme Dental"}',
@@ -137,7 +148,7 @@ export const deleteStatus = defineTool({
     move_comments_to: z
       .string()
       .min(1)
-      .describe("Status (name or id, in the same list) that takes over this status's comments."),
+      .describe("Status (name or id) that takes over this status's comments. With project, any status that project uses."),
     project: catalogProject,
     confirm: confirmSchema("delete the status"),
   },
@@ -152,10 +163,13 @@ export const deleteStatus = defineTool({
       const summary = join(
         `Deleted status ${args.status} (${result.id ?? "unknown id"}) from ${scopeLabel(args.project)}.`,
         `Moved ${plural(result.comments_moved ?? 0, "comment")} to ${args.move_comments_to}.`,
+        flagNote(result),
       );
       return okResult(summary, asData(result));
     }
-    // Preview: reads only. Nothing that could delete is sent without confirm.
+    // Preview: reads only. Nothing that could delete is sent without confirm. A project's list
+    // is the workspace statuses merged with the project's own (those carry a project_id); only
+    // its own can be deleted with project, but its comments may move to any of them.
     const list = args.project
       ? await api.call<ListEnvelope<Status>>("listProjectStatuses", { path: { project: args.project } })
       : await api.call<ListEnvelope<Status>>("listStatuses");
@@ -168,6 +182,12 @@ export const deleteStatus = defineTool({
     };
     const status = findOne(statuses, args.status, lookup);
     const target = findOne(statuses, args.move_comments_to, lookup);
+    if (args.project && status.project_id === null) {
+      return invalidInput(
+        `${status.name} is a workspace status, not one added to project ${args.project}.`,
+        "Call again without project to delete it from the workspace statuses.",
+      );
+    }
     if (status.is_default || status.is_resolved) {
       return invalidInput(
         `${status.name} is the ${status.is_default ? "default" : "resolved"} status, and the default and resolved statuses cannot be deleted.`,

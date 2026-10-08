@@ -39,11 +39,29 @@ describe(TOOL, () => {
     expect(recorded[0]?.query).toEqual({});
   });
 
-  it("passes the owner-only refusal through as an error", async () => {
-    on("delete", "/members/:member", fail(403, { code: "forbidden", message: "Only the workspace owner can remove members." }));
+  it("says the count is a minimum when the API's scan stopped early", async () => {
+    on("delete", "/members/:member", fail(409, {
+      code: "needs_confirmation",
+      message: "Removing a member needs confirm=true.",
+      preview: { member, open_assigned_count: 40, scan: { scanned: 10000, complete: false } },
+    }));
     const h = await connect();
-    const result = await h.call(TOOL, { member: "jen@agency.com" });
-    expect(errorOf(result)).toMatchObject({ code: "forbidden", message: "Only the workspace owner can remove members." });
+    expect(summaryOf(await h.call(TOOL, { member: "Jen" }))).toContain("at least 40 open comments are assigned to them");
+  });
+
+  it("passes the API's refusals through: 403 for a non-owner or the owner, 400 for yourself", async () => {
+    on(
+      "delete",
+      "/members/:member",
+      fail(403, { code: "forbidden", message: "Only the workspace owner can remove members." }),
+      fail(400, { code: "invalid", message: "You cannot remove yourself." }),
+    );
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { member: "jen@agency.com" }))).toMatchObject({
+      code: "forbidden",
+      message: "Only the workspace owner can remove members.",
+    });
+    expect(errorOf(await h.call(TOOL, { member: "me" }))).toMatchObject({ code: "invalid", message: "You cannot remove yourself." });
   });
 
   it("removes with confirm: true and reports reassigned and still assigned comments", async () => {

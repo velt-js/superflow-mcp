@@ -8,7 +8,7 @@ const TOOL = "superflow_update_status";
 
 describe(TOOL, () => {
   it("renames a project status", async () => {
-    const body = { ...customStatus, name: "Client review", custom_statuses_enabled: true };
+    const body = { ...customStatus, name: "Client review", custom_statuses_enabled: true, hint: null };
     on("patch", "/statuses/:status", ok(body));
     const h = await connect();
     const result = await h.call(TOOL, { status: "In review", project: "Acme Dental", name: "Client review" });
@@ -20,7 +20,7 @@ describe(TOOL, () => {
   });
 
   it("recolors a workspace status without a project", async () => {
-    on("patch", "/statuses/:status", ok({ ...customStatus, color: "#000000" }));
+    on("patch", "/statuses/:status", ok({ ...customStatus, color: "#000000", custom_statuses_enabled: true, hint: null }));
     const h = await connect();
     await h.call(TOOL, { status: "sts_IN_REVIEW", color: "#000000" });
     expect(recorded[0]?.query).toEqual({});
@@ -38,6 +38,6 @@ describe(TOOL, () => {
     args: { status: "In review", name: "Review" },
     method: "patch",
     path: "/statuses/:status",
-    success: ok(customStatus),
+    success: ok({ ...customStatus, custom_statuses_enabled: true, hint: null }),
   });
 });

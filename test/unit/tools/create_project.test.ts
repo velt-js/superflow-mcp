@@ -39,13 +39,15 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, {
       name: "Acme Dental",
-      site_url: "acme.com",
+      site_url: "http://acme.com/",
       guests: ["dana@acme.com"],
       copy_settings_from: "Acme Labs",
       idempotency_key: "k-1",
     });
     expect(recorded[0]?.body).toMatchObject({ idempotency_key: "k-1", copy_settings_from: "Acme Labs" });
-    expect(summaryOf(result)).toContain("Invited 0 guests. The invite email could not be sent to dana@acme.com.");
+    expect(summaryOf(result)).toContain(
+      "Invited 0 guests. No invite email went to dana@acme.com: the email failed, or the person is already a member.",
+    );
   });
 
   it("retries a 503 because the request carries an idempotency key", async () => {
@@ -69,6 +71,14 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { name: "Acme", site_url: "https://acme.com" });
     expect(errorOf(result).candidates).toEqual([{ id: "prj_1a2b", name: "Acme Dental", url: project.url }]);
     expect(summaryOf(result)).toContain("Candidates: Acme Dental (prj_1a2b).");
+  });
+
+  it("needs a full http or https site URL, as the API does", async () => {
+    const h = await connect();
+    for (const site_url of ["acme.com", "ftp://acme.com"]) {
+      expect(errorOf(await h.call(TOOL, { name: "Acme", site_url })).code).toBe("invalid");
+    }
+    expect(recorded).toHaveLength(0);
   });
 
   it("rejects a bad guest email before calling the API", async () => {

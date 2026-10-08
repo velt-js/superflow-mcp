@@ -638,7 +638,7 @@ Next, get the script tag with superflow_get_install_snippet. Ask the user before
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes | Project name, usually the client or the site's name. |
-| `site_url` | string | yes | The site's URL or domain, for example https://acme.com. One project per domain, and it cannot change later. |
+| `site_url` | string | yes | The site's full URL with http or https, for example https://acme.com. One project per domain, and it cannot change later. |
 | `platform` | `webflow`, `shopify`, `wordpress`, `framer`, `html`, `netlify`, `nextjs`, `vercel`, `other` | no | What the site is built with, for the install steps: webflow, shopify, wordpress, framer, html, netlify, nextjs, vercel or other. Default other. |
 | `guests` | array of string | no | Guests to invite to the new project: 1 to 10 email addresses. Each one gets a real invite email. |
 | `copy_settings_from` | string | no | An existing project (name, site URL or id) whose settings, access and project statuses to copy. |
@@ -656,19 +656,19 @@ Example:
 
 Change a project: rename it, change its settings (guest comments, guest sign-in, turn commenting off, show or hide the toolbar, query strings as pages), or add extra domains.
 The site URL cannot change because a project is tied to its domain: create a new project for a different domain, or add hosts like a staging site with add_domains.
-Guest comments need a plan with guest mode. Projects still in preview cannot be changed. To archive use superflow_archive_project. Ask the user before changing settings.
+Turning guest comments on needs a plan with guest mode. A project in preview (shared with a review link) refuses settings changes until the link is revoked with superflow_revoke_review_link. To archive use superflow_archive_project. Ask the user before changing settings.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
 | `name` | string | no | New project name. |
 | `settings` | object (guest_comments, guest_sign_in, comments_disabled, toolbar_enabled, query_params_as_pages) | no | Settings to change. Only the fields you give change. |
-| `add_domains` | array of string | no | Extra domains or URLs where the project's toolbar may run, for example staging.acme.com. Added to the existing ones. |
+| `add_domains` | array of string | no | Extra sites where the project's toolbar may run, as full URLs, for example https://staging.acme.com. Added to the existing ones. |
 
 Example:
 
 ```json
-{"project":"Acme Dental","settings":{"guest_comments":true,"guest_sign_in":false},"add_domains":["staging.acme.com"]}
+{"project":"Acme Dental","settings":{"guest_comments":true,"guest_sign_in":false},"add_domains":["https://staging.acme.com"]}
 ```
 
 ## superflow_archive_project
@@ -676,7 +676,7 @@ Example:
 **Archive a project**
 
 Archive a project to take it out of the active project list. Nothing is deleted: pages, comments, members and guests stay.
-Safe to repeat: an archived project is left as it is. Projects still in preview cannot be archived.
+Safe to repeat: an archived project is left as it is. A project in preview (shared with a review link) refuses archiving until the link is revoked with superflow_revoke_review_link.
 Undo with superflow_unarchive_project. To remove a project for good use superflow_delete_project. Ask the user before archiving.
 
 | Parameter | Type | Required | Description |
@@ -694,7 +694,7 @@ Example:
 **Unarchive a project**
 
 Bring an archived project back. Its install status comes back too: installed if the snippet was verified before, else not installed.
-Safe to repeat: an active project is left as it is. Projects still in preview cannot be changed.
+Safe to repeat: an active project is left as it is. A project in preview (shared with a review link) refuses unarchiving until the link is revoked with superflow_revoke_review_link.
 To archive use superflow_archive_project.
 
 | Parameter | Type | Required | Description |
@@ -750,7 +750,8 @@ Example:
 **Verify the install**
 
 Check whether the Superflow snippet is live on the project's site. Superflow fetches the site once and answers installed, different_project_installed (a snippet for another project is there), not_installed or inconclusive, with the reason.
-When the verdict is installed, the project is marked installed. Safe to repeat. Use it after the user says they added the snippet.
+When the verdict is installed, the project is marked installed (an archived project comes out of the archive). Safe to repeat. Use it after the user says they added the snippet.
+A project in preview (shared with a review link) refuses the check until the link is revoked with superflow_revoke_review_link.
 To get the snippet use superflow_get_install_snippet.
 
 | Parameter | Type | Required | Description |
@@ -793,7 +794,7 @@ Pages also appear by themselves when someone comments on them. To see the pages 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
-| `url` | string | yes | Full URL of the page, on the project's domain. |
+| `url` | string | yes | Full URL of the page with http or https, on the project's domain. |
 | `title` | string | no | Page title to show. Defaults to the URL. |
 
 Example:
@@ -827,7 +828,7 @@ Example:
 **Invite members**
 
 Invite people to the Superflow workspace as members (your team). Members see and work on every project. This sends each person a real invite email right away, and each new member takes a member seat.
-Emails that already belong to members are skipped, not invited again. Up to 10 emails per call.
+Emails that already belong to members are skipped, not invited again (and nothing is sent to them). Up to 10 emails per call.
 For clients and reviewers who should see one project only use superflow_invite_guest. Ask the user before inviting anyone.
 
 | Parameter | Type | Required | Description |
@@ -845,7 +846,7 @@ Example:
 
 **Remove a member**
 
-Remove a member from the workspace: they lose access to every project. Only the workspace owner can do this, and neither the owner nor you can be removed.
+Remove a member from the workspace: they lose access to every project, and their unused invite links stop working. Only the workspace owner can do this, and neither the owner nor you can be removed.
 Open comments assigned to them stay assigned unless you pass reassign_to (another member); up to 200 are moved.
 Without confirm: true nothing is removed: you get the member and how many open comments are assigned to them as a preview. Call again with confirm: true only after the user says yes.
 To take a guest off one project use superflow_remove_guest.
@@ -885,7 +886,7 @@ Example:
 **Invite guests**
 
 Invite clients or reviewers as guests of one project. Guests see and comment on that project only. This sends each person a real invite email right away.
-Emails that are already guests of the project, or members, are skipped. Up to 10 emails per call.
+Emails that are already guests of the project, or members, are skipped (and nothing is sent to them). Up to 10 emails per call.
 For teammates who should see every project use superflow_invite_member. Ask the user before inviting anyone.
 
 | Parameter | Type | Required | Description |
@@ -945,12 +946,12 @@ Example:
 **Update a status**
 
 Rename or recolor one status. Its type (in progress, default or resolved) never changes, and comments keep the status.
-Give project for a status in a project's own list. To add a status use superflow_create_status; to change the order use superflow_reorder_statuses.
+Give project for a status that was added to that project; leave it out for a workspace status. To add a status use superflow_create_status; to change the order use superflow_reorder_statuses.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `status` | string | yes | Status: its name ("In review") or id (sts_...). |
-| `project` | string | no | Project (name, site URL or id) whose own status list to change. Omit for the workspace list. |
+| `project` | string | no | Project (name, site URL or id) whose own statuses to change: the ones added to that project with superflow_create_status. Omit for the workspace statuses. |
 | `name` | string | no | New name, 1 to 20 characters. |
 | `color` | string | no | Hex color, for example #7c3aed. |
 
@@ -964,13 +965,13 @@ Example:
 
 **Reorder statuses**
 
-Set the order of the statuses (the workflow columns). List every status of that list exactly once, in the new order: the workspace list, or a project's list when project is given.
-Get the current statuses and their ids with superflow_list_statuses first.
+Set the order of the statuses (the workflow columns). List every status of that list exactly once, in the new order: the workspace statuses, or, when project is given, the statuses added to that project.
+Get the current statuses and their ids with superflow_list_statuses first (a project's own statuses are the ones with a project_id).
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `status_ids` | array of string | yes | Every status of the list, by id or name, in the new order. |
-| `project` | string | no | Project (name, site URL or id) whose own status list to change. Omit for the workspace list. |
+| `project` | string | no | Project (name, site URL or id) whose own statuses to change: the ones added to that project with superflow_create_status. Omit for the workspace statuses. |
 
 Example:
 
@@ -982,15 +983,15 @@ Example:
 
 **Delete a status**
 
-Delete a custom status. Its comments move to move_comments_to (another status in the same list), which is required. The default and the resolved status cannot be deleted.
+Delete a custom status. Its comments move to move_comments_to, which is required: another status those comments can have. The default and the resolved status cannot be deleted. Give project to delete a status that was added to that project.
 Comments are moved through Velt, which can only update the newest 1,000 comments of a project, so on bigger projects some older comments may keep the deleted status.
 Without confirm: true nothing is deleted: you get the status, where its comments go and how many there are. Call again with confirm: true only after the user says yes.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `status` | string | yes | Status: its name ("In review") or id (sts_...). |
-| `move_comments_to` | string | yes | Status (name or id, in the same list) that takes over this status's comments. |
-| `project` | string | no | Project (name, site URL or id) whose own status list to change. Omit for the workspace list. |
+| `move_comments_to` | string | yes | Status (name or id) that takes over this status's comments. With project, any status that project uses. |
+| `project` | string | no | Project (name, site URL or id) whose own statuses to change: the ones added to that project with superflow_create_status. Omit for the workspace statuses. |
 | `confirm` | boolean | no | Must be true to delete the status. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 
 Example:
@@ -1003,13 +1004,13 @@ Example:
 
 **Create a tag**
 
-Create a comment tag for the workspace, or for one project when project is given. Names are unique per workspace or project, ignoring case: an existing name comes back as an error with that tag as the candidate.
+Create a comment tag for the workspace, or for one project when project is given. Names are unique per workspace or project, ignoring case, and a project tag cannot reuse the name of a workspace tag: a clash comes back as an error with the existing tag as the candidate.
 You rarely need this: tagging a comment with a new name creates the tag. Use it to set tags up before a review, or to pick a color.
 To rename or recolor use superflow_update_tag.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | yes | Tag name. |
+| `name` | string | yes | Tag name, up to 64 characters. |
 | `color` | string | no | Hex color, for example #b3261e. |
 | `project` | string | no | Project (name, site URL or id) for a project tag. Omit for a workspace tag. |
 
@@ -1029,7 +1030,7 @@ To fold one tag into another use superflow_merge_tags. To find tag names and ids
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `tag` | string | yes | Tag: its name ("copy") or id (tag_...). |
-| `name` | string | no | New name. |
+| `name` | string | no | New name, up to 64 characters. |
 | `color` | string | no | Hex color, for example #b3261e. |
 
 Example:
@@ -1062,7 +1063,7 @@ Example:
 
 **Merge tags**
 
-Merge one tag into another: every comment tagged tag gets into instead, then tag is deleted. Use it to clean up near-duplicates such as "Copy text" and "copy".
+Merge one tag into another: every comment tagged tag gets into instead, then tag is deleted. Use it to clean up near-duplicates such as "Copy text" and "copy". into must be a workspace tag or a tag of the same project.
 Without confirm: true nothing changes: you get both tags and how many comments would change as a preview. Call again with confirm: true only after the user says yes.
 To just rename a tag use superflow_update_tag.
 
@@ -1175,7 +1176,7 @@ Example:
 **Create a review link**
 
 Create a public review link for a project. Anyone with the link can open the project's site with the Superflow toolbar and see and add comments as a guest, without an invite. The project becomes visible to anyone who has the link.
-Only available to Velt-internal accounts for now: other workspaces get a forbidden error. A project has at most one active link.
+Creating links is only available to Velt-internal accounts for now: other callers get a forbidden error. A project has at most one active link; creating again returns it. While the link is active the project is in preview, which blocks archiving, install checks and settings changes.
 Ask the user before creating one, and tell them who will be able to see the project. To invite specific people instead use superflow_invite_guest. To stop sharing use superflow_revoke_review_link.
 
 | Parameter | Type | Required | Description |

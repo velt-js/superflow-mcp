@@ -251,7 +251,7 @@ Superflow has three priorities you can set: critical (P0), high (P1) and medium 
 
 Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
-Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent.
+Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent. While a project has an active review link it is in preview: archiving, install checks and settings changes wait until the link is revoked. Site, domain and page addresses are full `https://` URLs.
 
 Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Webhooks cover changes made through the API, this server and agent runs, not yet comments made in the Superflow toolbar.
 

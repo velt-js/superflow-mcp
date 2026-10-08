@@ -21,7 +21,7 @@ describe(TOOL, () => {
   });
 
   it("says when nobody new was invited", async () => {
-    on("post", "/members", ok({ invited: [], skipped: [{ email: "jen@agency.com", reason: "already a member" }], seats: memberInvite.seats }, 201));
+    on("post", "/members", ok({ invited: [], skipped: [{ email: "jen@agency.com", reason: "already_member" }], seats: memberInvite.seats }, 201));
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { emails: ["jen@agency.com"], idempotency_key: "k-9" }));
     expect(summary).toMatch(/^Nobody new was invited\. Skipped 1: jen@agency\.com \(already a member\)\./);

@@ -14,9 +14,10 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme Dental" });
     expect(data(result)).toEqual(body);
     expect(summaryOf(result)).toBe(
-      "The Superflow snippet is live on the site. The project is now marked installed. Reason: Found the Superflow script for this project.",
+      `The Superflow snippet is live on the site. The project is now marked installed. Reason: Found the Superflow script for this project. Project: ${project.url}`,
     );
     expect(recorded[0]?.operationId).toBe("verifyInstall");
+    expect(recorded[0]?.body).toBeUndefined();
   });
 
   it.each([
@@ -26,7 +27,9 @@ describe(TOOL, () => {
   ])("explains the %s verdict", async (verdict, sentence) => {
     on("post", "/projects/:project/install/verify", ok({ verdict, reason: "Checked https://acme.com.", project }));
     const h = await connect();
-    expect(summaryOf(await h.call(TOOL, { project: "Acme Dental" }))).toBe(`${sentence} Reason: Checked https://acme.com.`);
+    expect(summaryOf(await h.call(TOOL, { project: "Acme Dental" }))).toBe(
+      `${sentence} Reason: Checked https://acme.com. Project: ${project.url}`,
+    );
   });
 
   standardErrorCases({
