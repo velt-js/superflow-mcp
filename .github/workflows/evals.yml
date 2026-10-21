@@ -1,0 +1,52 @@
+name: Evals
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tool-choice:
+    name: First tool choice (model only)
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm evals:tools
+
+  end-to-end:
+    name: Tool loop and integration tests against staging
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUPERFLOW_TEST_API_KEY: ${{ secrets.SUPERFLOW_TEST_API_KEY }}
+      SUPERFLOW_TEST_PROJECT: ${{ secrets.SUPERFLOW_TEST_PROJECT }}
+      SUPERFLOW_API_BASE_URL: ${{ vars.SUPERFLOW_API_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integration tests
+        run: pnpm vitest run test/integration
+      - name: End-to-end evals
+        run: pnpm evals
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-output
+          path: evals-output/
+          if-no-files-found: ignore

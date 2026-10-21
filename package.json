@@ -1,0 +1,66 @@
+{
+  "name": "superflow-mcp",
+  "version": "0.1.0",
+  "description": "Talk to your Superflow website comments from Claude Code, Claude Desktop, Cursor or any MCP client. A local stdio MCP server.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "superflow",
+    "website-feedback",
+    "comments",
+    "claude",
+    "cursor"
+  ],
+  "homepage": "https://github.com/velt-js/superflow-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/velt-js/superflow-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/velt-js/superflow-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Superflow <eng@usesuperflow.com>",
+  "type": "module",
+  "bin": {
+    "superflow-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "pnpm typecheck && node scripts/check-copy.mjs",
+    "test": "vitest run",
+    "generate:client": "node scripts/generate-client.mjs",
+    "check:drift": "node scripts/check-drift.mjs",
+    "docs:tools": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/docs-tools.mjs",
+    "evals": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/run-evals.ts",
+    "evals:tools": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-tool-choice.ts",
+    "seed:staging": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/seed-staging.ts",
+    "smoke:stdio": "node scripts/smoke-stdio.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@types/node": "^20.19.43",
+    "msw": "^2.15.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}
