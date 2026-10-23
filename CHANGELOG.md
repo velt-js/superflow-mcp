@@ -29,6 +29,9 @@ API serves today; check, report and billing-mode tools follow when their engines
   deletes; one invalid finding refuses the batch and every problem comes back in
   `error.issues`. The `push_my_review` playbook and prompt walk through it.
 - API errors carry `issues` (every validation problem) through to the tool result.
+- Billing (94 tools): `superflow_get_billing` and `superflow_get_payment_link` over the new
+  read-only `GET /v1/billing`. Paying happens in the Superflow portal; the link never
+  suggests a second subscription, and a failed subscription check says so.
 - API key tools (92 tools): `superflow_list_api_keys`, `superflow_create_api_key` and
   `superflow_revoke_api_key` over the new `/v1/api-keys` routes. Create and revoke gate on
   `confirm: true`; a new key's scopes are a subset of the current key's.

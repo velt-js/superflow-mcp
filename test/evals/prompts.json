@@ -355,5 +355,12 @@
     "read_only": false,
     "expect_first_tool": ["superflow_create_api_key", "superflow_get_me", "superflow_list_api_keys"],
     "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-upgrade-plan",
+    "prompt": "We need more seats in Superflow, how do I upgrade?",
+    "read_only": true,
+    "expect_first_tool": ["superflow_get_payment_link", "superflow_get_billing", "superflow_get_organization"],
+    "check": [{ "no_confirmed_writes": true }]
   }
 ]
