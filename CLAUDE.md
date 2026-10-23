@@ -120,6 +120,22 @@ pnpm smoke:stdio   # after build
 Node 22 for development (pnpm needs it); the built package supports Node 20+.
 Memory on dev machines can be tight: run one test or typecheck process at a time.
 
+## Keep in step with the API and the hosted server
+
+The API this package calls lives in `snippyly/shared-firebase-function`
+(`functions/src/superflow-v2/public-api/`), and the hosted server runs THIS package from a
+vendored copy there (`functions/vendor/superflow-mcp/`). So:
+
+- Copy `openapi/openapi.json` from the backend's `public-api/openapi.snapshot.json` byte for
+  byte; never edit it by hand.
+- A new API route gets its tool here in the same change, or the PR says why not.
+- After a change that alters tools, the backend re-vendors the build
+  (`node functions/scripts/sync-superflow-mcp.js <this checkout>`); its conformance test
+  fails while the copy is stale. Old hosted tool names map to new ones in
+  `LEGACY_TOOL_RENAMES` there.
+
+The PR template asks "MCP updated, or why not".
+
 ## Branches
 
 Branch from `staging`, open pull requests into `staging`. Releases are `v*` tags.
