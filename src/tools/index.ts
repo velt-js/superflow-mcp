@@ -14,6 +14,7 @@ import { pageTools } from "./pages.ts";
 import { playbookTools } from "./playbooks.ts";
 import { projectTools } from "./projects.ts";
 import { reviewLinkTools } from "./review-links.ts";
+import { apiKeyTools } from "./api-keys.ts";
 import { runTools } from "./runs.ts";
 import { scheduleTools } from "./schedules.ts";
 import { statusTools } from "./statuses.ts";
@@ -37,6 +38,8 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   ...organizationTools,
   ...analyticsTools,
   ...reviewLinkTools,
+  // Addendum: your own API keys.
+  ...apiKeyTools,
   ...notificationTools,
   // Phase 3: agents, runs, schedules, integrations, webhooks.
   ...agentTools,

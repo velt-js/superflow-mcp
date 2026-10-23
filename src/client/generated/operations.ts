@@ -50,6 +50,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  createApiKey: {
+    method: "POST",
+    path: "/api-keys",
+    pathParams: [],
+    queryParams: [],
+  },
   createComment: {
     method: "POST",
     path: "/comments",
@@ -308,6 +314,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  listApiKeys: {
+    method: "GET",
+    path: "/api-keys",
+    pathParams: [],
+    queryParams: [],
+  },
   listComments: {
     method: "GET",
     path: "/comments",
@@ -476,6 +488,12 @@ export const operations = {
     pathParams: ["comment"],
     queryParams: [],
   },
+  revokeApiKey: {
+    method: "DELETE",
+    path: "/api-keys/{key}",
+    pathParams: ["key"],
+    queryParams: [],
+  },
   revokeReviewLink: {
     method: "DELETE",
     path: "/review-links/{link}",
@@ -584,7 +602,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "eeb2ce3f177d0efbfdc7f4dc9621a6e7fc7987942f52692b5db8fefc7d117f9b";
+export const OPENAPI_SHA256 = "d18dccac4d87d1bf6fe3f456f19bcb70cc18714ce62957fea55e6187a9209f2f";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];
