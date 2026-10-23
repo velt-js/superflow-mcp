@@ -7,6 +7,24 @@ There are two release lines: the `superflow-mcp` npm package (local stdio server
 versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
 (versions 1.x).
 
+## [0.4.0] - Unreleased
+
+The MCP spec addendum (v2.1): agent findings by kind, playbooks the server serves,
+pushing your own agent's findings in, and signing in without a key. Built on what the
+API serves today; check, report and billing-mode tools follow when their engines ship.
+
+### Added
+- `superflow_list_comments` takes `rule_key` (the kind of problem, for example `image-alt`
+  or `broken-link`). Rows carry `rule_key` and the agent's `suggested_fix`.
+- `superflow_update_comment` takes `rule_key` to attach a human comment to a rule
+  (`null` detaches it).
+
+### Changed
+- Every request sends `X-Superflow-Client`, so the API's audit log records the package's
+  writes as made by the MCP.
+- `superflow_run_agents`: the API allows 10 runs per project per hour and answers
+  `rate_limited` past that.
+
 ## [0.3.0] - Unreleased
 
 Agents, integrations and webhooks (Phase 3): run the AI review agents, send their

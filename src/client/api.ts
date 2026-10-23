@@ -222,6 +222,8 @@ export class ApiClient {
       Authorization: `Bearer ${this.apiKey}`,
       Accept: "application/json",
       "User-Agent": USER_AGENT,
+      // Marks the call as made by this package, so the API's audit log records via: mcp.
+      "X-Superflow-Client": USER_AGENT,
     };
     let body: string | undefined;
     if (args.body !== undefined) {

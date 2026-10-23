@@ -168,7 +168,7 @@ export const operations = {
     method: "GET",
     path: "/comments/export",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "format", "has_attachments", "has_external_link", "has_replies", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "format", "has_attachments", "has_external_link", "has_replies", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   getAgent: {
     method: "GET",
@@ -186,7 +186,7 @@ export const operations = {
     method: "GET",
     path: "/comments/stats",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "group_by", "has_attachments", "has_external_link", "has_replies", "metrics", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "group_by", "has_attachments", "has_external_link", "has_replies", "metrics", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   getCreditUsage: {
     method: "GET",
@@ -288,7 +288,7 @@ export const operations = {
     method: "GET",
     path: "/comments",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   listIntegrations: {
     method: "GET",

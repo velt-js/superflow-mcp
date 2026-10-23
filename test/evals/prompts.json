@@ -305,5 +305,17 @@
     "read_only": true,
     "expect_first_tool": [null, "superflow_estimate_run", "superflow_list_agents", "superflow_list_agent_packs"],
     "check": [{ "tool_not_called": "superflow_run_agents" }]
+  },
+  {
+    "id": "add-rule-key-alt",
+    "prompt": "Which images on {project} are missing alt text? Show me the suggested fixes.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "rule_key": ["image-alt"] } }]
+  },
+  {
+    "id": "add-attach-human-comment",
+    "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the broken-link finding. Attach it to that rule.",
+    "expect_first_tool": ["superflow_update_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "broken-link" } }]
   }
 ]

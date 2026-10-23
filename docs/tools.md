@@ -212,6 +212,7 @@ Example:
 **List comments**
 
 List comments in Superflow with filters. Use this to find, review or read specific comments: by project, page, status, assignee, author, tags, dates, text, device, source or agent run.
+AI agent findings are comments too. To work on one kind of finding, filter by rule_key (for example image-alt or broken-link): each row then carries rule_key and the agent's suggested_fix.
 For totals or breakdowns (how many per page, per status, per assignee) use superflow_comment_stats instead, it is cheaper. For a file of many rows use superflow_export_comments.
 Returns compact rows by default; set fields "full" only when you need every field. Pages with cursor.
 
@@ -243,6 +244,7 @@ Returns compact rows by default; set fields "full" only when you need every fiel
 | `source` | array of `widget`, `extension`, `figma`, `voice`, `api`, `agent` | no | Where the comment came from: widget (toolbar), agent, api, figma, voice, extension. |
 | `agent` | string | no | AI review agent name or id (agt_...). |
 | `agent_run` | string | no | Agent run id (run_... or the raw execution id). |
+| `rule_key` | array of string | no | Rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, broken-link, dead-button, small-tap-target. An outside agent's own kinds start with ext-. |
 | `sort` | `updated_desc`, `created_desc`, `created_asc`, `priority_desc`, `page`, `number` | no | Sort order. Default updated_desc (most recent activity first). |
 | `limit` | integer | no | How many rows to return, 1 to 100. Default 25. |
 | `cursor` | string | no | Opaque cursor from a previous call's next_cursor. Use it with the same filters to get the next page. |
@@ -310,6 +312,7 @@ To read the comments behind a number use superflow_list_comments with the same f
 | `source` | array of `widget`, `extension`, `figma`, `voice`, `api`, `agent` | no | Where the comment came from: widget (toolbar), agent, api, figma, voice, extension. |
 | `agent` | string | no | AI review agent name or id (agt_...). |
 | `agent_run` | string | no | Agent run id (run_... or the raw execution id). |
+| `rule_key` | array of string | no | Rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, broken-link, dead-button, small-tap-target. An outside agent's own kinds start with ext-. |
 | `group_by` | `status`, `priority`, `assignee`, `author`, `author_type`, `page`, `tag`, `project`, `source`, `device`, `day`, `week` | yes | The dimension to group by. |
 | `metrics` | array of `count`, `avg_hours_to_resolve`, `median_hours_to_first_reply` | no | Metrics per group. Default ["count"]. Hours metrics may be approximate. |
 
@@ -355,6 +358,7 @@ To read or count comments in the conversation use superflow_list_comments or sup
 | `source` | array of `widget`, `extension`, `figma`, `voice`, `api`, `agent` | no | Where the comment came from: widget (toolbar), agent, api, figma, voice, extension. |
 | `agent` | string | no | AI review agent name or id (agt_...). |
 | `agent_run` | string | no | Agent run id (run_... or the raw execution id). |
+| `rule_key` | array of string | no | Rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, broken-link, dead-button, small-tap-target. An outside agent's own kinds start with ext-. |
 | `sort` | `updated_desc`, `created_desc`, `created_asc`, `priority_desc`, `page`, `number` | no | Sort order. Default updated_desc (most recent activity first). |
 | `format` | `csv`, `json`, `markdown` | yes | File format: csv, json or markdown. |
 
@@ -401,6 +405,7 @@ Example:
 Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.
 Superflow has three priorities: critical (P0), high (P1) and medium (P2). Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.
 Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.
+To attach a human comment to the kind of problem an agent already found (a client's "the Book now button is dead" on the same element as a broken-link finding), set rule_key. It then lists with that rule_key. null detaches it.
 Ask the user before changing comments they did not ask about.
 
 | Parameter | Type | Required | Description |
@@ -417,6 +422,7 @@ Ask the user before changing comments they did not ask about.
 | `remove_tags` | array of string | no | Tags to remove. |
 | `page_url` | string | no | Move the comment to this page URL. |
 | `anchor` | object (selector, xpath, x, y, element_text, viewport, device) | no | Where on the page the comment is pinned. Omit for a page-level comment. |
+| `rule_key` | string or null | no | Attach the comment to a rule key, for example broken-link or image-alt, so it lists with that rule's findings. null detaches it. |
 
 Example:
 
@@ -575,7 +581,7 @@ For one comment use superflow_update_comment or superflow_resolve_comment.
 |---|---|---|---|
 | `comment_ids` | array of string | no | Comments to change: numbers ("4821") or ids (cmt_...). Give this or filter, not both. |
 | `project` | string | no | Project for comment numbers in comment_ids (defaults to SUPERFLOW_DEFAULT_PROJECT when set). With filter, it is used as the filter's project when the filter has none. |
-| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run) | no | Select comments with the same filters as superflow_list_comments. Give this or comment_ids, not both. |
+| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run, rule_key) | no | Select comments with the same filters as superflow_list_comments. Give this or comment_ids, not both. |
 | `patch` | object (status, priority, assignees, add_assignees, add_tags, remove_tags, resolve, reopen, note) | yes | The change to apply to every selected comment. At least one field. |
 | `dry_run` | boolean | no | Default true: preview only. false writes, and also needs confirm: true. |
 | `confirm` | boolean | no | Must be true (with dry_run false) to write. Set it only after the user explicitly agreed. Default: `false`. |
@@ -1697,7 +1703,7 @@ Find the Slack integration id with superflow_list_integrations. To create a trac
 | `integration` | string | yes | The Slack connection (int_... or its name). The message goes to its channel. |
 | `text` | string | no | The message. Plain text. |
 | `comments` | array of string | no | Comments to include: ids (cmt_...) from a list call, or numbers. Give comments or filter, not both. |
-| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run) | no | Quote the comments that match these filters (the same as superflow_list_comments): the 25 with the most recent activity. Give comments or filter, not both. |
+| `filter` | object (project, page_url, page_match, status, priority, assignee, author, author_type, tags, tags_match, query, created_after, created_before, updated_after, updated_before, resolved_after, resolved_before, has_attachments, has_replies, has_external_link, unanswered, stale_days, device, source, agent, agent_run, rule_key) | no | Quote the comments that match these filters (the same as superflow_list_comments): the 25 with the most recent activity. Give comments or filter, not both. |
 | `template` | `summary`, `list` | no | How comments are shown: list (default, one line per comment with its link) or summary (counts and the top items). |
 | `confirm` | boolean | no | Must be true to post the message. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 

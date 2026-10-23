@@ -143,6 +143,12 @@ export const filterShape = {
     .describe("Where the comment came from: widget (toolbar), agent, api, figma, voice, extension."),
   agent: z.string().min(1).optional().describe("AI review agent name or id (agt_...)."),
   agent_run: z.string().min(1).optional().describe("Agent run id (run_... or the raw execution id)."),
+  rule_key: z
+    .array(z.string().min(1).max(64))
+    .optional()
+    .describe(
+      "Rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, broken-link, dead-button, small-tap-target. An outside agent's own kinds start with ext-.",
+    ),
 };
 
 export const FILTER_KEYS = Object.keys(filterShape) as Array<keyof typeof filterShape>;

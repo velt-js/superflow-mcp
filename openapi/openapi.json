@@ -1708,6 +1708,9 @@
             "$ref": "#/components/parameters/filter_agent_run"
           },
           {
+            "$ref": "#/components/parameters/filter_rule_key"
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -2093,6 +2096,9 @@
             "$ref": "#/components/parameters/filter_agent_run"
           },
           {
+            "$ref": "#/components/parameters/filter_rule_key"
+          },
+          {
             "name": "group_by",
             "in": "query",
             "required": true,
@@ -2274,6 +2280,9 @@
           },
           {
             "$ref": "#/components/parameters/filter_agent_run"
+          },
+          {
+            "$ref": "#/components/parameters/filter_rule_key"
           },
           {
             "name": "format",
@@ -2759,6 +2768,17 @@
                     },
                     "required": [],
                     "additionalProperties": false
+                  },
+                  "rule_key": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Attach the comment to a rule, such as broken-link, so it lists and resolves with that rule's findings. null detaches it."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [],
@@ -6800,7 +6820,7 @@
     "/runs": {
       "post": {
         "operationId": "runAgents",
-        "summary": "Run agents (one scan; spends AI credits)",
+        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per rolling hour; past that 429 with Retry-After.",
         "tags": [
           "runs"
         ],
@@ -11528,6 +11548,26 @@
               "preview": {
                 "type": "object",
                 "description": "needs_confirmation only: what the request would do. Bulk: { would_update, sample }. Deletes and removals: the entity and the counts it affects."
+              },
+              "issues": {
+                "type": "array",
+                "description": "invalid only, when a request has more than one problem: up to 20 { field, reason } pairs, field written like findings[37].fix_type.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }
@@ -11819,6 +11859,28 @@
               }
             ]
           },
+          "rule_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The rule key the comment carries: an agent finding's kind (image-alt, broken-link, ...) or one a person attached with updateComment rule_key."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggested_fix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "An agent finding's suggested fix, cut to 300 characters. Null for other comments."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "url": {
             "type": "string",
             "description": "Deep link that opens the thread"
@@ -11841,6 +11903,8 @@
           "device",
           "age_days",
           "last_activity_at",
+          "rule_key",
+          "suggested_fix",
           "url"
         ],
         "additionalProperties": false
@@ -12194,6 +12258,17 @@
               "extension"
             ]
           },
+          "rule_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The rule key the comment carries: an agent finding's kind or one a person attached."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "agent": {
             "anyOf": [
               {
@@ -12241,6 +12316,39 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "issue_type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The finding's issue type, as the agent wrote it."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "problem": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The problem, in the agent's words."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "suggested_fix": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The agent's suggested fix."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -12248,7 +12356,10 @@
                   "name",
                   "run_id",
                   "severity",
-                  "confidence"
+                  "confidence",
+                  "issue_type",
+                  "problem",
+                  "suggested_fix"
                 ],
                 "additionalProperties": false
               },
@@ -12379,6 +12490,7 @@
           "screenshot_url",
           "metadata",
           "source",
+          "rule_key",
           "agent",
           "external_links",
           "attachments",
@@ -13859,6 +13971,20 @@
         "schema": {
           "type": "string"
         }
+      },
+      "filter_rule_key": {
+        "name": "rule_key",
+        "in": "query",
+        "required": false,
+        "description": "Rule keys (image-alt, image-broken, broken-link, ...; aliases such as link-broken are accepted). Matches agent findings of that kind and comments a person attached to it. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
       }
     },
     "responses": {
