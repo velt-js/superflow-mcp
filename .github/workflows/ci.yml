@@ -32,6 +32,8 @@ jobs:
         run: pnpm check:drift
         env:
           SUPERFLOW_DRIFT_BASE_URL: ${{ vars.SUPERFLOW_DRIFT_BASE_URL }}
+      - name: Playbooks are built from skills/
+        run: pnpm check:playbooks
       - name: docs/tools.md is current
         run: pnpm docs:tools && git diff --exit-code docs/tools.md
       - name: Stdio smoke test

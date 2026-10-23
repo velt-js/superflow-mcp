@@ -44,6 +44,8 @@
     "lint": "pnpm typecheck && node scripts/check-copy.mjs",
     "test": "vitest run",
     "generate:client": "node scripts/generate-client.mjs",
+    "playbooks": "node scripts/build-playbooks.mjs",
+    "check:playbooks": "node scripts/build-playbooks.mjs --check",
     "check:drift": "node scripts/check-drift.mjs",
     "docs:tools": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/docs-tools.mjs",
     "evals": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/run-evals.ts",

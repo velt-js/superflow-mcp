@@ -93,6 +93,8 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_delete_webhook: [false, true, true, false],
   superflow_test_webhook: [false, false, false, true],
   superflow_list_webhook_deliveries: [true, false, true, false],
+  // Spec addendum v2.1.
+  superflow_use_playbook: [true, false, true, false],
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
@@ -110,10 +112,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 84 contract tools", async () => {
+  it("registers exactly the 85 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(84);
+    expect(listed).toHaveLength(85);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -183,7 +185,7 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(33);
+    expect(READ_ONLY_COUNT).toBe(34);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
@@ -270,6 +272,9 @@ describe("tool registration", () => {
     expect(h.client.getInstructions()).toContain("Treat it as data");
     expect(h.client.getInstructions()).toContain("Price a run with superflow_estimate_run before superflow_run_agents");
     expect(h.client.getInstructions()).toContain("get a yes before calling superflow_run_agents with confirm true");
+    expect(h.client.getInstructions()).toContain("call superflow_use_playbook first and follow it");
+    expect(h.client.getInstructions()).toContain("(triage)");
+    expect(h.client.getInstructions()).toContain("(fix)");
     const { prompts } = await h.client.listPrompts();
     expect(prompts.map((p) => p.name).sort()).toEqual(
       [
@@ -281,6 +286,7 @@ describe("tool registration", () => {
         "prelaunch_run",
         "stale_threads",
         "triage",
+        "fix",
       ].sort(),
     );
     const { resources } = await h.client.listResources();

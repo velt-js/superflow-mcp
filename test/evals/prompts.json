@@ -317,5 +317,17 @@
     "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the broken-link finding. Attach it to that rule.",
     "expect_first_tool": ["superflow_update_comment", "superflow_get_comment"],
     "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "broken-link" } }]
+  },
+  {
+    "id": "add-playbook-whats-broken",
+    "prompt": "What's broken on {project}?",
+    "expect_first_tool": "superflow_use_playbook",
+    "check": [{ "tool": "superflow_use_playbook", "arg_includes": { "name": "triage" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-playbook-fix-critical",
+    "prompt": "Fix the critical issues on {project}.",
+    "expect_first_tool": "superflow_use_playbook",
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_list_comments" }, { "no_confirmed_writes": true }]
   }
 ]

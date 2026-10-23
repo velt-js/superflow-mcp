@@ -15,7 +15,13 @@ async function promptText(name: string, args: Record<string, string>, readOnly =
 }
 
 const CASES: Array<[string, Record<string, string>, string[], boolean]> = [
-  ["triage", { project: "Acme Dental", since: "7d" }, ["superflow_list_comments", "superflow_bulk_update_comments", '"created_after":"7d"'], true],
+  [
+    "triage",
+    { project: "Acme Dental", since: "7d" },
+    ["superflow_list_comments", "superflow_bulk_update_comments", '"created_after":"7d"', 'group_by: "rule_key"', "superflow_update_comment", "Follow the triage playbook"],
+    true,
+  ],
+  ["fix", { project: "Acme Dental" }, ['Fix, verify, report for the Superflow site "Acme Dental"', "superflow_run_agents", "superflow_resolve_comment"], true],
   ["stale_threads", { project: "Acme Dental" }, ["superflow_list_comments", '"stale_days":3', '"unanswered":true'], true],
   ["client_update", { project: "Acme Dental" }, ['"updated_after":"this_week"', '"author_type":["guest"]', "superflow_comment_stats"], false],
   [

@@ -16,6 +16,7 @@ export const GROUP_BY = [
   "author_type",
   "page",
   "tag",
+  "rule_key",
   "project",
   "source",
   "device",

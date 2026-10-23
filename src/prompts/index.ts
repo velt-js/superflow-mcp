@@ -5,6 +5,8 @@ import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { describeDateProblem } from "../lib/dates.ts";
+import { PLAYBOOKS, type Playbook } from "../playbooks/generated.ts";
+import { playbookText } from "../tools/playbooks.ts";
 import { POLL_SECONDS } from "../tools/runs.ts";
 import { PLATFORMS } from "../tools/schemas.ts";
 
@@ -93,12 +95,44 @@ function hostOf(siteUrl: string): string {
   }
 }
 
+/** Prompts with their own handler; every other playbook is served as a prompt by {@link registerPlaybookPrompts}. */
+const CUSTOM_PLAYBOOK_PROMPTS = new Set(["triage"]);
+
+function playbookNamed(name: string): Playbook {
+  const playbook = PLAYBOOKS.find((entry) => entry.name === name);
+  if (!playbook) throw new McpError(ErrorCode.InternalError, `The ${name} playbook is missing from the build.`);
+  return playbook;
+}
+
+/** One prompt per playbook (so clients that show prompts as slash commands get /superflow:fix). */
+function registerPlaybookPrompts(server: McpServer, options: PromptOptions): void {
+  for (const playbook of PLAYBOOKS) {
+    if (CUSTOM_PLAYBOOK_PROMPTS.has(playbook.name)) continue;
+    server.registerPrompt(
+      playbook.name,
+      {
+        title: playbook.title,
+        description: playbook.description,
+        argsSchema: { project: z.string().optional().describe("Project (site) name, site URL or id, if the job is about one site.") },
+      },
+      ({ project }) => {
+        const lines = [
+          `${playbook.title}${project ? ` for the Superflow site "${project}"` : ""}. Follow the playbook below.`,
+          "",
+          playbookText(playbook, options.readOnly),
+        ];
+        return message(lines, options, true);
+      },
+    );
+  }
+}
+
 export function registerPrompts(server: McpServer, options: PromptOptions): void {
   server.registerPrompt(
     "triage",
     {
-      title: "Triage open comments",
-      description: "Group a project's open comments by page and propose a priority and assignee for each, then apply after you agree.",
+      title: "Build the fix list",
+      description: "One ordered P0, P1, P2 list of what is broken on a site: agent findings by kind plus open human comments, attached where they match. Writes the order back after you agree.",
       argsSchema: {
         project: projectArg,
         since: z.string().optional().describe("Only comments created since this date or token (for example 7d or this_week)."),
@@ -106,24 +140,15 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
     },
     ({ project, since }) => {
       checkDate("since", since);
-      const listArgs = { project, status: ["open"], sort: "page", limit: 100, ...(since ? { created_after: since } : {}) };
+      const playbook = playbookNamed("triage");
+      const window = since ? { created_after: since } : {};
       const lines = [
-        `Triage the open Superflow comments on project "${project}"${since ? ` created since ${since}` : ""}.`,
+        `Build the fix list for the Superflow site "${project}"${since ? ` from comments created since ${since}` : ""}. Follow the triage playbook below.`,
         "",
-        "Steps:",
-        `1. Call superflow_list_statuses and superflow_list_members with ${json({ project })} to learn the status names and who can be assigned.`,
-        `2. Call superflow_list_comments with ${json(listArgs)}. Follow next_cursor until you have every open comment (stop at 300 and say so).`,
-        "3. Group the comments by page. For each comment propose a priority (critical, high or medium: Superflow has three) and an assignee, with a short reason. Comments that already have the right priority and assignee need no change.",
-        "4. Show the plan as one table per page with columns: comment (number and link), short text, current priority, proposed priority, proposed assignee, reason.",
+        `Use ${json({ project, ...window })} on every superflow_comment_stats and superflow_list_comments call. For example, the human comments: superflow_list_comments with ${json({ project, author_type: ["member", "guest"], status: ["open"], ...window })}.`,
+        "",
+        playbookText(playbook, options.readOnly),
       ];
-      if (options.readOnly) {
-        lines.push("5. Stop there. The table is a recommendation.");
-      } else {
-        lines.push(
-          "5. Ask the user which rows to apply. Do not change anything yet.",
-          `6. After the user says yes, group comments that get the same change and call superflow_bulk_update_comments with ${json({ comment_ids: ["4821", "4822"], project, patch: { priority: "high", assignees: ["Jen"] } })}. That is a dry run: show its result, then call it again with "dry_run": false and "confirm": true.`,
-        );
-      }
       return message(lines, options, true);
     },
   );
@@ -392,4 +417,5 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
       return message(lines, options, true);
     },
   );
+  registerPlaybookPrompts(server, options);
 }

@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | An API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 84 tools: comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
+| Tools | 85 tools: playbooks, comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -126,7 +126,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 51 write tools are not registered at all. The 33 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`).
+Set `SUPERFLOW_READ_ONLY=true` and the 51 write tools are not registered at all. The 34 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -255,29 +255,38 @@ Some admin changes are not available: a project's site URL cannot change (add ex
 
 Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Webhooks cover single changes made through the API or this server, and agent runs; not yet comments made in the Superflow toolbar, bulk updates, restores, project deletes or guest removals. Pushing a comment needs the target's ids, not names: Jira `KEY:12345` (project key and numeric project id), Asana `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`. Asana, ClickUp and Monday connections must also be set up to create items from Superflow.
 
-The server also ships eight prompts (`triage`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
+#### Playbooks
+
+| Tool | What it does |
+|---|---|
+| `superflow_use_playbook` | Gets a step-by-step plan for a job that takes several tools in order, and the model follows it: `triage` (what is broken on a site, as one ordered P0, P1, P2 list) and `fix` (fix the approved items, have a rescan verify each, report). Nothing to install: the server serves them. |
+
+In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix` and `/triage`.
+
+The server also ships nine prompts (`triage`, `fix`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
 
 ### Example prompts
 
-1. Show me open comments on usesuperflow.ai/pricing.
-2. How many unresolved comments per page on the Acme project?
-3. Which comments from guests have had no reply from us in 3 days?
-4. Resolve everything tagged `copy` on the homepage.
-5. Assign all high priority mobile comments on Acme to Jen.
-6. What did the agents find in the last run? Which ones look like false positives?
-7. Reply to comment 4821: fixed, please check.
-8. Draft a client update for Acme covering what was closed this week.
-9. Export every resolved comment on Acme from last week as a CSV.
-10. What is our median time to first reply on client comments, week by week?
-11. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
-12. Is the Superflow snippet live on acme.com yet?
-13. How many member seats do we have left, and which agent used the most AI credits this month?
-14. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
-15. Estimate a full run of the Pre-Launch pack on Acme, then run it.
-16. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
-17. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
-18. Post the open critical comments on Acme to our #design-feedback Slack channel.
-19. Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
+1. What's broken on acme-dental.com? Then fix the critical ones.
+2. Show me open comments on usesuperflow.ai/pricing.
+3. How many unresolved comments per page on the Acme project?
+4. Which comments from guests have had no reply from us in 3 days?
+5. Resolve everything tagged `copy` on the homepage.
+6. Assign all high priority mobile comments on Acme to Jen.
+7. What did the agents find in the last run? Which ones look like false positives?
+8. Reply to comment 4821: fixed, please check.
+9. Draft a client update for Acme covering what was closed this week.
+10. Export every resolved comment on Acme from last week as a CSV.
+11. What is our median time to first reply on client comments, week by week?
+12. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
+13. Is the Superflow snippet live on acme.com yet?
+14. How many member seats do we have left, and which agent used the most AI credits this month?
+15. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
+16. Estimate a full run of the Pre-Launch pack on Acme, then run it.
+17. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
+18. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
+19. Post the open critical comments on Acme to our #design-feedback Slack channel.
+20. Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
 
 More in [`examples/prompts.md`](examples/prompts.md).
 
