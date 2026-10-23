@@ -7440,6 +7440,227 @@
         }
       }
     },
+    "/analytics/team": {
+      "get": {
+        "operationId": "getTeamAnalytics",
+        "summary": "Workspace analytics: comments added and resolved, active projects (computed daily; is_stale true means the numbers are unavailable, not zero)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "description": "Default 7.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                7,
+                14,
+                30
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/analytics/people": {
+      "get": {
+        "operationId": "getPeopleAnalytics",
+        "summary": "People analytics: who commented, who resolved, who has work waiting (computed daily)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "description": "Default 7.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                7,
+                14,
+                30
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/analytics/history": {
+      "get": {
+        "operationId": "getAnalyticsHistory",
+        "summary": "All-time analytics: lifetime counts, most active projects and people (null when never computed)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/schedules": {
       "get": {
         "operationId": "listSchedules",
@@ -11036,6 +11257,21 @@
           "results"
         ],
         "additionalProperties": false
+      },
+      "AnalyticsResult": {
+        "type": "object",
+        "description": "lookback_days (team, people), is_stale, last_computed_date, and the rollup under team, people or history.",
+        "properties": {
+          "is_stale": {
+            "type": "boolean"
+          },
+          "lookback_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "is_stale"
+        ]
       },
       "FindingList": {
         "type": "object",

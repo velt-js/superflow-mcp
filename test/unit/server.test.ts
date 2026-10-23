@@ -96,6 +96,9 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   // Spec addendum v2.1.
   superflow_use_playbook: [true, false, true, false],
   superflow_import_findings: [false, false, true, false],
+  superflow_get_team_analytics: [true, false, true, false],
+  superflow_get_people_analytics: [true, false, true, false],
+  superflow_get_all_time_analytics: [true, false, true, false],
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
@@ -113,10 +116,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 86 contract tools", async () => {
+  it("registers exactly the 89 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(86);
+    expect(listed).toHaveLength(89);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -186,7 +189,7 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(34);
+    expect(READ_ONLY_COUNT).toBe(37);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
@@ -302,6 +305,30 @@ describe("tool registration", () => {
         "superflow://runs/{run}",
       ].sort(),
     );
+  });
+
+  it("hosted surface: no SUPERFLOW_ variables in the instructions or the read-only refusal", async () => {
+    const h = await connect({ readOnly: true, surface: "hosted" });
+    const instructions = h.client.getInstructions() ?? "";
+    expect(instructions).not.toContain("SUPERFLOW_");
+    expect(instructions).toContain("This connection is read-only");
+    const refused = await h.call("superflow_create_comment", { project: "p", page_url: "https://a.com/", text: "x" });
+    expect(errorOf(refused).code).toBe("forbidden");
+    expect(errorOf(refused).message).toContain("this connection was allowed to read only");
+  });
+
+  it("renamed tools answer with their new name", async () => {
+    const h = await connect({ renamedTools: { list_workspaces: "superflow_get_me" } });
+    const result = await h.call("list_workspaces", {});
+    expect(errorOf(result).message).toBe("list_workspaces was renamed to superflow_get_me.");
+  });
+
+  it("reports every tool call to onToolCall, and a throwing reporter never fails the call", async () => {
+    const events: Array<{ tool: string; ok: boolean }> = [];
+    const h = await connect({ onToolCall: (event) => { events.push(event); throw new Error("telemetry down"); } });
+    const result = await h.call("superflow_use_playbook", { name: "fix" });
+    expect(result.isError).toBeFalsy();
+    expect(events).toEqual([expect.objectContaining({ tool: "superflow_use_playbook", ok: true })]);
   });
 
   it("says so in the instructions when read-only", async () => {

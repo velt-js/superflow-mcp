@@ -176,6 +176,12 @@ export const operations = {
     pathParams: ["agent"],
     queryParams: [],
   },
+  getAnalyticsHistory: {
+    method: "GET",
+    path: "/analytics/history",
+    pathParams: [],
+    queryParams: [],
+  },
   getComment: {
     method: "GET",
     path: "/comments/{comment}",
@@ -236,6 +242,12 @@ export const operations = {
     pathParams: ["project", "page"],
     queryParams: [],
   },
+  getPeopleAnalytics: {
+    method: "GET",
+    path: "/analytics/people",
+    pathParams: [],
+    queryParams: ["lookback_days"],
+  },
   getProject: {
     method: "GET",
     path: "/projects/{project}",
@@ -247,6 +259,12 @@ export const operations = {
     path: "/runs/{run}",
     pathParams: ["run"],
     queryParams: [],
+  },
+  getTeamAnalytics: {
+    method: "GET",
+    path: "/analytics/team",
+    pathParams: [],
+    queryParams: ["lookback_days"],
   },
   getWebhook: {
     method: "GET",
@@ -561,6 +579,12 @@ export const operations = {
     queryParams: [],
   },
 } as const;
+
+/**
+ * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
+ * document). The hosted server compares it with its own API snapshot to catch a stale pin.
+ */
+export const OPENAPI_SHA256 = "eeb2ce3f177d0efbfdc7f4dc9621a6e7fc7987942f52692b5db8fefc7d117f9b";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

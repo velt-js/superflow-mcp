@@ -1,6 +1,7 @@
 // Tool registry. The order here is the order clients see in tools/list.
 import type { z } from "zod";
 import { agentTools } from "./agents.ts";
+import { analyticsTools } from "./analytics.ts";
 import { commentTools } from "./comments.ts";
 import type { ToolDefinition } from "./define.ts";
 import { findingTools } from "./findings.ts";
@@ -34,6 +35,7 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   ...statusTools,
   ...tagTools,
   ...organizationTools,
+  ...analyticsTools,
   ...reviewLinkTools,
   ...notificationTools,
   // Phase 3: agents, runs, schedules, integrations, webhooks.

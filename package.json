@@ -25,6 +25,13 @@
   "bin": {
     "superflow-mcp": "dist/index.js"
   },
+  "exports": {
+    "./server": {
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "README.md",
@@ -39,7 +46,7 @@
   },
   "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "build": "tsup",
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsup",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm typecheck && node scripts/check-copy.mjs",
     "test": "vitest run",
@@ -51,7 +58,8 @@
     "evals": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/run-evals.ts",
     "evals:tools": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-tool-choice.ts",
     "seed:staging": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/seed-staging.ts",
-    "smoke:stdio": "node scripts/smoke-stdio.mjs"
+    "smoke:stdio": "node scripts/smoke-stdio.mjs",
+    "smoke:lib": "node scripts/smoke-lib.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

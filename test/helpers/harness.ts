@@ -139,6 +139,9 @@ export interface Harness {
 export interface HarnessOptions {
   readOnly?: boolean;
   defaultProject?: string;
+  surface?: "stdio" | "hosted";
+  renamedTools?: Record<string, string>;
+  onToolCall?: (event: { tool: string; ok: boolean; durationMs: number }) => void;
 }
 
 export function testConfig(options: HarnessOptions = {}): Config {
@@ -163,7 +166,14 @@ export async function connect(options: HarnessOptions = {}): Promise<Harness> {
       sleeps.push(ms);
     },
   });
-  const server = createServer({ config, client: api, logger: silentLogger });
+  const server = createServer({
+    config,
+    client: api,
+    logger: silentLogger,
+    ...(options.surface ? { surface: options.surface } : {}),
+    ...(options.renamedTools ? { renamedTools: options.renamedTools } : {}),
+    ...(options.onToolCall ? { onToolCall: options.onToolCall } : {}),
+  });
   const client = new Client({ name: "superflow-mcp-tests", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
