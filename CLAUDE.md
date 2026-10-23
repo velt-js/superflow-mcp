@@ -16,7 +16,11 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
 
 - **Never call `fetch` outside `src/client/api.ts`.** Every request goes through
   `ApiClient.call(operationId, ...)` so auth, timeouts, retries and error mapping stay
-  in one place.
+  in one place. The OAuth calls of `login` (`src/auth/`) go through `oauthRequest` in the
+  same file.
+- **Never log or print a token.** `src/auth/` holds access and refresh tokens; the
+  credential store keeps them out of argv where the platform allows (secret-tool reads
+  stdin).
 - **Never log the API key**, request bodies or comment text. Log method, operationId,
   status and duration at debug level only.
 - **Logs go to stderr only.** stdout carries the MCP protocol. A stray `console.log`

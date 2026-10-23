@@ -29,6 +29,11 @@ API serves today; check, report and billing-mode tools follow when their engines
   deletes; one invalid finding refuses the batch and every problem comes back in
   `error.issues`. The `push_my_review` playbook and prompt walk through it.
 - API errors carry `issues` (every validation problem) through to the tool result.
+- `npx superflow-mcp login`: sign in (or sign up) in the browser instead of pasting a key.
+  OAuth 2.1 with dynamic client registration and PKCE on a loopback redirect; the sign-in is
+  saved in the macOS Keychain, the Linux Secret Service, or a file only you can read, and
+  the access token is renewed while the server runs (one retry after a 401).
+  `npx superflow-mcp logout` revokes and removes it. `SUPERFLOW_API_KEY` still wins.
 - Analytics (89 tools): `superflow_get_team_analytics`, `superflow_get_people_analytics`,
   `superflow_get_all_time_analytics`, over the new `/v1/analytics` routes. A stale rollup is
   reported as unavailable, never as zero activity.

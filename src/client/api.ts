@@ -82,6 +82,19 @@ export interface ApiClientOptions {
   sleep?: (ms: number) => Promise<void>;
   /** Per-request timeout in ms. Defaults per operation (30 s, or 60 s for stats, export and bulk). */
   timeoutMs?: number;
+  /**
+   * Supplies the Bearer token per request instead of `apiKey`, for a signed-in session
+   * (`superflow-mcp login`): access tokens expire after an hour and are refreshed.
+   */
+  tokenProvider?: TokenProvider;
+}
+
+/** Hands the client a current access token, and a new one after a 401. */
+export interface TokenProvider {
+  /** A token that is valid now (refreshed first when it is about to expire). */
+  token(): Promise<string>;
+  /** Called once after a 401: a fresh token, or null when the session cannot be renewed. */
+  refresh(): Promise<string | null>;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -189,6 +202,7 @@ export class ApiClient {
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly timeoutOverride: number | undefined;
+  private readonly tokenProvider: TokenProvider | undefined;
 
   constructor(options: ApiClientOptions) {
     this.apiKey = options.apiKey;
@@ -197,6 +211,7 @@ export class ApiClient {
     this.fetchImpl = options.fetch ?? ((input, init) => fetch(input, init));
     this.sleep = options.sleep ?? realSleep;
     this.timeoutOverride = options.timeoutMs;
+    this.tokenProvider = options.tokenProvider;
   }
 
   /** Builds the request URL for an operation: path template filled and URL-encoded, query comma-joined. */
@@ -231,7 +246,7 @@ export class ApiClient {
     const url = this.buildUrl(operationId, args);
     const timeoutMs = this.timeoutOverride ?? (SLOW_OPERATIONS.has(operationId) ? SLOW_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${this.tokenProvider ? await this.tokenProvider.token() : this.apiKey}`,
       Accept: "application/json",
       "User-Agent": USER_AGENT,
       // Marks the call as made by this package, so the API's audit log records via: mcp.
@@ -245,6 +260,7 @@ export class ApiClient {
     // 5xx and network errors are retried only when a repeat cannot double-apply a change.
     const safeToRepeat = method === "GET" || (method === "POST" && hasIdempotencyKey(args.body));
 
+    let refreshed = false;
     for (let attempt = 0; ; attempt++) {
       const started = Date.now();
       let status = 0;
@@ -296,6 +312,17 @@ export class ApiClient {
         }
       }
 
+      if (status === 401 && this.tokenProvider && !refreshed) {
+        // A signed-in session's access token expired: renew it once and repeat the call.
+        // A 401 was not run, so any method may repeat it.
+        refreshed = true;
+        const fresh = await this.tokenProvider.refresh();
+        if (fresh) {
+          headers.Authorization = `Bearer ${fresh}`;
+          attempt--;
+          continue;
+        }
+      }
       if (status === 429 && attempt < MAX_RETRIES) {
         // A rate-limited request was not run, so any method may repeat it.
         await this.sleep(Math.min(retryAfterMs ?? BACKOFF_MS[attempt] ?? 1500, RETRY_AFTER_CAP_MS));
@@ -377,4 +404,55 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
   if (!hint) hint = FALLBACK_HINTS[knownCode] ?? "";
 
   return new SuperflowApiError({ status, code, message, hint, candidates, ...(preview ? { preview } : {}), ...(issues.length > 0 ? { issues } : {}) });
+}
+
+/** One request to the OAuth server (`superflow-mcp login`, token refresh, revoke). */
+export interface OAuthRequest {
+  url: string;
+  method: "GET" | "POST";
+  /** Sent as application/x-www-form-urlencoded (the token and revoke endpoints). */
+  form?: Record<string, string>;
+  /** Sent as JSON (client registration). */
+  json?: unknown;
+  fetch?: typeof fetch;
+  timeoutMs?: number;
+}
+
+/**
+ * Sends one OAuth request and returns the status and parsed JSON body (null when the body
+ * is empty or not JSON). It lives here so every network call stays in this file. Never
+ * logs: the bodies carry codes and tokens.
+ */
+export async function oauthRequest(request: OAuthRequest): Promise<{ status: number; body: Record<string, unknown> | null }> {
+  const fetchImpl = request.fetch ?? ((input: string | URL | Request, init?: RequestInit) => fetch(input, init));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  try {
+    const headers: Record<string, string> = { Accept: "application/json", "User-Agent": USER_AGENT };
+    let body: string | undefined;
+    if (request.form) {
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
+      body = new URLSearchParams(request.form).toString();
+    } else if (request.json !== undefined) {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(request.json);
+    }
+    const response = await fetchImpl(request.url, {
+      method: request.method,
+      headers,
+      ...(body !== undefined ? { body } : {}),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      const value: unknown = text ? JSON.parse(text) : null;
+      parsed = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+    } catch {
+      parsed = null;
+    }
+    return { status: response.status, body: parsed };
+  } finally {
+    clearTimeout(timer);
+  }
 }
