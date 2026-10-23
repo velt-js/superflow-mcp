@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { agentTools } from "./agents.ts";
 import { commentTools } from "./comments.ts";
 import type { ToolDefinition } from "./define.ts";
+import { findingTools } from "./findings.ts";
 import { integrationTools } from "./integrations.ts";
 import { lookupTools } from "./lookups.ts";
 import { memberTools } from "./members.ts";
@@ -38,6 +39,8 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   // Phase 3: agents, runs, schedules, integrations, webhooks.
   ...agentTools,
   ...runTools,
+  // Addendum: findings from your own agent.
+  ...findingTools,
   ...scheduleTools,
   ...integrationTools,
   ...webhookTools,

@@ -254,6 +254,12 @@ export const operations = {
     pathParams: ["webhook"],
     queryParams: [],
   },
+  importFindings: {
+    method: "POST",
+    path: "/projects/{project}/findings/import",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   inviteGuests: {
     method: "POST",
     path: "/projects/{project}/guests",

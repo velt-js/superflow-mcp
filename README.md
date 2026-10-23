@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | An API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 85 tools: playbooks, comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
+| Tools | 86 tools: playbooks, comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -126,7 +126,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 51 write tools are not registered at all. The 34 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`).
+Set `SUPERFLOW_READ_ONLY=true` and the 52 write tools are not registered at all. The 34 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`, `ingest`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -259,11 +259,17 @@ Some agent and integration features are not available yet: a run cannot be cance
 
 | Tool | What it does |
 |---|---|
-| `superflow_use_playbook` | Gets a step-by-step plan for a job that takes several tools in order, and the model follows it: `triage` (what is broken on a site, as one ordered P0, P1, P2 list) and `fix` (fix the approved items, have a rescan verify each, report). Nothing to install: the server serves them. |
+| `superflow_use_playbook` | Gets a step-by-step plan for a job that takes several tools in order, and the model follows it: `triage` (what is broken on a site, as one ordered P0, P1, P2 list), `fix` (fix the approved items, have a rescan verify each, report) and `push_my_review` (push your own review's findings in). Nothing to install: the server serves them. |
 
-In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix` and `/triage`.
+#### Your own agent's findings
 
-The server also ships nine prompts (`triage`, `fix`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
+| Tool | What it does |
+|---|---|
+| `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
+
+In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix`, `/triage` and `/push_my_review`.
+
+The server also ships ten prompts (`triage`, `fix`, `push_my_review`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
 
 ### Example prompts
 
@@ -374,6 +380,7 @@ The authenticated endpoint never serves these two, and this endpoint never serve
 | `integrations:write` | Get connect links, set default projects, push comments to a tracker and post to Slack (local package and REST API). |
 | `webhooks:read` | Read webhook endpoints and deliveries (local package and REST API). |
 | `webhooks:write` | Create, change, test and delete webhook endpoints (local package and REST API). |
+| `ingest` | Push your own review's findings in as agent comments; creates or merges, never deletes (local package and REST API). |
 
 ## Migrating from BugHerd
 

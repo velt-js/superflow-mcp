@@ -124,6 +124,8 @@ export interface ToolErrorShape {
   message: string;
   hint: string;
   candidates: unknown[];
+  /** Every validation problem, when the API listed more than one. */
+  issues?: Array<{ field: string; reason: string }>;
 }
 
 /** Builds an isError tool result in the contract's error shape. Never throws. */
@@ -159,6 +161,7 @@ export function errorResult(error: unknown): CallToolResult {
       .join(", ");
     summary += ` Candidates: ${names}${shape.candidates.length > 5 ? ", and more" : ""}.`;
   }
+  if (shape.issues && shape.issues.length > 1) summary += ` ${shape.issues.length} problems, listed in error.issues: fix them all before retrying.`;
   const data = { error: shape };
   return {
     isError: true,

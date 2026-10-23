@@ -95,6 +95,7 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_list_webhook_deliveries: [true, false, true, false],
   // Spec addendum v2.1.
   superflow_use_playbook: [true, false, true, false],
+  superflow_import_findings: [false, false, true, false],
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
@@ -112,10 +113,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 85 contract tools", async () => {
+  it("registers exactly the 86 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(85);
+    expect(listed).toHaveLength(86);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -287,6 +288,7 @@ describe("tool registration", () => {
         "stale_threads",
         "triage",
         "fix",
+        "push_my_review",
       ].sort(),
     );
     const { resources } = await h.client.listResources();
