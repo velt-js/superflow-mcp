@@ -188,6 +188,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  getBilling: {
+    method: "GET",
+    path: "/billing",
+    pathParams: [],
+    queryParams: [],
+  },
   getComment: {
     method: "GET",
     path: "/comments/{comment}",
@@ -602,7 +608,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "d18dccac4d87d1bf6fe3f456f19bcb70cc18714ce62957fea55e6187a9209f2f";
+export const OPENAPI_SHA256 = "399fcbaebf05c81ab66fbc3f81825ff38932d60c3b133d367f1946434cda1cb2";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

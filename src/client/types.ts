@@ -479,6 +479,19 @@ export interface RevokeReviewLinkResponse {
   id: string;
 }
 
+export interface Billing {
+  plan: string | null;
+  valid: boolean;
+  billing_status: string | null;
+  trial_ends_at: string | null;
+  period_ends_at: string | null;
+  subscription: { status: string | null; interval: string | null; owned_by_you: boolean | null; live_count: number } | null;
+  /** False when Stripe could not be asked; then next_step is manage. */
+  subscription_checked: boolean;
+  next_step: "subscribe" | "manage";
+  manage_url: string;
+}
+
 export interface ApiKey {
   id: string;
   kind: "api_key" | "oauth";

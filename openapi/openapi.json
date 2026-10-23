@@ -5744,6 +5744,69 @@
         }
       }
     },
+    "/billing": {
+      "get": {
+        "operationId": "getBilling",
+        "summary": "The workspace plan, the live subscription and where to change it (read only; buying happens in the portal)",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Billing"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/api-keys": {
       "get": {
         "operationId": "listApiKeys",
@@ -10477,6 +10540,138 @@
           "items",
           "next_cursor",
           "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "Billing": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "False once a trial ended or a paid plan was cancelled or unpaid"
+          },
+          "billing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "interval": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owned_by_you": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "live_count": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "status",
+                  "interval",
+                  "owned_by_you",
+                  "live_count"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_checked": {
+            "type": "boolean",
+            "description": "False when Stripe could not be asked; then next_step is manage"
+          },
+          "next_step": {
+            "type": "string",
+            "enum": [
+              "subscribe",
+              "manage"
+            ]
+          },
+          "manage_url": {
+            "type": "string",
+            "description": "The portal billing page, where plans are bought and changed"
+          }
+        },
+        "required": [
+          "plan",
+          "valid",
+          "billing_status",
+          "trial_ends_at",
+          "period_ends_at",
+          "subscription",
+          "subscription_checked",
+          "next_step",
+          "manage_url"
         ],
         "additionalProperties": false
       },

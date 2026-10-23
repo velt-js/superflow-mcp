@@ -102,6 +102,8 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_list_api_keys: [true, false, true, false],
   superflow_create_api_key: [false, false, false, false],
   superflow_revoke_api_key: [false, true, true, false],
+  superflow_get_billing: [true, false, true, false],
+  superflow_get_payment_link: [true, false, true, false],
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
@@ -119,10 +121,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 92 contract tools", async () => {
+  it("registers exactly the 94 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(92);
+    expect(listed).toHaveLength(94);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -192,7 +194,7 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(38);
+    expect(READ_ONLY_COUNT).toBe(40);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
