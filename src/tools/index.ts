@@ -9,6 +9,7 @@ import { memberTools } from "./members.ts";
 import { notificationTools } from "./notifications.ts";
 import { organizationTools } from "./organization.ts";
 import { pageTools } from "./pages.ts";
+import { playbookTools } from "./playbooks.ts";
 import { projectTools } from "./projects.ts";
 import { reviewLinkTools } from "./review-links.ts";
 import { runTools } from "./runs.ts";
@@ -20,6 +21,8 @@ import { webhookTools } from "./webhooks.ts";
 export type { ToolContext, ToolDefinition, ToolHints } from "./define.ts";
 
 export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
+  // Playbooks first: for multi-step jobs the model should read one before anything else.
+  ...playbookTools,
   // Phase 1: lookups and comments.
   ...lookupTools,
   ...commentTools,

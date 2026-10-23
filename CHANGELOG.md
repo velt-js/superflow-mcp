@@ -18,8 +18,16 @@ API serves today; check, report and billing-mode tools follow when their engines
   or `broken-link`). Rows carry `rule_key` and the agent's `suggested_fix`.
 - `superflow_update_comment` takes `rule_key` to attach a human comment to a rule
   (`null` detaches it).
+- `superflow_use_playbook` (85 tools): step-by-step plans the server serves, built from
+  `skills/<name>/SKILL.md` by `pnpm playbooks`. `triage` builds one ordered P0, P1, P2 fix
+  list from agent findings and human comments; `fix` fixes the approved items (one subagent
+  per item in Claude Code, up to 3 at a time), verifies each with a rescan, and reports.
+- The `fix` prompt, and the server instructions point to the playbooks.
+- `superflow_comment_stats` takes `group_by: "rule_key"`.
 
 ### Changed
+- The `triage` prompt follows the triage playbook: agent findings by kind plus human
+  comments, attached where they match.
 - Every request sends `X-Superflow-Client`, so the API's audit log records the package's
   writes as made by the MCP.
 - `superflow_run_agents`: the API allows 10 runs per project per hour and answers
