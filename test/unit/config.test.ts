@@ -30,9 +30,9 @@ describe("loadConfig", () => {
     });
   });
 
-  it("names SUPERFLOW_API_KEY when it is missing", () => {
+  it("offers login and names SUPERFLOW_API_KEY when there is no key", () => {
     expect(() => loadConfig({})).toThrow(ConfigError);
-    expect(() => loadConfig({ SUPERFLOW_API_KEY: "  " })).toThrow(/SUPERFLOW_API_KEY is not set/);
+    expect(() => loadConfig({ SUPERFLOW_API_KEY: "  " })).toThrow(/Run npx superflow-mcp login.*SUPERFLOW_API_KEY/);
   });
 
   it("rejects plain http except for localhost", () => {

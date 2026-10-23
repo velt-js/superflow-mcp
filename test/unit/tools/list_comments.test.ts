@@ -47,6 +47,15 @@ describe(TOOL, () => {
     });
   });
 
+  it("filters by rule_key, comma separated like every list filter", async () => {
+    const finding = { ...compactComment, author: "Image Inspector (agent)", rule_key: "image-alt", suggested_fix: "Add alt text" };
+    on("get", "/comments", ok(list([finding])));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental", rule_key: ["image-alt", "image-broken"] });
+    expect(recorded[0]?.query).toMatchObject({ rule_key: "image-alt,image-broken" });
+    expect(data(result)).toMatchObject({ items: [{ rule_key: "image-alt", suggested_fix: "Add alt text" }] });
+  });
+
   it("passes cursor, sort, limit and fields through", async () => {
     on("get", "/comments", ok(list([])));
     const h = await connect();

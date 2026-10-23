@@ -2,10 +2,12 @@
 // 1. With SUPERFLOW_API_KEY set, it answers initialize + tools/list; prints the tool count.
 // 2. Without SUPERFLOW_API_KEY, it exits non-zero with one stderr line naming the variable.
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
-const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 84);
+const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 94);
 const TIMEOUT_MS = 15_000;
 
 function cleanEnv(extra) {
@@ -63,7 +65,9 @@ function listTools() {
 
 function runWithoutKey() {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [ENTRY], { env: cleanEnv({}), stdio: ["pipe", "pipe", "pipe"] });
+    // A saved `login` on this machine must not turn the no-key check into a real start.
+    const noSession = { SUPERFLOW_CREDENTIALS_STORE: "file", SUPERFLOW_CREDENTIALS_FILE: join(tmpdir(), `superflow-mcp-smoke-${process.pid}.json`) };
+    const child = spawn(process.execPath, [ENTRY], { env: cleanEnv(noSession), stdio: ["pipe", "pipe", "pipe"] });
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error("the CLI did not exit without SUPERFLOW_API_KEY"));

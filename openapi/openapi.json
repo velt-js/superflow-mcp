@@ -1708,6 +1708,9 @@
             "$ref": "#/components/parameters/filter_agent_run"
           },
           {
+            "$ref": "#/components/parameters/filter_rule_key"
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -2093,6 +2096,9 @@
             "$ref": "#/components/parameters/filter_agent_run"
           },
           {
+            "$ref": "#/components/parameters/filter_rule_key"
+          },
+          {
             "name": "group_by",
             "in": "query",
             "required": true,
@@ -2106,6 +2112,7 @@
                 "author_type",
                 "page",
                 "tag",
+                "rule_key",
                 "project",
                 "source",
                 "device",
@@ -2274,6 +2281,9 @@
           },
           {
             "$ref": "#/components/parameters/filter_agent_run"
+          },
+          {
+            "$ref": "#/components/parameters/filter_rule_key"
           },
           {
             "name": "format",
@@ -2759,6 +2769,17 @@
                     },
                     "required": [],
                     "additionalProperties": false
+                  },
+                  "rule_key": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Attach the comment to a rule, such as broken-link, so it lists and resolves with that rule's findings. null detaches it."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [],
@@ -5723,6 +5744,296 @@
         }
       }
     },
+    "/billing": {
+      "get": {
+        "operationId": "getBilling",
+        "summary": "The workspace plan, the live subscription and where to change it (read only; buying happens in the portal)",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Billing"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/api-keys": {
+      "get": {
+        "operationId": "listApiKeys",
+        "summary": "List your API keys and sign-ins in this workspace (never the tokens)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createApiKey",
+        "summary": "Create an API key (scopes a subset of this key, never outliving it; the token is shown once)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:write"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "expires_in_days": {
+                    "type": "integer",
+                    "description": "1 to 365. Required when the calling key expires."
+                  }
+                },
+                "required": [
+                  "label",
+                  "scopes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/api-keys/{key}": {
+      "delete": {
+        "operationId": "revokeApiKey",
+        "summary": "Revoke one of your API keys or sign-ins (it stops working at once)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:write"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:write",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "key URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedApiKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/me/notifications": {
       "get": {
         "operationId": "getNotificationSettings",
@@ -6800,7 +7111,7 @@
     "/runs": {
       "post": {
         "operationId": "runAgents",
-        "summary": "Run agents (one scan; spends AI credits)",
+        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per rolling hour; past that 429 with Retry-After.",
         "tags": [
           "runs"
         ],
@@ -7196,6 +7507,422 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FindingList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/findings/import": {
+      "post": {
+        "operationId": "importFindings",
+        "summary": "Import findings from your own agent (they become agent comments under its name; creates or merges, never deletes)",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "ingest"
+            ]
+          }
+        ],
+        "x-required-scope": "ingest",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "Your agent, 2 to 40 lowercase letters, digits and dashes (stache-review). Its comments post under agt_sfx_<source>."
+                  },
+                  "source_name": {
+                    "type": "string",
+                    "description": "Display name. Default: source."
+                  },
+                  "min_confidence": {
+                    "type": "integer",
+                    "description": "Raise the confidence floor (default 50); it cannot be lowered."
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "page_url": {
+                          "type": "string",
+                          "description": "A page on this project's site (its domains and subdomains)."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "The problem, in plain words."
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "critical",
+                            "high",
+                            "medium",
+                            "low",
+                            "info"
+                          ],
+                          "description": "info is accepted and dropped."
+                        },
+                        "rule_key": {
+                          "type": "string",
+                          "description": "A Superflow rule key when the kind matches (image-alt, broken-link, ...), else your own kind starting with ext-."
+                        },
+                        "fix_type": {
+                          "type": "string",
+                          "enum": [
+                            "content",
+                            "design",
+                            "code"
+                          ]
+                        },
+                        "confidence": {
+                          "type": "integer",
+                          "description": "0 to 100. Below the floor: dropped."
+                        },
+                        "suggestion": {
+                          "type": "string",
+                          "description": "The suggested fix."
+                        },
+                        "anchor": {
+                          "type": "object",
+                          "properties": {
+                            "selector": {
+                              "type": "string"
+                            },
+                            "xpath": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [],
+                          "additionalProperties": false
+                        },
+                        "fingerprint": {
+                          "type": "string",
+                          "description": "Your own stable id for the finding; replaces kind, page and spot in dedup."
+                        },
+                        "external_id": {
+                          "type": "string",
+                          "description": "Your id, stored on the comment."
+                        }
+                      },
+                      "required": [
+                        "page_url",
+                        "title",
+                        "description",
+                        "severity",
+                        "rule_key",
+                        "fix_type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "source",
+                  "findings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/analytics/team": {
+      "get": {
+        "operationId": "getTeamAnalytics",
+        "summary": "Workspace analytics: comments added and resolved, active projects (computed daily; is_stale true means the numbers are unavailable, not zero)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "description": "Default 7.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                7,
+                14,
+                30
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/analytics/people": {
+      "get": {
+        "operationId": "getPeopleAnalytics",
+        "summary": "People analytics: who commented, who resolved, who has work waiting (computed daily)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "description": "Default 7.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                7,
+                14,
+                30
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/analytics/history": {
+      "get": {
+        "operationId": "getAnalyticsHistory",
+        "summary": "All-time analytics: lifetime counts, most active projects and people (null when never computed)",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "analytics:read"
+            ]
+          }
+        ],
+        "x-required-scope": "analytics:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResult"
                 }
               }
             }
@@ -9816,6 +10543,303 @@
         ],
         "additionalProperties": false
       },
+      "Billing": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "False once a trial ended or a paid plan was cancelled or unpaid"
+          },
+          "billing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "interval": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owned_by_you": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "live_count": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "status",
+                  "interval",
+                  "owned_by_you",
+                  "live_count"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_checked": {
+            "type": "boolean",
+            "description": "False when Stripe could not be asked; then next_step is manage"
+          },
+          "next_step": {
+            "type": "string",
+            "enum": [
+              "subscribe",
+              "manage"
+            ]
+          },
+          "manage_url": {
+            "type": "string",
+            "description": "The portal billing page, where plans are bought and changed"
+          }
+        },
+        "required": [
+          "plan",
+          "valid",
+          "billing_status",
+          "trial_ends_at",
+          "period_ends_at",
+          "subscription",
+          "subscription_checked",
+          "next_step",
+          "manage_url"
+        ],
+        "additionalProperties": false
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "key_ id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "api_key",
+              "oauth"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "client_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The app an OAuth sign-in was given to"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The key making this request"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "client_name",
+          "scopes",
+          "created_at",
+          "last_used_at",
+          "expires_at",
+          "current"
+        ],
+        "additionalProperties": false
+      },
+      "ApiKeyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKey"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "total",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedApiKey": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ApiKey"
+          },
+          "token": {
+            "type": "string",
+            "description": "sf_pat_ token, shown once"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "token",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "RevokedApiKey": {
+        "type": "object",
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The calling key revoked itself"
+          }
+        },
+        "required": [
+          "revoked",
+          "id",
+          "current"
+        ],
+        "additionalProperties": false
+      },
       "ReviewLink": {
         "type": "object",
         "properties": {
@@ -10659,6 +11683,182 @@
           "applied_filters"
         ],
         "additionalProperties": false
+      },
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "agt_sfx_<source>"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ],
+            "additionalProperties": false
+          },
+          "run_id": {
+            "type": "string",
+            "description": "run_ id of the import (list_runs shows it; agent_run filters its comments)"
+          },
+          "received": {
+            "type": "integer"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "merged": {
+            "type": "integer"
+          },
+          "dropped": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "install": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_installed",
+                  "installed",
+                  "verified"
+                ]
+              },
+              "installed": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "installed"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "created",
+                    "merged",
+                    "dropped",
+                    "failed"
+                  ]
+                },
+                "comment_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rule_key": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "resolved"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "below_confidence_floor",
+                    "info_severity",
+                    "write_failed",
+                    "claimed_by_another_import"
+                  ]
+                }
+              },
+              "required": [
+                "index",
+                "outcome",
+                "comment_id",
+                "rule_key"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "project",
+          "source",
+          "run_id",
+          "received",
+          "created",
+          "merged",
+          "dropped",
+          "failed",
+          "install",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsResult": {
+        "type": "object",
+        "description": "lookback_days (team, people), is_stale, last_computed_date, and the rollup under team, people or history.",
+        "properties": {
+          "is_stale": {
+            "type": "boolean"
+          },
+          "lookback_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "is_stale"
+        ]
       },
       "FindingList": {
         "type": "object",
@@ -11528,6 +12728,26 @@
               "preview": {
                 "type": "object",
                 "description": "needs_confirmation only: what the request would do. Bulk: { would_update, sample }. Deletes and removals: the entity and the counts it affects."
+              },
+              "issues": {
+                "type": "array",
+                "description": "invalid only, when a request has more than one problem: up to 20 { field, reason } pairs, field written like findings[37].fix_type.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }
@@ -11819,6 +13039,28 @@
               }
             ]
           },
+          "rule_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The rule key the comment carries: an agent finding's kind (image-alt, broken-link, ...) or one a person attached with updateComment rule_key."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggested_fix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "An agent finding's suggested fix, cut to 300 characters. Null for other comments."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "url": {
             "type": "string",
             "description": "Deep link that opens the thread"
@@ -11841,6 +13083,8 @@
           "device",
           "age_days",
           "last_activity_at",
+          "rule_key",
+          "suggested_fix",
           "url"
         ],
         "additionalProperties": false
@@ -12194,6 +13438,17 @@
               "extension"
             ]
           },
+          "rule_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The rule key the comment carries: an agent finding's kind or one a person attached."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "agent": {
             "anyOf": [
               {
@@ -12241,6 +13496,39 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "issue_type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The finding's issue type, as the agent wrote it."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "problem": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The problem, in the agent's words."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "suggested_fix": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The agent's suggested fix."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -12248,7 +13536,10 @@
                   "name",
                   "run_id",
                   "severity",
-                  "confidence"
+                  "confidence",
+                  "issue_type",
+                  "problem",
+                  "suggested_fix"
                 ],
                 "additionalProperties": false
               },
@@ -12379,6 +13670,7 @@
           "screenshot_url",
           "metadata",
           "source",
+          "rule_key",
           "agent",
           "external_links",
           "attachments",
@@ -12890,7 +14182,8 @@
                 "integrations:read",
                 "integrations:write",
                 "webhooks:read",
-                "webhooks:write"
+                "webhooks:write",
+                "ingest"
               ]
             }
           },
@@ -13859,6 +15152,20 @@
         "schema": {
           "type": "string"
         }
+      },
+      "filter_rule_key": {
+        "name": "rule_key",
+        "in": "query",
+        "required": false,
+        "description": "Rule keys (image-alt, image-broken, broken-link, ...; aliases such as link-broken are accepted). Matches agent findings of that kind and comments a person attached to it. Comma separated, or repeated.",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": false
       }
     },
     "responses": {

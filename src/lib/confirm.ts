@@ -53,6 +53,12 @@ export const CONFIRM_DELETE_TAG_MESSAGE =
 export const CONFIRM_MERGE_TAGS_MESSAGE =
   "Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one, and the first tag is deleted. If the user says yes, call superflow_merge_tags again with confirm: true.";
 
+export const CONFIRM_CREATE_API_KEY_MESSAGE =
+  "Nothing was created. Show the user the label, scopes and expiry, and ask whether to create the key. Its token will appear once, in this conversation. If the user says yes, call superflow_create_api_key again with confirm: true.";
+
+export const CONFIRM_REVOKE_API_KEY_MESSAGE =
+  "Nothing was revoked. Show the user the key, and ask whether to revoke it. Anything using it stops working at once. If the user says yes, call superflow_revoke_api_key again with confirm: true.";
+
 export const CONFIRM_REVOKE_REVIEW_LINK_MESSAGE =
   "Nothing was revoked. Show the user the link and its project, and ask whether to revoke it. Anyone using the link loses access. If the user says yes, call superflow_revoke_review_link again with confirm: true.";
 

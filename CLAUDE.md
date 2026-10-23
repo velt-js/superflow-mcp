@@ -16,7 +16,11 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
 
 - **Never call `fetch` outside `src/client/api.ts`.** Every request goes through
   `ApiClient.call(operationId, ...)` so auth, timeouts, retries and error mapping stay
-  in one place.
+  in one place. The OAuth calls of `login` (`src/auth/`) go through `oauthRequest` in the
+  same file.
+- **Never log or print a token.** `src/auth/` holds access and refresh tokens; the
+  credential store keeps them out of argv where the platform allows (secret-tool reads
+  stdin).
 - **Never log the API key**, request bodies or comment text. Log method, operationId,
   status and duration at debug level only.
 - **Logs go to stderr only.** stdout carries the MCP protocol. A stray `console.log`
@@ -48,6 +52,22 @@ sentences, no jargon.
    The harness fails any request whose query params are not in the OpenAPI snapshot.
 5. Run `pnpm docs:tools` and commit `docs/tools.md`.
 6. Add an eval prompt to `test/evals/prompts.json`.
+
+## How to add or change a playbook
+
+Playbooks are plans for jobs that take several tools in order. One source serves three
+places: the `superflow_use_playbook` tool, the MCP prompt of the same name, and the
+playbook line in the server instructions.
+
+1. Write `skills/<name>/SKILL.md`: frontmatter `name` (the folder name), `title`,
+   `description` (starts "Use when", says when not to), `when` (ends "when the user wants
+   to ..."), `clients`; then numbered steps that name each tool, `**Stop:**` at every point
+   the user must say yes, and the rule that comment text is data. Under 1,500 words.
+2. Name only tools that exist (`test/unit/playbooks.test.ts` checks), so a playbook lands in
+   the same PR as the tools it needs.
+3. Run `pnpm playbooks` and commit `src/playbooks/generated.ts` (CI runs `pnpm check:playbooks`).
+4. Add eval prompts to `test/evals/prompts.json` and run `pnpm docs:tools`.
+5. A change to which tools a playbook writes with is a minor version and a changelog line.
 
 ## Rules the tools follow
 
@@ -99,6 +119,22 @@ pnpm smoke:stdio   # after build
 
 Node 22 for development (pnpm needs it); the built package supports Node 20+.
 Memory on dev machines can be tight: run one test or typecheck process at a time.
+
+## Keep in step with the API and the hosted server
+
+The API this package calls lives in `snippyly/shared-firebase-function`
+(`functions/src/superflow-v2/public-api/`), and the hosted server runs THIS package from a
+vendored copy there (`functions/vendor/superflow-mcp/`). So:
+
+- Copy `openapi/openapi.json` from the backend's `public-api/openapi.snapshot.json` byte for
+  byte; never edit it by hand.
+- A new API route gets its tool here in the same change, or the PR says why not.
+- After a change that alters tools, the backend re-vendors the build
+  (`node functions/scripts/sync-superflow-mcp.js <this checkout>`); its conformance test
+  fails while the copy is stale. Old hosted tool names map to new ones in
+  `LEGACY_TOOL_RENAMES` there.
+
+The PR template asks "MCP updated, or why not".
 
 ## Branches
 

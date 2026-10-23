@@ -326,3 +326,41 @@ describe("logging", () => {
     expect(quiet).toEqual([]);
   });
 });
+
+describe("ApiClient with a token provider (superflow-mcp login)", () => {
+  const meBody = () => new Response(JSON.stringify({ member: { id: "u" } }), { status: 200, headers: { "content-type": "application/json" } });
+  const unauthorized = () => new Response(JSON.stringify({ error: { code: "unauthorized", message: "expired" } }), { status: 401, headers: { "content-type": "application/json" } });
+
+  it("sends the provider's token on every request", async () => {
+    const { fetch: fn, calls } = scriptedFetch(meBody);
+    const provider = { token: vi.fn(async () => "sf_at_live"), refresh: vi.fn(async () => null) };
+    const { api } = client({ fetch: fn, tokenProvider: provider });
+    await api.call("getMe");
+    expect((calls[0]!.init!.headers as Record<string, string>).Authorization).toBe("Bearer sf_at_live");
+    expect(provider.refresh).not.toHaveBeenCalled();
+  });
+
+  it("refreshes once after a 401 and repeats the call with the new token", async () => {
+    const { fetch: fn, calls } = scriptedFetch(unauthorized, meBody);
+    const provider = { token: vi.fn(async () => "sf_at_old"), refresh: vi.fn(async () => "sf_at_new") };
+    const { api } = client({ fetch: fn, tokenProvider: provider });
+    await expect(api.call("getMe")).resolves.toEqual({ member: { id: "u" } });
+    expect(calls).toHaveLength(2);
+    expect((calls[1]!.init!.headers as Record<string, string>).Authorization).toBe("Bearer sf_at_new");
+    expect(provider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after one refresh, and when the sign-in cannot be renewed", async () => {
+    const twice = scriptedFetch(unauthorized);
+    const renewable = { token: vi.fn(async () => "a"), refresh: vi.fn(async () => "b") };
+    const first = client({ fetch: twice.fetch, tokenProvider: renewable });
+    expect((await rejection(first.api.call("getMe"))).status).toBe(401);
+    expect(twice.calls).toHaveLength(2);
+
+    const once = scriptedFetch(unauthorized);
+    const ended = { token: vi.fn(async () => "a"), refresh: vi.fn(async () => null) };
+    const second = client({ fetch: once.fetch, tokenProvider: ended });
+    expect((await rejection(second.api.call("getMe"))).status).toBe(401);
+    expect(once.calls).toHaveLength(1);
+  });
+});

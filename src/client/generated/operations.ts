@@ -50,6 +50,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  createApiKey: {
+    method: "POST",
+    path: "/api-keys",
+    pathParams: [],
+    queryParams: [],
+  },
   createComment: {
     method: "POST",
     path: "/comments",
@@ -168,12 +174,24 @@ export const operations = {
     method: "GET",
     path: "/comments/export",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "format", "has_attachments", "has_external_link", "has_replies", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "format", "has_attachments", "has_external_link", "has_replies", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   getAgent: {
     method: "GET",
     path: "/agents/{agent}",
     pathParams: ["agent"],
+    queryParams: [],
+  },
+  getAnalyticsHistory: {
+    method: "GET",
+    path: "/analytics/history",
+    pathParams: [],
+    queryParams: [],
+  },
+  getBilling: {
+    method: "GET",
+    path: "/billing",
+    pathParams: [],
     queryParams: [],
   },
   getComment: {
@@ -186,7 +204,7 @@ export const operations = {
     method: "GET",
     path: "/comments/stats",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "group_by", "has_attachments", "has_external_link", "has_replies", "metrics", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "device", "group_by", "has_attachments", "has_external_link", "has_replies", "metrics", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   getCreditUsage: {
     method: "GET",
@@ -236,6 +254,12 @@ export const operations = {
     pathParams: ["project", "page"],
     queryParams: [],
   },
+  getPeopleAnalytics: {
+    method: "GET",
+    path: "/analytics/people",
+    pathParams: [],
+    queryParams: ["lookback_days"],
+  },
   getProject: {
     method: "GET",
     path: "/projects/{project}",
@@ -248,10 +272,22 @@ export const operations = {
     pathParams: ["run"],
     queryParams: [],
   },
+  getTeamAnalytics: {
+    method: "GET",
+    path: "/analytics/team",
+    pathParams: [],
+    queryParams: ["lookback_days"],
+  },
   getWebhook: {
     method: "GET",
     path: "/webhooks/{webhook}",
     pathParams: ["webhook"],
+    queryParams: [],
+  },
+  importFindings: {
+    method: "POST",
+    path: "/projects/{project}/findings/import",
+    pathParams: ["project"],
     queryParams: [],
   },
   inviteGuests: {
@@ -284,11 +320,17 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  listApiKeys: {
+    method: "GET",
+    path: "/api-keys",
+    pathParams: [],
+    queryParams: [],
+  },
   listComments: {
     method: "GET",
     path: "/comments",
     pathParams: [],
-    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
+    queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
   listIntegrations: {
     method: "GET",
@@ -452,6 +494,12 @@ export const operations = {
     pathParams: ["comment"],
     queryParams: [],
   },
+  revokeApiKey: {
+    method: "DELETE",
+    path: "/api-keys/{key}",
+    pathParams: ["key"],
+    queryParams: [],
+  },
   revokeReviewLink: {
     method: "DELETE",
     path: "/review-links/{link}",
@@ -555,6 +603,12 @@ export const operations = {
     queryParams: [],
   },
 } as const;
+
+/**
+ * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
+ * document). The hosted server compares it with its own API snapshot to catch a stale pin.
+ */
+export const OPENAPI_SHA256 = "399fcbaebf05c81ab66fbc3f81825ff38932d60c3b133d367f1946434cda1cb2";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

@@ -45,6 +45,10 @@ export interface CommentCompact {
   device: Device;
   age_days: number | null;
   last_activity_at: string | null;
+  /** The kind of problem the comment is about (an agent finding's kind, or one a person attached). */
+  rule_key: string | null;
+  /** An agent finding's suggested fix, cut to 300 characters. */
+  suggested_fix: string | null;
   url: string;
 }
 
@@ -101,7 +105,17 @@ export interface CommentFull {
   screenshot_url: string | null;
   metadata: Record<string, unknown> | null;
   source: CommentSource;
-  agent: { id: string; name: string; run_id: string | null; severity: string | null; confidence: number | null } | null;
+  rule_key: string | null;
+  agent: {
+    id: string;
+    name: string;
+    run_id: string | null;
+    severity: string | null;
+    confidence: number | null;
+    issue_type: string | null;
+    problem: string | null;
+    suggested_fix: string | null;
+  } | null;
   external_links: ExternalLink[];
   attachments: Attachment[];
   replies?: Reply[];
@@ -463,6 +477,44 @@ export interface ReviewLink {
 export interface RevokeReviewLinkResponse {
   revoked: true;
   id: string;
+}
+
+export interface Billing {
+  plan: string | null;
+  valid: boolean;
+  billing_status: string | null;
+  trial_ends_at: string | null;
+  period_ends_at: string | null;
+  subscription: { status: string | null; interval: string | null; owned_by_you: boolean | null; live_count: number } | null;
+  /** False when Stripe could not be asked; then next_step is manage. */
+  subscription_checked: boolean;
+  next_step: "subscribe" | "manage";
+  manage_url: string;
+}
+
+export interface ApiKey {
+  id: string;
+  kind: "api_key" | "oauth";
+  label: string;
+  client_name: string | null;
+  scopes: string[];
+  created_at: string | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+  current: boolean;
+}
+
+export interface CreatedApiKey {
+  key: ApiKey;
+  /** sf_pat_ token, returned once. */
+  token: string;
+  note: string;
+}
+
+export interface RevokedApiKey {
+  revoked: true;
+  id: string;
+  current: boolean;
 }
 
 export type NotificationLevel = "all" | "mine" | "none";

@@ -63,7 +63,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const apiKey = env.SUPERFLOW_API_KEY?.trim();
   if (!apiKey) {
     throw new ConfigError(
-      "SUPERFLOW_API_KEY is not set. Create a key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.",
+      "Not signed in. Run npx superflow-mcp login, or create a key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.",
     );
   }
   if (/\s/.test(apiKey)) {

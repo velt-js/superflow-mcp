@@ -17,6 +17,23 @@ describe(TOOL, () => {
     expect(recorded[0]?.body).toEqual({ project: "Acme Dental", priority: "high", assignees: ["Jen"], add_tags: ["mobile"] });
   });
 
+  it("attaches a rule key, and null detaches it", async () => {
+    on("patch", "/comments/:comment", ok({ ...fullComment, rule_key: "broken-link" }), ok(fullComment));
+    const h = await connect();
+    const attached = await h.call(TOOL, { comment: "cmt_8f3k2", rule_key: "broken-link" });
+    expect(attached.isError).toBeFalsy();
+    expect(recorded[0]?.body).toEqual({ rule_key: "broken-link" });
+    await h.call(TOOL, { comment: "cmt_8f3k2", rule_key: null });
+    expect(recorded[1]?.body).toEqual({ rule_key: null });
+  });
+
+  it("sends X-Superflow-Client so the API audits the write as made by the MCP", async () => {
+    on("patch", "/comments/:comment", ok(fullComment));
+    const h = await connect();
+    await h.call(TOOL, { comment: "cmt_8f3k2", priority: "high" });
+    expect(recorded[0]?.headers.get("x-superflow-client")).toMatch(/^superflow-mcp\//);
+  });
+
   it("still lets tags be cleared with an empty list", async () => {
     on("patch", "/comments/:comment", ok(fullComment));
     const h = await connect();

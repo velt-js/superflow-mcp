@@ -42,6 +42,13 @@ describe(TOOL, () => {
     });
   });
 
+  it("groups agent findings by rule_key", async () => {
+    on("get", "/comments/stats", ok({ ...stats, rows: [{ key: "image-alt", label: "Image has no alt text", count: 3 }] }));
+    const h = await connect();
+    await h.call(TOOL, { project: "Acme Dental", group_by: "rule_key", author_type: ["agent"], status: ["open"] });
+    expect(recorded[0]?.query).toMatchObject({ group_by: "rule_key", author_type: "agent", status: "open" });
+  });
+
   it("requires group_by", async () => {
     const h = await connect();
     const result = await h.call(TOOL, { project: "Acme" });

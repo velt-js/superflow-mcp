@@ -5,9 +5,9 @@ import { TOOL_NAMES } from "../../src/tools/index.ts";
 describe("eval prompts", () => {
   const prompts = loadPrompts({ project: "Acme Dental", page_url: "https://acme.com/pricing" });
 
-  it("has 50 prompts with unique ids, filled placeholders and known tools", () => {
-    expect(prompts).toHaveLength(50);
-    expect(new Set(prompts.map((p) => p.id)).size).toBe(50);
+  it("has 59 prompts with unique ids, filled placeholders and known tools", () => {
+    expect(prompts).toHaveLength(59);
+    expect(new Set(prompts.map((p) => p.id)).size).toBe(59);
     for (const entry of prompts) {
       expect(entry.prompt, entry.id).not.toMatch(/\{(project|page_url)\}/);
       const firsts = Array.isArray(entry.expect_first_tool) ? entry.expect_first_tool : [entry.expect_first_tool];
@@ -30,6 +30,10 @@ describe("eval prompts", () => {
 
   it("includes ten Phase 2 admin prompts", () => {
     expect(prompts.filter((p) => p.id.startsWith("p2-"))).toHaveLength(10);
+  });
+
+  it("includes the addendum prompts (rule keys, playbook pickup, ingest)", () => {
+    expect(prompts.filter((p) => p.id.startsWith("add-"))).toHaveLength(9);
   });
 
   it("includes ten Phase 3 prompts, with the estimate before any run", () => {
@@ -58,7 +62,7 @@ describe("eval helpers", () => {
     const session = await startServer({ apiKey: "sf_pat_eval", readOnly: true });
     const tools = toClaudeTools(session.tools);
     await session.close();
-    expect(tools).toHaveLength(33);
+    expect(tools).toHaveLength(40);
     for (const tool of tools) {
       expect(tool.input_schema.type).toBe("object");
       expect(tool.input_schema).not.toHaveProperty("$schema");

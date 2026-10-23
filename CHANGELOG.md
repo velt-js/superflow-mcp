@@ -7,6 +7,56 @@ There are two release lines: the `superflow-mcp` npm package (local stdio server
 versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
 (versions 1.x).
 
+## [0.4.0] - Unreleased
+
+The MCP spec addendum (v2.1): agent findings by kind, playbooks the server serves,
+pushing your own agent's findings in, and signing in without a key. Built on what the
+API serves today; check, report and billing-mode tools follow when their engines ship.
+
+### Added
+- `superflow_list_comments` takes `rule_key` (the kind of problem, for example `image-alt`
+  or `broken-link`). Rows carry `rule_key` and the agent's `suggested_fix`.
+- `superflow_update_comment` takes `rule_key` to attach a human comment to a rule
+  (`null` detaches it).
+- `superflow_use_playbook` (85 tools): step-by-step plans the server serves, built from
+  `skills/<name>/SKILL.md` by `pnpm playbooks`. `triage` builds one ordered P0, P1, P2 fix
+  list from agent findings and human comments; `fix` fixes the approved items (one subagent
+  per item in Claude Code, up to 3 at a time), verifies each with a rescan, and reports.
+- The `fix` prompt, and the server instructions point to the playbooks.
+- `superflow_comment_stats` takes `group_by: "rule_key"`.
+- `superflow_import_findings` (86 tools, scope `ingest`): push the findings of your own
+  review into Superflow as agent comments under your agent's name. Creates or merges, never
+  deletes; one invalid finding refuses the batch and every problem comes back in
+  `error.issues`. The `push_my_review` playbook and prompt walk through it.
+- API errors carry `issues` (every validation problem) through to the tool result.
+- Billing (94 tools): `superflow_get_billing` and `superflow_get_payment_link` over the new
+  read-only `GET /v1/billing`. Paying happens in the Superflow portal; the link never
+  suggests a second subscription, and a failed subscription check says so.
+- API key tools (92 tools): `superflow_list_api_keys`, `superflow_create_api_key` and
+  `superflow_revoke_api_key` over the new `/v1/api-keys` routes. Create and revoke gate on
+  `confirm: true`; a new key's scopes are a subset of the current key's.
+- `npx superflow-mcp login`: sign in (or sign up) in the browser instead of pasting a key.
+  OAuth 2.1 with dynamic client registration and PKCE on a loopback redirect; the sign-in is
+  saved in the macOS Keychain, the Linux Secret Service, or a file only you can read, and
+  the access token is renewed while the server runs (one retry after a 401).
+  `npx superflow-mcp logout` revokes and removes it. `SUPERFLOW_API_KEY` still wins.
+- Analytics (89 tools): `superflow_get_team_analytics`, `superflow_get_people_analytics`,
+  `superflow_get_all_time_analytics`, over the new `/v1/analytics` routes. A stale rollup is
+  reported as unavailable, never as zero activity.
+- A library entry, `superflow-mcp/server` (ESM and CommonJS): `createServer`, `ApiClient`,
+  `OPENAPI_SHA256`, `PLAYBOOKS`, `TOOL_NAMES`, `VERSION`. `createServer` takes `surface`
+  (`hosted` drops every SUPERFLOW_ variable from the wording), `renamedTools` and
+  `onToolCall`. The hosted server at mcp.usesuperflow.ai uses it to serve these same tools,
+  so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
+
+### Changed
+- The `triage` prompt follows the triage playbook: agent findings by kind plus human
+  comments, attached where they match.
+- Every request sends `X-Superflow-Client`, so the API's audit log records the package's
+  writes as made by the MCP.
+- `superflow_run_agents`: the API allows 10 runs per project per hour and answers
+  `rate_limited` past that.
+
 ## [0.3.0] - Unreleased
 
 Agents, integrations and webhooks (Phase 3): run the AI review agents, send their

@@ -6,6 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ApiClient } from "../src/client/api.ts";
 import { silentLogger } from "../src/lib/logger.ts";
+import { PLAYBOOKS } from "../src/playbooks/generated.ts";
 import { createServer } from "../src/server.ts";
 
 const OUTPUT = fileURLToPath(new URL("../docs/tools.md", import.meta.url));
@@ -100,6 +101,16 @@ for (const tool of tools) {
   }
 }
 
+lines.push(
+  "# Playbooks",
+  "",
+  "Step-by-step plans for jobs that take several tools in order. A model gets one with `superflow_use_playbook`, and each is also a prompt of the same name. Source: `skills/<name>/SKILL.md`, built by `pnpm playbooks`.",
+  "",
+  "| Playbook | When | Clients |",
+  "|---|---|---|",
+);
+for (const playbook of PLAYBOOKS) lines.push(`| \`${playbook.name}\` | ${escapeCell(playbook.description)} | ${escapeCell(playbook.clients)} |`);
+lines.push("");
 lines.push("# Prompts", "", "| Prompt | Arguments | Description |", "|---|---|---|");
 for (const prompt of prompts) {
   const args = (prompt.arguments ?? []).map((a) => `\`${a.name}\`${a.required ? "" : " (optional)"}`).join(", ");
@@ -111,4 +122,4 @@ for (const template of resourceTemplates) lines.push(`| \`${template.uriTemplate
 lines.push("");
 
 writeFileSync(OUTPUT, lines.join("\n"));
-console.log(`Wrote docs/tools.md (${tools.length} tools, ${prompts.length} prompts, ${resources.length + resourceTemplates.length} resources).`);
+console.log(`Wrote docs/tools.md (${tools.length} tools, ${PLAYBOOKS.length} playbooks, ${prompts.length} prompts, ${resources.length + resourceTemplates.length} resources).`);
