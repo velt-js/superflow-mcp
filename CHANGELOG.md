@@ -24,6 +24,11 @@ API serves today; check, report and billing-mode tools follow when their engines
   per item in Claude Code, up to 3 at a time), verifies each with a rescan, and reports.
 - The `fix` prompt, and the server instructions point to the playbooks.
 - `superflow_comment_stats` takes `group_by: "rule_key"`.
+- `superflow_import_findings` (86 tools, scope `ingest`): push the findings of your own
+  review into Superflow as agent comments under your agent's name. Creates or merges, never
+  deletes; one invalid finding refuses the batch and every problem comes back in
+  `error.issues`. The `push_my_review` playbook and prompt walk through it.
+- API errors carry `issues` (every validation problem) through to the tool result.
 
 ### Changed
 - The `triage` prompt follows the triage playbook: agent findings by kind plus human

@@ -7245,6 +7245,201 @@
         }
       }
     },
+    "/projects/{project}/findings/import": {
+      "post": {
+        "operationId": "importFindings",
+        "summary": "Import findings from your own agent (they become agent comments under its name; creates or merges, never deletes)",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "ingest"
+            ]
+          }
+        ],
+        "x-required-scope": "ingest",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "Your agent, 2 to 40 lowercase letters, digits and dashes (stache-review). Its comments post under agt_sfx_<source>."
+                  },
+                  "source_name": {
+                    "type": "string",
+                    "description": "Display name. Default: source."
+                  },
+                  "min_confidence": {
+                    "type": "integer",
+                    "description": "Raise the confidence floor (default 50); it cannot be lowered."
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "page_url": {
+                          "type": "string",
+                          "description": "A page on this project's site (its domains and subdomains)."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "The problem, in plain words."
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "critical",
+                            "high",
+                            "medium",
+                            "low",
+                            "info"
+                          ],
+                          "description": "info is accepted and dropped."
+                        },
+                        "rule_key": {
+                          "type": "string",
+                          "description": "A Superflow rule key when the kind matches (image-alt, broken-link, ...), else your own kind starting with ext-."
+                        },
+                        "fix_type": {
+                          "type": "string",
+                          "enum": [
+                            "content",
+                            "design",
+                            "code"
+                          ]
+                        },
+                        "confidence": {
+                          "type": "integer",
+                          "description": "0 to 100. Below the floor: dropped."
+                        },
+                        "suggestion": {
+                          "type": "string",
+                          "description": "The suggested fix."
+                        },
+                        "anchor": {
+                          "type": "object",
+                          "properties": {
+                            "selector": {
+                              "type": "string"
+                            },
+                            "xpath": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [],
+                          "additionalProperties": false
+                        },
+                        "fingerprint": {
+                          "type": "string",
+                          "description": "Your own stable id for the finding; replaces kind, page and spot in dedup."
+                        },
+                        "external_id": {
+                          "type": "string",
+                          "description": "Your id, stored on the comment."
+                        }
+                      },
+                      "required": [
+                        "page_url",
+                        "title",
+                        "description",
+                        "severity",
+                        "rule_key",
+                        "fix_type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "source",
+                  "findings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/schedules": {
       "get": {
         "operationId": "listSchedules",
@@ -10681,6 +10876,167 @@
         ],
         "additionalProperties": false
       },
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "agt_sfx_<source>"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ],
+            "additionalProperties": false
+          },
+          "run_id": {
+            "type": "string",
+            "description": "run_ id of the import (list_runs shows it; agent_run filters its comments)"
+          },
+          "received": {
+            "type": "integer"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "merged": {
+            "type": "integer"
+          },
+          "dropped": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "install": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_installed",
+                  "installed",
+                  "verified"
+                ]
+              },
+              "installed": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "installed"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "created",
+                    "merged",
+                    "dropped",
+                    "failed"
+                  ]
+                },
+                "comment_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rule_key": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "resolved"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "below_confidence_floor",
+                    "info_severity",
+                    "write_failed",
+                    "claimed_by_another_import"
+                  ]
+                }
+              },
+              "required": [
+                "index",
+                "outcome",
+                "comment_id",
+                "rule_key"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "project",
+          "source",
+          "run_id",
+          "received",
+          "created",
+          "merged",
+          "dropped",
+          "failed",
+          "install",
+          "results"
+        ],
+        "additionalProperties": false
+      },
       "FindingList": {
         "type": "object",
         "properties": {
@@ -13003,7 +13359,8 @@
                 "integrations:read",
                 "integrations:write",
                 "webhooks:read",
-                "webhooks:write"
+                "webhooks:write",
+                "ingest"
               ]
             }
           },

@@ -5,9 +5,9 @@ import { TOOL_NAMES } from "../../src/tools/index.ts";
 describe("eval prompts", () => {
   const prompts = loadPrompts({ project: "Acme Dental", page_url: "https://acme.com/pricing" });
 
-  it("has 54 prompts with unique ids, filled placeholders and known tools", () => {
-    expect(prompts).toHaveLength(54);
-    expect(new Set(prompts.map((p) => p.id)).size).toBe(54);
+  it("has 56 prompts with unique ids, filled placeholders and known tools", () => {
+    expect(prompts).toHaveLength(56);
+    expect(new Set(prompts.map((p) => p.id)).size).toBe(56);
     for (const entry of prompts) {
       expect(entry.prompt, entry.id).not.toMatch(/\{(project|page_url)\}/);
       const firsts = Array.isArray(entry.expect_first_tool) ? entry.expect_first_tool : [entry.expect_first_tool];
@@ -32,8 +32,8 @@ describe("eval prompts", () => {
     expect(prompts.filter((p) => p.id.startsWith("p2-"))).toHaveLength(10);
   });
 
-  it("includes the addendum prompts (rule keys, playbook pickup)", () => {
-    expect(prompts.filter((p) => p.id.startsWith("add-"))).toHaveLength(4);
+  it("includes the addendum prompts (rule keys, playbook pickup, ingest)", () => {
+    expect(prompts.filter((p) => p.id.startsWith("add-"))).toHaveLength(6);
   });
 
   it("includes ten Phase 3 prompts, with the estimate before any run", () => {

@@ -22,6 +22,7 @@ const CASES: Array<[string, Record<string, string>, string[], boolean]> = [
     true,
   ],
   ["fix", { project: "Acme Dental" }, ['Fix, verify, report for the Superflow site "Acme Dental"', "superflow_run_agents", "superflow_resolve_comment"], true],
+  ["push_my_review", { project: "Dental Smiles" }, ['Push my review into Superflow for the Superflow site "Dental Smiles"', "superflow_import_findings", "error.issues"], true],
   ["stale_threads", { project: "Acme Dental" }, ["superflow_list_comments", '"stale_days":3', '"unanswered":true'], true],
   ["client_update", { project: "Acme Dental" }, ['"updated_after":"this_week"', '"author_type":["guest"]', "superflow_comment_stats"], false],
   [

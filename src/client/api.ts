@@ -29,6 +29,14 @@ export interface SuperflowApiErrorInit {
   hint?: string;
   candidates?: Candidate[];
   preview?: ApiPreview;
+  /** Every validation problem when there was more than one (`findings[37].fix_type`). */
+  issues?: ApiIssue[];
+}
+
+/** One validation problem the API listed. */
+export interface ApiIssue {
+  field: string;
+  reason: string;
 }
 
 /** An API (or transport) failure in the contract's error shape. */
@@ -39,6 +47,7 @@ export class SuperflowApiError extends Error {
   readonly hint: string;
   readonly candidates: Candidate[];
   readonly preview: ApiPreview | undefined;
+  readonly issues: ApiIssue[];
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -47,10 +56,11 @@ export class SuperflowApiError extends Error {
     this.hint = init.hint ?? "";
     this.candidates = init.candidates ?? [];
     this.preview = init.preview;
+    this.issues = init.issues ?? [];
   }
 
-  toJSON(): { code: string; message: string; hint: string; candidates: Candidate[] } {
-    return { code: this.code, message: this.message, hint: this.hint, candidates: this.candidates };
+  toJSON(): { code: string; message: string; hint: string; candidates: Candidate[]; issues?: ApiIssue[] } {
+    return { code: this.code, message: this.message, hint: this.hint, candidates: this.candidates, ...(this.issues.length > 0 ? { issues: this.issues } : {}) };
   }
 }
 
@@ -92,6 +102,8 @@ const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
   "getCreditUsage",
   // Phase 3: agent writes call a model, estimates read the sitemap, runs read every
   // execution, findings scan comments, and a push waits up to 20 s for the tracker.
+  // Addendum: an import writes up to 500 comments.
+  "importFindings",
   "createAgent",
   "updateAgent",
   "duplicateAgent",
@@ -348,6 +360,11 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
   const candidates = Array.isArray(errorBody?.candidates) ? (errorBody.candidates as Candidate[]) : [];
   const preview =
     errorBody?.preview && typeof errorBody.preview === "object" ? (errorBody.preview as ApiPreview) : undefined;
+  const issues = Array.isArray(errorBody?.issues)
+    ? (errorBody.issues as unknown[])
+        .filter((issue): issue is ApiIssue => !!issue && typeof (issue as ApiIssue).field === "string" && typeof (issue as ApiIssue).reason === "string")
+        .slice(0, 20)
+    : [];
 
   let message = apiMessage || FALLBACK_MESSAGES[knownCode] || `The Superflow API returned HTTP ${status}.`;
   if (code === "unauthorized") {
@@ -359,5 +376,5 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
   }
   if (!hint) hint = FALLBACK_HINTS[knownCode] ?? "";
 
-  return new SuperflowApiError({ status, code, message, hint, candidates, ...(preview ? { preview } : {}) });
+  return new SuperflowApiError({ status, code, message, hint, candidates, ...(preview ? { preview } : {}), ...(issues.length > 0 ? { issues } : {}) });
 }

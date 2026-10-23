@@ -329,5 +329,17 @@
     "prompt": "Fix the critical issues on {project}.",
     "expect_first_tool": "superflow_use_playbook",
     "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_list_comments" }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-push-my-review",
+    "prompt": "I just ran our own review of {project} in Claude Code and saved 3 findings: the hero image on /about has no alt text, the footer Book now link is dead, and the cookie banner covers the menu on phones. Push these into Superflow as stache-review.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_list_projects", "superflow_get_project"],
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_import_findings" }]
+  },
+  {
+    "id": "add-import-bad-batch",
+    "prompt": "Push this finding from our review into {project} as stache-review: page https://other-site.example/about, missing alt text on the hero image, high, content fix.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_import_findings", "superflow_get_project", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
   }
 ]
