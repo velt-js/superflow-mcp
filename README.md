@@ -9,7 +9,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 | | Local package | Hosted server |
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
-| Auth | An API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
+| Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
 | Tools | 89 tools: playbooks, comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
 
@@ -17,7 +17,15 @@ You can use both at once.
 
 ## Quick start
 
-You need an API key for the local package. See [Get an API key](#get-an-api-key).
+Sign in once with your browser. New to Superflow? You can sign up on the same page:
+
+```bash
+npx -y superflow-mcp login
+```
+
+The sign-in is saved (see [Sign in with the browser](#sign-in-with-the-browser)), so the
+configs below work without a key: leave out the `SUPERFLOW_API_KEY` lines. For CI, or a
+key with narrower scopes, use an API key instead. See [Get an API key](#get-an-api-key).
 
 ### Claude Code (local)
 
@@ -112,11 +120,30 @@ The same key works for the local package, the hosted server and the REST API. Re
 
 ## Local package
 
+### Sign in with the browser
+
+`npx -y superflow-mcp login` opens Superflow's consent screen in your browser. Sign in (or
+sign up), pick the workspace and the permissions, and approve. The terminal finishes on its
+own.
+
+- It is OAuth 2.1 with PKCE on a one-time loopback address (`http://127.0.0.1:<port>`), the
+  same consent screen the hosted connector uses. No key is copied by hand.
+- The sign-in is saved in the macOS Keychain, the Linux Secret Service (`secret-tool`), or,
+  when neither is available, `~/.config/superflow-mcp/credentials.json` (`%APPDATA%` on
+  Windows) readable only by you. The command says which.
+- Access tokens last an hour and are renewed in the background while the server runs.
+- `npx -y superflow-mcp logout` ends the sign-in and removes it. You can also revoke it in
+  Superflow under Settings > Integrations > Connected apps.
+- `SUPERFLOW_API_KEY`, when set, always wins over a saved sign-in.
+
 ### Environment variables
 
 | Variable | Required | Default | What it does |
 |---|---|---|---|
-| `SUPERFLOW_API_KEY` | yes | | Your API key (`sf_pat_...`). |
+| `SUPERFLOW_API_KEY` | no, if you ran `login` | | Your API key (`sf_pat_...`). Wins over a saved sign-in. |
+| `SUPERFLOW_AUTH_URL` | no | `https://mcp.usesuperflow.ai` | The sign-in server `login` uses. |
+| `SUPERFLOW_CREDENTIALS_STORE` | no | `auto` | `auto` (Keychain or Secret Service, else a file) or `file`. |
+| `SUPERFLOW_CREDENTIALS_FILE` | no | `~/.config/superflow-mcp/credentials.json` | Where the file store keeps the sign-in. |
 | `SUPERFLOW_API_BASE_URL` | no | `https://api.usesuperflow.ai/v1` | The API to call. Must be https (http only for localhost). |
 | `SUPERFLOW_DEFAULT_PROJECT` | no | | Project used for bare comment numbers like `#4821` when you do not name one. |
 | `SUPERFLOW_READ_ONLY` | no | `false` | `true` hides every write tool. |
