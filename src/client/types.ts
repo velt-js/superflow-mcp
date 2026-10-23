@@ -45,6 +45,10 @@ export interface CommentCompact {
   device: Device;
   age_days: number | null;
   last_activity_at: string | null;
+  /** The kind of problem the comment is about (an agent finding's kind, or one a person attached). */
+  rule_key: string | null;
+  /** An agent finding's suggested fix, cut to 300 characters. */
+  suggested_fix: string | null;
   url: string;
 }
 
@@ -101,7 +105,17 @@ export interface CommentFull {
   screenshot_url: string | null;
   metadata: Record<string, unknown> | null;
   source: CommentSource;
-  agent: { id: string; name: string; run_id: string | null; severity: string | null; confidence: number | null } | null;
+  rule_key: string | null;
+  agent: {
+    id: string;
+    name: string;
+    run_id: string | null;
+    severity: string | null;
+    confidence: number | null;
+    issue_type: string | null;
+    problem: string | null;
+    suggested_fix: string | null;
+  } | null;
   external_links: ExternalLink[];
   attachments: Attachment[];
   replies?: Reply[];

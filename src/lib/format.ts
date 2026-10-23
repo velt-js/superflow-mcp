@@ -251,6 +251,8 @@ export function toCompactComment(comment: CommentFull): CommentCompact {
     device: comment.anchor?.device ?? "unknown",
     age_days: comment.age_days ?? null,
     last_activity_at: comment.last_activity_at ?? null,
+    rule_key: comment.rule_key ?? null,
+    suggested_fix: comment.agent?.suggested_fix ? truncateText(comment.agent.suggested_fix, 300) : null,
     url: comment.url,
   };
 }

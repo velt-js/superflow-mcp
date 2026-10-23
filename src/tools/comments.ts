@@ -124,6 +124,7 @@ export const listComments = defineTool({
   title: "List comments",
   description: [
     "List comments in Superflow with filters. Use this to find, review or read specific comments: by project, page, status, assignee, author, tags, dates, text, device, source or agent run.",
+    "AI agent findings are comments too. To work on one kind of finding, filter by rule_key (for example image-alt or broken-link): each row then carries rule_key and the agent's suggested_fix.",
     "For totals or breakdowns (how many per page, per status, per assignee) use superflow_comment_stats instead, it is cheaper. For a file of many rows use superflow_export_comments.",
     'Returns compact rows by default; set fields "full" only when you need every field. Pages with cursor.',
     'Example: {"project": "Acme Dental", "status": ["open"], "page_url": "acme.com/pricing", "page_match": "prefix"}',
@@ -328,6 +329,7 @@ export const updateComment = defineTool({
     "Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.",
     `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.`,
     "Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.",
+    "To attach a human comment to the kind of problem an agent already found (a client's \"the Book now button is dead\" on the same element as a broken-link finding), set rule_key. It then lists with that rule_key. null detaches it.",
     "Ask the user before changing comments they did not ask about.",
     'Example: {"comment": "4821", "project": "Acme Dental", "priority": "high", "assignees": ["Jen"], "add_tags": ["mobile"]}',
   ].join("\n"),
@@ -344,6 +346,13 @@ export const updateComment = defineTool({
     remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove."),
     page_url: z.string().min(1).optional().describe("Move the comment to this page URL."),
     anchor: anchorSchema.optional(),
+    rule_key: z
+      .string()
+      .min(1)
+      .max(64)
+      .nullable()
+      .optional()
+      .describe("Attach the comment to a rule key, for example broken-link or image-alt, so it lists with that rule's findings. null detaches it."),
   },
   annotations: hints(false, false, true, false),
   write: true,
@@ -351,7 +360,7 @@ export const updateComment = defineTool({
     const { comment: ref, project: _project, ...changes } = args;
     if (Object.values(changes).every((value) => value === undefined)) {
       return invalidInput(
-        "Nothing to change. Give at least one of text, priority, status, assignees, add_assignees, tags, add_tags, remove_tags, page_url or anchor.",
+        "Nothing to change. Give at least one of text, priority, status, assignees, add_assignees, tags, add_tags, remove_tags, page_url, anchor or rule_key.",
       );
     }
     const unassign = refuseUnassign(args.assignees, args.add_assignees);

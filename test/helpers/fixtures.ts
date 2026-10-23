@@ -123,6 +123,8 @@ export const compactComment: CommentCompact = {
   device: "mobile",
   age_days: 1,
   last_activity_at: "2026-10-07T18:02:11Z",
+  rule_key: null,
+  suggested_fix: null,
   url: "https://acme.com/pricing?scommentId=8f3k2",
 };
 
@@ -160,6 +162,7 @@ export const fullComment: CommentFull = {
   screenshot_url: null,
   metadata: { browser: null, os: null, url_at_creation: "https://acme.com/pricing?utm=x" },
   source: "widget",
+  rule_key: null,
   agent: null,
   external_links: [],
   attachments: [{ id: "att_8f3k2.123456.1", name: "fix.png", url: "https://files.example.com/fix.png", size: 20311 }],
