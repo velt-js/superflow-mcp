@@ -29,6 +29,14 @@ API serves today; check, report and billing-mode tools follow when their engines
   deletes; one invalid finding refuses the batch and every problem comes back in
   `error.issues`. The `push_my_review` playbook and prompt walk through it.
 - API errors carry `issues` (every validation problem) through to the tool result.
+- Analytics (89 tools): `superflow_get_team_analytics`, `superflow_get_people_analytics`,
+  `superflow_get_all_time_analytics`, over the new `/v1/analytics` routes. A stale rollup is
+  reported as unavailable, never as zero activity.
+- A library entry, `superflow-mcp/server` (ESM and CommonJS): `createServer`, `ApiClient`,
+  `OPENAPI_SHA256`, `PLAYBOOKS`, `TOOL_NAMES`, `VERSION`. `createServer` takes `surface`
+  (`hosted` drops every SUPERFLOW_ variable from the wording), `renamedTools` and
+  `onToolCall`. The hosted server at mcp.usesuperflow.ai uses it to serve these same tools,
+  so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
 
 ### Changed
 - The `triage` prompt follows the triage playbook: agent findings by kind plus human

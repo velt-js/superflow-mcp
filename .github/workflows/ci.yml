@@ -38,6 +38,8 @@ jobs:
         run: pnpm docs:tools && git diff --exit-code docs/tools.md
       - name: Stdio smoke test
         run: pnpm smoke:stdio
+      - name: Library smoke test (the CommonJS build the hosted server requires)
+        run: pnpm smoke:lib
 
   node20:
     name: Built CLI runs on Node 20

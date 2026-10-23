@@ -341,5 +341,12 @@
     "prompt": "Push this finding from our review into {project} as stache-review: page https://other-site.example/about, missing alt text on the hero image, high, content fix.",
     "expect_first_tool": ["superflow_use_playbook", "superflow_import_findings", "superflow_get_project", "superflow_list_projects"],
     "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-analytics-week",
+    "prompt": "How busy was our team in Superflow over the last week?",
+    "read_only": true,
+    "expect_first_tool": ["superflow_get_team_analytics", "superflow_comment_stats"],
+    "check": [{ "no_confirmed_writes": true }]
   }
 ]

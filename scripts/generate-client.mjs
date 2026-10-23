@@ -1,6 +1,7 @@
 // Reads openapi/openapi.json and writes src/client/generated/operations.ts.
 // The output is deterministic: operations are sorted by operationId and query
 // parameters by name, so the same snapshot always produces the same file.
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -72,6 +73,12 @@ export function renderOperations(spec) {
     lines.push("  },");
   }
   lines.push("} as const;");
+  lines.push("");
+  lines.push("/**");
+  lines.push(" * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed");
+  lines.push(" * document). The hosted server compares it with its own API snapshot to catch a stale pin.");
+  lines.push(" */");
+  lines.push(`export const OPENAPI_SHA256 = ${JSON.stringify(createHash("sha256").update(JSON.stringify(spec)).digest("hex"))};`);
   lines.push("");
   lines.push("export type OperationId = keyof typeof operations;");
   lines.push("export type Operation = (typeof operations)[OperationId];");
