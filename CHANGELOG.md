@@ -29,6 +29,9 @@ API serves today; check, report and billing-mode tools follow when their engines
   deletes; one invalid finding refuses the batch and every problem comes back in
   `error.issues`. The `push_my_review` playbook and prompt walk through it.
 - API errors carry `issues` (every validation problem) through to the tool result.
+- API key tools (92 tools): `superflow_list_api_keys`, `superflow_create_api_key` and
+  `superflow_revoke_api_key` over the new `/v1/api-keys` routes. Create and revoke gate on
+  `confirm: true`; a new key's scopes are a subset of the current key's.
 - `npx superflow-mcp login`: sign in (or sign up) in the browser instead of pasting a key.
   OAuth 2.1 with dynamic client registration and PKCE on a loopback redirect; the sign-in is
   saved in the macOS Keychain, the Linux Secret Service, or a file only you can read, and

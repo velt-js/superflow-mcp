@@ -348,5 +348,12 @@
     "read_only": true,
     "expect_first_tool": ["superflow_get_team_analytics", "superflow_comment_stats"],
     "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-api-key-for-ci",
+    "prompt": "Make me a read-only Superflow key for our GitHub Actions.",
+    "read_only": false,
+    "expect_first_tool": ["superflow_create_api_key", "superflow_get_me", "superflow_list_api_keys"],
+    "check": [{ "no_confirmed_writes": true }]
   }
 ]

@@ -5744,6 +5744,233 @@
         }
       }
     },
+    "/api-keys": {
+      "get": {
+        "operationId": "listApiKeys",
+        "summary": "List your API keys and sign-ins in this workspace (never the tokens)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createApiKey",
+        "summary": "Create an API key (scopes a subset of this key, never outliving it; the token is shown once)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:write"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:write",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "expires_in_days": {
+                    "type": "integer",
+                    "description": "1 to 365. Required when the calling key expires."
+                  }
+                },
+                "required": [
+                  "label",
+                  "scopes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/api-keys/{key}": {
+      "delete": {
+        "operationId": "revokeApiKey",
+        "summary": "Revoke one of your API keys or sign-ins (it stops working at once)",
+        "tags": [
+          "api-keys"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:write"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:write",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "key URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedApiKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/me/notifications": {
       "get": {
         "operationId": "getNotificationSettings",
@@ -10250,6 +10477,171 @@
           "items",
           "next_cursor",
           "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "key_ id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "api_key",
+              "oauth"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "client_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "The app an OAuth sign-in was given to"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The key making this request"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "client_name",
+          "scopes",
+          "created_at",
+          "last_used_at",
+          "expires_at",
+          "current"
+        ],
+        "additionalProperties": false
+      },
+      "ApiKeyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKey"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "total",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedApiKey": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ApiKey"
+          },
+          "token": {
+            "type": "string",
+            "description": "sf_pat_ token, shown once"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "token",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "RevokedApiKey": {
+        "type": "object",
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "const": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The calling key revoked itself"
+          }
+        },
+        "required": [
+          "revoked",
+          "id",
+          "current"
         ],
         "additionalProperties": false
       },

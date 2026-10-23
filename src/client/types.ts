@@ -479,6 +479,31 @@ export interface RevokeReviewLinkResponse {
   id: string;
 }
 
+export interface ApiKey {
+  id: string;
+  kind: "api_key" | "oauth";
+  label: string;
+  client_name: string | null;
+  scopes: string[];
+  created_at: string | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+  current: boolean;
+}
+
+export interface CreatedApiKey {
+  key: ApiKey;
+  /** sf_pat_ token, returned once. */
+  token: string;
+  note: string;
+}
+
+export interface RevokedApiKey {
+  revoked: true;
+  id: string;
+  current: boolean;
+}
+
 export type NotificationLevel = "all" | "mine" | "none";
 
 export interface NotificationSettings {
