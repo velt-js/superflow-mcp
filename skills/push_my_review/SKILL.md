@@ -31,8 +31,9 @@ each finding fill:
 - `page_url`: the full URL of the page, on this site.
 - `title` and `description`: what is wrong, in plain words.
 - `severity`: critical, high, medium or low. Leave out anything that is only a note.
-- `rule_key`: Superflow's key when the kind matches (for example `image-alt` for missing alt
-  text, `broken-link`, `dead-button`, `small-tap-target`; the tool lists them), so it merges
+- `rule_key`: Superflow's check key when the kind matches (for example `image-alt` for missing
+  alt text, `link-broken`, `link-dead-button`, `mobile-small-tap-target`; the tool lists them,
+  and `superflow_list_failing_checks` shows the site's), so it merges
   with Superflow's own finding at the same spot. For a kind Superflow has no key for, your own
   key starting with `ext-`, for example `ext-cookie-banner`. Use the same key every review.
 - `fix_type`: content, design or code.

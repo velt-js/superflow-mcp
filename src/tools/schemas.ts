@@ -148,7 +148,7 @@ export const filterShape = {
     .array(z.string().min(1).max(64))
     .optional()
     .describe(
-      "Rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, broken-link, dead-button, small-tap-target. An outside agent's own kinds start with ext-.",
+      "Check rule keys: the kind of problem, whichever agent found it, plus human comments attached to it. For example image-alt (no alt text), image-broken, link-broken, link-dead-button, mobile-small-tap-target (superflow_list_failing_checks lists a site's). The names used before checks, such as broken-link, still work for one release. An outside agent's own kinds start with ext-.",
     ),
 };
 
@@ -254,6 +254,11 @@ export const WEBHOOK_EVENTS = [
   "agent_run.started",
   "agent_run.completed",
   "agent_run.failed",
+  "check.resolved",
+  "check.excluded",
+  "check.included",
+  "check.owner_changed",
+  "comment.rejected",
 ] as const;
 
 /** Most agents one run or schedule can use (CONTRACT-P3 section 4). */

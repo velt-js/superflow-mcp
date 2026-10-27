@@ -83,3 +83,11 @@ export const CONFIRM_DELETE_WEBHOOK_MESSAGE =
 /** Where to add AI credits, for runs that cannot start. */
 export const ADD_CREDITS_HINT =
   "Add AI credits in Superflow under Settings > Billing, or turn on auto refill there. Do not retry the run until the balance covers it.";
+
+// Checks (spec addendum "Checks tools").
+
+export const CONFIRM_MARK_CHECK_FIXED_MESSAGE =
+  "Nothing was resolved. Show the user the check and how many open findings it has, and ask whether to mark it fixed. Every open finding of it is resolved and its pages are rescanned (1 credit); a finding that is still there reopens. If the user says yes, call superflow_mark_check_fixed again with confirm: true.";
+
+export const CONFIRM_EXCLUDE_CHECK_MESSAGE =
+  "Nothing was excluded. Show the user the check and how many open findings it has, and ask whether to exclude it for this site. Its open findings are rejected with the reason and new ones are kept out until superflow_include_check. If the user says yes, call superflow_exclude_check again with confirm: true.";

@@ -132,7 +132,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
     "triage",
     {
       title: "Build the fix list",
-      description: "One ordered P0, P1, P2 list of what is broken on a site: agent findings by kind plus open human comments, attached where they match. Writes the order back after you agree.",
+      description: "One ordered P0, P1, P2 list of what is broken on a site: its failing checks plus open human comments, attached where they match. Writes the order back after you agree.",
       argsSchema: {
         project: projectArg,
         since: z.string().optional().describe("Only comments created since this date or token (for example 7d or this_week)."),
@@ -145,7 +145,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
       const lines = [
         `Build the fix list for the Superflow site "${project}"${since ? ` from comments created since ${since}` : ""}. Follow the triage playbook below.`,
         "",
-        `Use ${json({ project, ...window })} on every superflow_comment_stats and superflow_list_comments call. For example, the human comments: superflow_list_comments with ${json({ project, author_type: ["member", "guest"], status: ["open"], ...window })}.`,
+        `Start with superflow_list_failing_checks with ${json({ project })}. For the human comments call superflow_list_comments with ${json({ project, author_type: ["member", "guest"], status: ["open"], ...window })}.`,
         "",
         playbookText(playbook, options.readOnly),
       ];

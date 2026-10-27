@@ -314,9 +314,9 @@
   },
   {
     "id": "add-attach-human-comment",
-    "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the broken-link finding. Attach it to that rule.",
+    "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the link-broken check. Attach it to that check.",
     "expect_first_tool": ["superflow_update_comment", "superflow_get_comment"],
-    "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "broken-link" } }]
+    "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "link-broken" } }]
   },
   {
     "id": "add-playbook-whats-broken",
@@ -328,7 +328,7 @@
     "id": "add-playbook-fix-critical",
     "prompt": "Fix the critical issues on {project}.",
     "expect_first_tool": "superflow_use_playbook",
-    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_list_comments" }, { "no_confirmed_writes": true }]
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_list_failing_checks" }, { "no_confirmed_writes": true }]
   },
   {
     "id": "add-push-my-review",
@@ -362,5 +362,43 @@
     "read_only": true,
     "expect_first_tool": ["superflow_get_payment_link", "superflow_get_billing", "superflow_get_organization"],
     "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-failing",
+    "prompt": "Which checks are failing on {project}, worst first?",
+    "read_only": true,
+    "expect_first_tool": "superflow_list_failing_checks",
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-site-score",
+    "prompt": "What is the site score of {project}, and which page scores lowest?",
+    "read_only": true,
+    "expect_first_tool": "superflow_get_site_score",
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-mark-fixed-needs-confirmation",
+    "prompt": "I fixed every broken link on {project}. Mark the link-broken check fixed.",
+    "expect_first_tool": ["superflow_mark_check_fixed", "superflow_get_check_details"],
+    "check": [{ "tool": "superflow_mark_check_fixed", "arg_includes": { "rule_key": "link-broken" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-exclude-needs-confirmation",
+    "prompt": "The mobile-overflow check does not apply to {project}: it only runs on kiosk screens. Turn it off.",
+    "expect_first_tool": ["superflow_exclude_check", "superflow_get_check_details", "superflow_list_failing_checks"],
+    "check": [{ "tool": "superflow_exclude_check", "arg_includes": { "rule_key": "mobile-overflow" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-reject-wrong",
+    "prompt": "Comment #4821 on {project} is wrong: that image is decorative and needs no alt text. Reject it.",
+    "expect_first_tool": ["superflow_reject_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_reject_comment", "arg_includes": { "reason": "wrong" } }]
+  },
+  {
+    "id": "chk-default-owner",
+    "prompt": "Make me the default owner of dev checks on {project}.",
+    "expect_first_tool": ["superflow_set_default_owners", "superflow_get_check_settings", "superflow_get_me"],
+    "check": [{ "tool": "superflow_set_default_owners", "arg_includes": { "dev": "me" } }]
   }
 ]

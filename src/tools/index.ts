@@ -16,6 +16,7 @@ import { projectTools } from "./projects.ts";
 import { reviewLinkTools } from "./review-links.ts";
 import { apiKeyTools } from "./api-keys.ts";
 import { billingTools } from "./billing.ts";
+import { checkTools } from "./checks.ts";
 import { runTools } from "./runs.ts";
 import { scheduleTools } from "./schedules.ts";
 import { statusTools } from "./statuses.ts";
@@ -30,6 +31,8 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   // Phase 1: lookups and comments.
   ...lookupTools,
   ...commentTools,
+  // Addendum: checks (the Checks Engine), the layer above comments.
+  ...checkTools,
   // Phase 2: admin.
   ...projectTools,
   ...pageTools,

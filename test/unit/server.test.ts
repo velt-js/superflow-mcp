@@ -104,6 +104,18 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_revoke_api_key: [false, true, true, false],
   superflow_get_billing: [true, false, true, false],
   superflow_get_payment_link: [true, false, true, false],
+  // Checks (the Checks Engine on the public API).
+  superflow_list_failing_checks: [true, false, true, false],
+  superflow_get_check_details: [true, false, true, false],
+  superflow_get_site_score: [true, false, true, false],
+  superflow_get_finding_source: [true, false, true, false],
+  superflow_mark_check_fixed: [false, false, true, false],
+  superflow_exclude_check: [false, true, true, false],
+  superflow_include_check: [false, false, true, false],
+  superflow_assign_check_owner: [false, false, true, false],
+  superflow_reject_comment: [false, false, true, false],
+  superflow_get_check_settings: [true, false, true, false],
+  superflow_set_default_owners: [false, false, true, false],
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
@@ -115,16 +127,17 @@ const CONFIRM_GATED = [
     .map(([name]) => name),
   "superflow_run_agents",
   "superflow_post_to_slack",
+  "superflow_mark_check_fixed",
 ];
 const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly).length;
 
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 94 contract tools", async () => {
+  it("registers exactly the 105 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(94);
+    expect(listed).toHaveLength(105);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -194,14 +207,14 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(40);
+    expect(READ_ONLY_COUNT).toBe(45);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
   });
 
   it("gives every destructive tool a confirm flag that defaults to false", async () => {
-    expect(CONFIRM_GATED).toHaveLength(16);
+    expect(CONFIRM_GATED).toHaveLength(18);
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
     // Not destructive, but it puts a credential into the conversation, so it gates too.

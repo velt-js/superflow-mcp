@@ -124,7 +124,7 @@ export const listComments = defineTool({
   title: "List comments",
   description: [
     "List comments in Superflow with filters. Use this to find, review or read specific comments: by project, page, status, assignee, author, tags, dates, text, device, source or agent run.",
-    "AI agent findings are comments too. To work on one kind of finding, filter by rule_key (for example image-alt or broken-link): each row then carries rule_key and the agent's suggested_fix.",
+    "AI agent findings are comments too. To work on one kind of finding, filter by rule_key (for example image-alt or link-broken): each row then carries rule_key and the agent's suggested_fix. For the list of what is broken, worst first, use superflow_list_failing_checks.",
     "For totals or breakdowns (how many per page, per status, per assignee) use superflow_comment_stats instead, it is cheaper. For a file of many rows use superflow_export_comments.",
     'Returns compact rows by default; set fields "full" only when you need every field. Pages with cursor.',
     'Example: {"project": "Acme Dental", "status": ["open"], "page_url": "acme.com/pricing", "page_match": "prefix"}',
@@ -329,7 +329,7 @@ export const updateComment = defineTool({
     "Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.",
     `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.`,
     "Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.",
-    "To attach a human comment to the kind of problem an agent already found (a client's \"the Book now button is dead\" on the same element as a broken-link finding), set rule_key. It then lists with that rule_key. null detaches it.",
+    "To attach a person's comment to a check an agent already found (a client's \"the Book now button is dead\" on the same element as a link-broken finding), set rule_key. It then lists, resolves and verifies with that check, in the portal too. null detaches it. An agent finding already belongs to its own check and cannot be attached.",
     "Ask the user before changing comments they did not ask about.",
     'Example: {"comment": "4821", "project": "Acme Dental", "priority": "high", "assignees": ["Jen"], "add_tags": ["mobile"]}',
   ].join("\n"),
@@ -352,7 +352,7 @@ export const updateComment = defineTool({
       .max(64)
       .nullable()
       .optional()
-      .describe("Attach the comment to a rule key, for example broken-link or image-alt, so it lists with that rule's findings. null detaches it."),
+      .describe("Attach a person's comment to a check by its rule key, for example link-broken or image-alt, so it lists and resolves with that check's findings. null detaches it."),
   },
   annotations: hints(false, false, true, false),
   write: true,
@@ -369,9 +369,23 @@ export const updateComment = defineTool({
       path: { comment: normalizeCommentRef(ref) },
       body: compact({ project: projectForComment(ref, args.project, config.defaultProject), ...changes }),
     });
-    return okResult(`Updated. ${commentSummary(comment)}`, asData(comment));
+    const verify = (comment as CommentFull & { verify?: VerifyInfo }).verify;
+    return okResult(`Updated. ${commentSummary(comment)}${verify ? ` ${verifyNote(verify)}` : ""}`, asData(comment));
   },
 });
+
+/** The verify rescan an agent finding's resolve queued. */
+interface VerifyInfo {
+  queued: boolean;
+  already_pending: boolean;
+  run_id: string | null;
+}
+
+/** One sentence on the verify rescan a resolve of an agent finding queued. */
+function verifyNote(verify: VerifyInfo): string {
+  if (verify.already_pending) return "It was already waiting for its verify rescan.";
+  return "Its page is rescanned within a minute to verify it; check again with superflow_get_comment (it reopens if the problem is still there).";
+}
 
 function resolveTool(kind: "resolve" | "reopen") {
   const resolve = kind === "resolve";
@@ -381,6 +395,7 @@ function resolveTool(kind: "resolve" | "reopen") {
     description: (resolve
       ? [
           "Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).",
+          "On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a finding that is still there reopens. If the finding is wrong rather than fixed, use superflow_reject_comment.",
           "Safe to repeat: if it is already resolved nothing changes and the note is not posted.",
           "To resolve many comments at once use superflow_bulk_update_comments with patch {\"resolve\": true}. To undo use superflow_reopen_comment.",
           'Example: {"comment": "4821", "project": "Acme Dental", "note": "Fixed in the latest deploy, please check."}',
@@ -412,7 +427,7 @@ function resolveTool(kind: "resolve" | "reopen") {
       const label = result.comment ? commentLabel(result.comment) : args.comment;
       const link = result.comment?.url ? ` Link: ${result.comment.url}` : "";
       const summary = result.changed
-        ? `${resolve ? "Resolved" : "Reopened"} comment ${label}${result.note_reply_id ? " and posted the note as a reply" : ""}.${link}`
+        ? `${resolve ? "Resolved" : "Reopened"} comment ${label}${result.note_reply_id ? " and posted the note as a reply" : ""}.${result.verify ? ` ${verifyNote(result.verify)}` : ""}${link}`
         : `Comment ${label} was already ${resolve ? "resolved" : "open"}. Nothing changed${args.note ? " and the note was not posted" : ""}.${link}`;
       return okResult(summary, asData(result));
     },

@@ -126,6 +126,8 @@ export interface ToolErrorShape {
   candidates: unknown[];
   /** Every validation problem, when the API listed more than one. */
   issues?: Array<{ field: string; reason: string }>;
+  /** Why the Checks Engine refused (already_verified, not_agent_comment, ...). */
+  reason?: string;
 }
 
 /** Builds an isError tool result in the contract's error shape. Never throws. */

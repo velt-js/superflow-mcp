@@ -275,6 +275,8 @@ export interface ResolveResponse {
   comment: CommentFull;
   changed: boolean;
   note_reply_id: string | null;
+  /** An agent finding's resolve queues a verify rescan of its page. */
+  verify?: { queued: boolean; already_pending: boolean; run_id: string | null };
 }
 
 export interface CreateReplyResponse {

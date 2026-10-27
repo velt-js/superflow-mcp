@@ -5,9 +5,9 @@ import { TOOL_NAMES } from "../../src/tools/index.ts";
 describe("eval prompts", () => {
   const prompts = loadPrompts({ project: "Acme Dental", page_url: "https://acme.com/pricing" });
 
-  it("has 59 prompts with unique ids, filled placeholders and known tools", () => {
-    expect(prompts).toHaveLength(59);
-    expect(new Set(prompts.map((p) => p.id)).size).toBe(59);
+  it("has 65 prompts with unique ids, filled placeholders and known tools", () => {
+    expect(prompts).toHaveLength(65);
+    expect(new Set(prompts.map((p) => p.id)).size).toBe(65);
     for (const entry of prompts) {
       expect(entry.prompt, entry.id).not.toMatch(/\{(project|page_url)\}/);
       const firsts = Array.isArray(entry.expect_first_tool) ? entry.expect_first_tool : [entry.expect_first_tool];
@@ -36,6 +36,14 @@ describe("eval prompts", () => {
     expect(prompts.filter((p) => p.id.startsWith("add-"))).toHaveLength(9);
   });
 
+  it("includes six checks prompts, none confirming a write it was not asked for", () => {
+    const checks = prompts.filter((p) => p.id.startsWith("chk-"));
+    expect(checks).toHaveLength(6);
+    for (const id of ["chk-mark-fixed-needs-confirmation", "chk-exclude-needs-confirmation"]) {
+      expect(checks.find((p) => p.id === id)?.check, id).toContainEqual({ no_confirmed_writes: true });
+    }
+  });
+
   it("includes ten Phase 3 prompts, with the estimate before any run", () => {
     expect(prompts.filter((p) => p.id.startsWith("p3-"))).toHaveLength(10);
     const run = prompts.find((p) => p.id === "p3-estimate-then-run");
@@ -62,7 +70,7 @@ describe("eval helpers", () => {
     const session = await startServer({ apiKey: "sf_pat_eval", readOnly: true });
     const tools = toClaudeTools(session.tools);
     await session.close();
-    expect(tools).toHaveLength(40);
+    expect(tools).toHaveLength(45);
     for (const tool of tools) {
       expect(tool.input_schema.type).toBe("object");
       expect(tool.input_schema).not.toHaveProperty("$schema");
