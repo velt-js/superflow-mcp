@@ -7,6 +7,7 @@
 | `claude_desktop_config.json` | Claude Desktop. Merge into `claude_desktop_config.json` (Settings > Developer > Edit Config). |
 | `cursor-mcp-stdio.json` | Cursor. Drop into `~/.cursor/mcp.json` or project-local `.cursor/mcp.json`. |
 | `claude-code.sh` | Claude Code. The `claude mcp add` commands. |
+| `gemini-settings.json` | Gemini CLI. Merge into `~/.gemini/settings.json` or project-local `.gemini/settings.json`. The folder must be trusted. |
 | `prompts.md` | Things to ask once it is connected. |
 
 ## Hosted server

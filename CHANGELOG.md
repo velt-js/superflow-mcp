@@ -59,6 +59,8 @@ when their engines ship.
   (`hosted` drops every SUPERFLOW_ variable from the wording), `renamedTools` and
   `onToolCall`. The hosted server at mcp.usesuperflow.ai uses it to serve these same tools,
   so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
+- Gemini CLI setup in the README and `examples/gemini-settings.json`. Tested with Gemini
+  CLI 0.65.0: all 105 tools load, and a tool call reaches the API.
 
 ### Changed
 - The `triage` prompt follows the triage playbook, which now builds its list from the

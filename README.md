@@ -1,6 +1,6 @@
 # Superflow MCP
 
-Talk to your [Superflow](https://usesuperflow.ai) comments from Claude Code, Claude Desktop, Cursor, claude.ai, ChatGPT or any MCP client.
+Talk to your [Superflow](https://usesuperflow.ai) comments from Claude Code, Claude Desktop, Cursor, Gemini CLI, claude.ai, ChatGPT or any MCP client.
 
 Superflow is a visual feedback and AI review layer for websites. Your team, your clients and AI review agents leave comments pinned on live pages. With this MCP server your assistant can read that feedback, filter and count it, reply, resolve, triage in bulk, and draft client updates. It can also run the admin side: create a project for a new client, invite their reviewers, hand over the install snippet and check it, and manage statuses, tags and the team. And it can run the AI review agents (with a credit estimate first), schedule them, push findings to Jira, Asana, ClickUp or Monday, post to Slack, and send webhooks to your other systems. All without leaving the editor or the chat.
 
@@ -11,7 +11,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
 | Tools | 105 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
-| Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
+| Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
 
@@ -68,6 +68,20 @@ Add this to `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
   }
 }
 ```
+
+### Gemini CLI (local)
+
+```bash
+gemini mcp add -s user -e SUPERFLOW_API_KEY=sf_pat_... superflow npx -y superflow-mcp
+```
+
+Do not put `--` before `npx`. Or add the same `mcpServers` block as Cursor to
+`~/.gemini/settings.json`, or to `.gemini/settings.json` in a project.
+
+Gemini CLI starts MCP servers only in a trusted folder. It asks the first time you open a
+folder; for a headless `gemini -p` run, pass `--skip-trust` or set
+`GEMINI_CLI_TRUST_WORKSPACE=true`. The tools show up as `mcp_superflow_superflow_...`, and
+`gemini mcp list` should show `superflow` as Connected.
 
 ### claude.ai (hosted, OAuth)
 
