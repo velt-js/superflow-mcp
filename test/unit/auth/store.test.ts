@@ -73,6 +73,41 @@ describe("chooseCredentialStore", () => {
     expect(warning).toContain("readable only by you");
   });
 
+  it("reads back a sign-in that login saved to the file because the keyring refused it, and logout clears it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    // The Keychain answers the probe but holds nothing (and would refuse a write).
+    const keychain: Runner = async (command, args) => ({ code: command === "security" && args[0] === "-h" ? 0 : 44, stdout: "" });
+    await fileStore(path).write(SESSION);
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    expect(store.kind).toBe("keychain");
+    expect(await store.read()).toEqual(SESSION);
+    expect(store.location).toBe(path);
+    await store.clear();
+    expect(await fileStore(path).read()).toBeNull();
+  });
+
+  it("writes to the file when the keyring refuses, and says where it went", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const keychain: Runner = async (command, args) => ({ code: command === "security" && args[0] === "-h" ? 0 : 51, stdout: "" });
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    await store.write(SESSION);
+    expect(await fileStore(path).read()).toEqual(SESSION);
+    expect(store.location).toBe(path);
+  });
+
+  it("prefers the keyring's sign-in over the file's", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    await fileStore(path).write({ ...SESSION, accessToken: "sf_at_old" });
+    const keychain: Runner = async (_command, args) =>
+      args[0] === "find-generic-password" ? { code: 0, stdout: JSON.stringify(SESSION) } : { code: 0, stdout: "" };
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    expect((await store.read())?.accessToken).toBe("sf_at_1");
+    expect(store.location).toBe("the macOS Keychain");
+  });
+
   it("SUPERFLOW_CREDENTIALS_STORE=file forces the file without a warning", async () => {
     const { store, warning } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_STORE: "file" }, platform: "darwin", run: runner({ security: 0 }) });
     expect(store.kind).toBe("file");

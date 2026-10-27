@@ -100,15 +100,17 @@ export const deleteTag = defineTool({
   annotations: hints(false, true, true, false),
   write: true,
   async run(args, { api }) {
+    // The tag is resolved within the project, as the preview showed it, so the delete sends
+    // its id: a name the workspace-wide route sees in two projects would be ambiguous.
+    const tag = findOne(await tagsFor(api, args.project), args.tag, lookup(args.project));
     if (isConfirmed(args.confirm)) {
-      const result = await api.call<DeleteTagResponse>("deleteTag", { path: { tag: args.tag }, query: { confirm: true } });
+      const result = await api.call<DeleteTagResponse>("deleteTag", { path: { tag: tag.id }, query: { confirm: true } });
       return okResult(
-        `Deleted tag ${args.tag} (${result.id ?? "unknown id"}) and removed it from ${plural(result.removed_from ?? 0, "comment")}.`,
+        `Deleted tag ${tag.name} (${result.id ?? tag.id}) and removed it from ${plural(result.removed_from ?? 0, "comment")}.`,
         asData(result),
       );
     }
     // Preview: one read. Nothing that could delete is sent without confirm.
-    const tag = findOne(await tagsFor(api, args.project), args.tag, lookup(args.project));
     return confirmationResult(
       `Tag ${tag.name} (${tag.id}) would be deleted and removed from ${count(tag.usage_count)} comments. Nothing was deleted. Ask the user to confirm.`,
       { preview: { tag, comment_count: tag.usage_count ?? null }, message: CONFIRM_DELETE_TAG_MESSAGE },
@@ -134,21 +136,23 @@ export const mergeTags = defineTool({
   annotations: hints(false, true, true, false),
   write: true,
   async run(args, { api }) {
-    if (isConfirmed(args.confirm)) {
-      const result = await api.call<MergeTagsResponse>("mergeTags", {
-        path: { tag: args.tag },
-        body: { into: args.into, confirm: true },
-      });
-      return okResult(
-        `Merged tag ${args.tag} into ${args.into}: ${plural(result.comments_updated ?? 0, "comment")} updated, and ${args.tag} was deleted.`,
-        asData(result),
-      );
-    }
-    // Preview: one read. Nothing that could merge is sent without confirm.
+    // Both tags are resolved within the project, as the preview showed them, and the merge
+    // sends their ids: a name the workspace-wide route sees in two projects would be ambiguous.
     const tags = await tagsFor(api, args.project);
     const from = findOne(tags, args.tag, lookup(args.project));
     const into = findOne(tags, args.into, lookup(args.project));
     if (from.id === into.id) return invalidInput("tag and into are the same tag. Pick two different tags.");
+    if (isConfirmed(args.confirm)) {
+      const result = await api.call<MergeTagsResponse>("mergeTags", {
+        path: { tag: from.id },
+        body: { into: into.id, confirm: true },
+      });
+      return okResult(
+        `Merged tag ${from.name} into ${into.name}: ${plural(result.comments_updated ?? 0, "comment")} updated, and ${from.name} was deleted.`,
+        asData(result),
+      );
+    }
+    // Preview: one read. Nothing that could merge is sent without confirm.
     return confirmationResult(
       `Tag ${from.name} would be merged into ${into.name}: ${count(from.usage_count)} comments would get ${into.name}, and ${from.name} would be deleted. Nothing was merged. Ask the user to confirm.`,
       { preview: { from, into, comments_to_update: from.usage_count ?? null }, message: CONFIRM_MERGE_TAGS_MESSAGE },

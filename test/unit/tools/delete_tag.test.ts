@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CONFIRM_DELETE_TAG_MESSAGE } from "../../../src/lib/confirm.ts";
 import { list, tags } from "../../helpers/fixtures.ts";
-import { connect, data, errorOf, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
+import { connect, data, errorOf, fail, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
 
 useMsw();
 
@@ -35,19 +35,37 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
-  it("deletes with confirm: true", async () => {
+  it("deletes with confirm: true, by the id of the tag the preview showed", async () => {
+    on("get", "/tags", ok(list(tags)));
     on("delete", "/tags/:tag", ok({ deleted: true, id: "tag_mobile", removed_from: 5 }));
     const h = await connect();
-    const result = await h.call(TOOL, { tag: "tag_mobile", confirm: true });
-    expect(summaryOf(result)).toBe("Deleted tag tag_mobile (tag_mobile) and removed it from 5 comments.");
-    expect(recorded.map((r) => [r.method, r.query])).toEqual([["DELETE", { confirm: "true" }]]);
+    const result = await h.call(TOOL, { tag: "mobile", confirm: true });
+    expect(summaryOf(result)).toBe("Deleted tag mobile (tag_mobile) and removed it from 5 comments.");
+    expect(recorded.map((r) => [r.method, r.operationId, r.query])).toEqual([["GET", "listTags", {}], ["DELETE", "deleteTag", { confirm: "true" }]]);
+    expect(recorded[1]?.path).toBe("/tags/tag_mobile");
   });
 
+  it("sends the project's tag id, so a name used in two projects is not ambiguous", async () => {
+    on("get", "/projects/:project/tags", ok(list(tags)));
+    on("delete", "/tags/:tag", ok({ deleted: true, id: "tag_mobile", removed_from: 5 }));
+    const h = await connect();
+    await h.call(TOOL, { tag: "mobile", project: "Acme Dental", confirm: true });
+    expect(recorded.map((r) => r.path)).toEqual(["/projects/Acme%20Dental/tags", "/tags/tag_mobile"]);
+  });
+
+  it("surfaces an error from the delete itself", async () => {
+    on("get", "/tags", ok(list(tags)));
+    on("delete", "/tags/:tag", fail(404, { code: "not_found", message: "No tag tag_mobile.", hint: "List the tags." }));
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { tag: "mobile", confirm: true })).code).toBe("not_found");
+  });
+
+  // The first request of every call is the tag list read, confirmed or not.
   standardErrorCases({
     tool: TOOL,
-    args: { tag: "copy", confirm: true },
-    method: "delete",
-    path: "/tags/:tag",
-    success: ok({ deleted: true, id: "tag_copy", removed_from: 0 }),
+    args: { tag: "copy", project: "Acme Dental" },
+    method: "get",
+    path: "/projects/:project/tags",
+    success: ok(list(tags)),
   });
 });

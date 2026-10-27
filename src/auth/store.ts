@@ -137,9 +137,56 @@ function secretServiceStore(run: Runner): CredentialStore {
 }
 
 /**
+ * A keyring that falls back to the file. `login` saves to the file when the keyring refuses
+ * a write (locked, no session bus), so every later reader must look there too, or that
+ * sign-in is lost on the next start and `logout` cannot remove it.
+ * - read: the keyring, else the file;
+ * - write: the keyring, else the file;
+ * - clear: both.
+ * `location` names the store the session was last read from or written to.
+ */
+export function withFileFallback(primary: CredentialStore, file: CredentialStore): CredentialStore {
+  let current: CredentialStore = primary;
+  return {
+    kind: primary.kind,
+    get location() {
+      return current.location;
+    },
+    async read() {
+      let session: StoredSession | null = null;
+      try {
+        session = await primary.read();
+      } catch {
+        session = null;
+      }
+      if (session) {
+        current = primary;
+        return session;
+      }
+      const saved = await file.read();
+      if (saved) current = file;
+      return saved;
+    },
+    async write(session) {
+      try {
+        await primary.write(session);
+        current = primary;
+      } catch {
+        await file.write(session);
+        current = file;
+      }
+    },
+    async clear() {
+      await Promise.allSettled([primary.clear(), file.clear()]);
+    },
+  };
+}
+
+/**
  * The store to use. `auto` (default): the Keychain on macOS, the Secret Service on Linux
- * when `secret-tool` works, else the file. `warning` is set when the file is used only
- * because no keyring was available, so `login` can say so.
+ * when `secret-tool` works, else the file. A keyring is wrapped in `withFileFallback`.
+ * `warning` is set when the file is used only because no keyring was available, so `login`
+ * can say so.
  */
 export async function chooseCredentialStore(params: {
   env: NodeJS.ProcessEnv;
@@ -153,13 +200,13 @@ export async function chooseCredentialStore(params: {
   if (mode === "file") return { store: file };
   if (platform === "darwin") {
     const probe = await run("security", ["-h"]);
-    if (probe.code !== 127) return { store: keychainStore(run) };
+    if (probe.code !== 127) return { store: withFileFallback(keychainStore(run), file) };
   }
   if (platform === "linux") {
     // `search` on an attribute nothing has exits 0 or 1 when the keyring answers, 127 when
     // secret-tool is missing; any other code means there is no keyring session.
     const probe = await run("secret-tool", ["search", "service", `${SERVICE}-probe`]);
-    if (probe.code === 0 || probe.code === 1) return { store: secretServiceStore(run) };
+    if (probe.code === 0 || probe.code === 1) return { store: withFileFallback(secretServiceStore(run), file) };
   }
   return {
     store: file,
