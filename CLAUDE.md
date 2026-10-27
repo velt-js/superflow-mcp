@@ -82,9 +82,11 @@ playbook line in the server instructions.
   is `superflow_remove_member`, which asks the API without confirm and shows its 409
   preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
-- Two tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
+- Three tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
   (it spends AI credits; without confirm it calls the estimate and returns it as the
-  preview) and `superflow_post_to_slack` (people see the post). A credits refusal is
+  preview), `superflow_mark_check_fixed` (it resolves every open finding of a check and
+  spends 1 credit on the verify rescan; without confirm it reads the check and returns it as
+  the preview) and `superflow_post_to_slack` (people see the post). A credits refusal is
   explained with Settings > Billing and never retried.
 - Run polling: `superflow_get_run` asks for at most one call every 20 seconds
   (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
@@ -103,6 +105,9 @@ playbook line in the server instructions.
 - Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
   create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
   accept `low`, `none` and `unassigned`.
+- Checks: a resolve or a mark fixed is a claim; the rescan verifies it. Summaries say so,
+  and report `verify` when the API returns one. An engine refusal keeps the API's `reason`
+  (`already_verified`, `not_agent_comment`, ...) on the error; never retry it.
 - Comment `number` can be null. Label comments with `commentLabel`, which falls back to the id.
 
 ## Commands

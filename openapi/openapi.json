@@ -2774,7 +2774,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "description": "Attach the comment to a rule, such as broken-link, so it lists and resolves with that rule's findings. null detaches it."
+                        "description": "Attach the comment to a check, such as link-broken, so it lists and resolves with that check's findings. null detaches it."
                       },
                       {
                         "type": "null"
@@ -5744,6 +5744,1112 @@
         }
       }
     },
+    "/projects/{project}/checks": {
+      "get": {
+        "operationId": "listChecks",
+        "summary": "The site's checks, worst first (one check per kind of problem, with its open findings counted)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "description": "Default: every state.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "failing",
+                "passing",
+                "excluded"
+              ]
+            }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "critical",
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "description": "Agent id or name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "description": "Member id, email, name or me.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/checks/{rule_key}": {
+      "get": {
+        "operationId": "getCheck",
+        "summary": "One check: its fix guide, counts, owner and a page of its findings",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rule_key",
+            "in": "path",
+            "required": true,
+            "description": "A check's rule key, such as image-alt or link-broken (listChecks lists a site's checks). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Default open.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "resolved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "next_cursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/checks/{rule_key}/resolve": {
+      "post": {
+        "operationId": "resolveCheck",
+        "summary": "Mark a check fixed: resolve every open finding of it and queue one verify rescan of their pages",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rule_key",
+            "in": "path",
+            "required": true,
+            "description": "A check's rule key, such as image-alt or link-broken (listChecks lists a site's checks). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResolved"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/checks/{rule_key}/exclude": {
+      "post": {
+        "operationId": "excludeCheck",
+        "summary": "Exclude a check that does not apply to this site (its open findings are rejected and new ones kept out)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rule_key",
+            "in": "path",
+            "required": true,
+            "description": "A check's rule key, such as image-alt or link-broken (listChecks lists a site's checks). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "wrong",
+                      "not_important",
+                      "not_applicable",
+                      "cannot_tell"
+                    ],
+                    "description": "wrong, not_important, not_applicable or cannot_tell. \"Already fixed\" is a resolve, not a reject."
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckExcluded"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/checks/{rule_key}/include": {
+      "post": {
+        "operationId": "includeCheck",
+        "summary": "Include an excluded check again (the findings its exclusion rejected come back)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rule_key",
+            "in": "path",
+            "required": true,
+            "description": "A check's rule key, such as image-alt or link-broken (listChecks lists a site's checks). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckExcluded"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/checks/{rule_key}/owner": {
+      "put": {
+        "operationId": "setCheckOwner",
+        "summary": "Set who owns a check, or null to follow the project default",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rule_key",
+            "in": "path",
+            "required": true,
+            "description": "A check's rule key, such as image-alt or link-broken (listChecks lists a site's checks). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Member id, email, name or me."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "owner"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckOwner"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/score": {
+      "get": {
+        "operationId": "getSiteScore",
+        "summary": "The site score, the last runs, and the pages lowest score first",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pages_cursor",
+            "in": "query",
+            "required": false,
+            "description": "next_pages_cursor of the read before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteScore"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/check-settings": {
+      "get": {
+        "operationId": "getCheckSettings",
+        "summary": "The confidence floor and the default owner per kind of work",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCheckSettings",
+        "summary": "Change the confidence floor or the default owners (an owner left out is kept; null is the project admin)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confidence_floor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "default_owners": {
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "design": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "dev": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/reject": {
+      "post": {
+        "operationId": "rejectComment",
+        "summary": "Reject an agent finding with a reason (it leaves the open list and no scan reopens it)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:write"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:write",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string",
+                    "description": "Needed when the comment path parameter is a number."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "wrong",
+                      "not_important",
+                      "not_applicable",
+                      "cannot_tell"
+                    ],
+                    "description": "wrong, not_important, not_applicable or cannot_tell. \"Already fixed\" is a resolve, not a reject."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "The person's own words, kept with the reason."
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/comments/{comment}/source": {
+      "get": {
+        "operationId": "getCommentSource",
+        "summary": "Where an agent finding sits in the page's stored HTML (the line and the match)",
+        "tags": [
+          "checks"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "description": "Project reference (needed to resolve a comment number).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page_url",
+            "in": "query",
+            "required": false,
+            "description": "Another stored page of a site-wide finding.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentSource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/billing": {
       "get": {
         "operationId": "getBilling",
@@ -7609,7 +8715,7 @@
                         },
                         "rule_key": {
                           "type": "string",
-                          "description": "A Superflow rule key when the kind matches (image-alt, broken-link, ...), else your own kind starting with ext-."
+                          "description": "A Superflow check rule key when the kind matches (image-alt, link-broken, ...), else your own kind starting with ext-."
                         },
                         "fix_type": {
                           "type": "string",
@@ -9012,7 +10118,12 @@
                         "guest.invited",
                         "agent_run.started",
                         "agent_run.completed",
-                        "agent_run.failed"
+                        "agent_run.failed",
+                        "check.resolved",
+                        "check.excluded",
+                        "check.included",
+                        "check.owner_changed",
+                        "comment.rejected"
                       ]
                     },
                     "minItems": 1
@@ -9216,7 +10327,12 @@
                         "guest.invited",
                         "agent_run.started",
                         "agent_run.completed",
-                        "agent_run.failed"
+                        "agent_run.failed",
+                        "check.resolved",
+                        "check.excluded",
+                        "check.included",
+                        "check.owner_changed",
+                        "comment.rejected"
                       ]
                     },
                     "minItems": 1
@@ -12419,7 +13535,12 @@
                 "guest.invited",
                 "agent_run.started",
                 "agent_run.completed",
-                "agent_run.failed"
+                "agent_run.failed",
+                "check.resolved",
+                "check.excluded",
+                "check.included",
+                "check.owner_changed",
+                "comment.rejected"
               ]
             }
           },
@@ -12666,6 +13787,1161 @@
         "required": [
           "items",
           "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Verify": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean",
+            "description": "A verify rescan of the page is queued (it starts within a minute, batched per project)."
+          },
+          "already_pending": {
+            "type": "boolean",
+            "description": "It was already waiting for its rescan: nothing new started, nothing charged."
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "run_ id once the rescan started; poll getRun."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "queued",
+          "already_pending",
+          "run_id"
+        ],
+        "additionalProperties": false
+      },
+      "Check": {
+        "type": "object",
+        "properties": {
+          "rule_key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "responsibility": {
+            "type": "string",
+            "enum": [
+              "content",
+              "design",
+              "dev"
+            ]
+          },
+          "fix_guide": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "failing",
+              "passing",
+              "excluded"
+            ]
+          },
+          "open_count": {
+            "type": "integer"
+          },
+          "page_count": {
+            "type": "integer"
+          },
+          "score_impact": {
+            "type": "number",
+            "description": "How many site score points fixing it is worth; checks are listed worst first."
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "usr_ id"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "email"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner_is_default": {
+            "type": "boolean",
+            "description": "True when the owner comes from the project default for its kind of work."
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failing_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excluded": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "by": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "UTC ISO 8601 with Z"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "reason",
+                  "by",
+                  "at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rule_key",
+          "title",
+          "description",
+          "severity",
+          "responsibility",
+          "fix_guide",
+          "agents",
+          "state",
+          "open_count",
+          "page_count",
+          "score_impact",
+          "owner",
+          "owner_is_default",
+          "last_seen_at",
+          "failing_since",
+          "excluded"
+        ],
+        "additionalProperties": false
+      },
+      "CheckList": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Check"
+            }
+          },
+          "excluded_count": {
+            "type": "integer"
+          },
+          "grouping_in_progress": {
+            "type": "boolean"
+          },
+          "writes_pending": {
+            "type": "boolean"
+          },
+          "applied_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "project",
+          "items",
+          "excluded_count",
+          "grouping_in_progress",
+          "writes_pending",
+          "applied_filters"
+        ],
+        "additionalProperties": false
+      },
+      "CheckDetails": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Check"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "cmt_ id"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "in_progress",
+                    "resolved",
+                    "rejected"
+                  ]
+                },
+                "pending_verify": {
+                  "type": "boolean",
+                  "description": "Resolved and waiting for the rescan that verifies it."
+                },
+                "verified_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "resolved_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "resolved_by": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "scan",
+                        "user",
+                        "mcp",
+                        "suggestion"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reopened_count": {
+                  "type": "integer"
+                },
+                "reject_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "page",
+                    "site"
+                  ]
+                },
+                "page_url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "page_count": {
+                  "type": "integer"
+                },
+                "evidence": {
+                  "type": "string"
+                },
+                "location_type": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "suggested_fix": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "is_agent": {
+                  "type": "boolean"
+                },
+                "attached": {
+                  "type": "boolean",
+                  "description": "A person's comment attached to the check."
+                },
+                "created_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "deep_link": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "pending_verify",
+                "verified_at",
+                "resolved_at",
+                "resolved_by",
+                "reopened_count",
+                "reject_reason",
+                "scope",
+                "page_url",
+                "pages",
+                "page_count",
+                "evidence",
+                "location_type",
+                "confidence",
+                "suggested_fix",
+                "is_agent",
+                "attached",
+                "created_at",
+                "deep_link"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "project",
+          "check",
+          "status",
+          "comments",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "CheckResolved": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "rule_key": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "integer"
+          },
+          "already_pending": {
+            "type": "integer"
+          },
+          "verify_run_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "rule_key",
+          "resolved",
+          "already_pending",
+          "verify_run_ids",
+          "truncated",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "CheckExcluded": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "rule_key": {
+            "type": "string"
+          },
+          "excluded": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "wrong",
+              "not_important",
+              "not_applicable",
+              "cannot_tell"
+            ]
+          }
+        },
+        "required": [
+          "project",
+          "rule_key",
+          "excluded"
+        ],
+        "additionalProperties": false
+      },
+      "CheckOwner": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "rule_key": {
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "usr_ id"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "email"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "rule_key",
+          "owner",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "SiteScore": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "site_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recent_runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "run_id": {
+                  "type": "string"
+                },
+                "site_score": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trigger": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "run_id",
+                "site_score",
+                "at",
+                "trigger"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "score": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "open_count": {
+                  "type": "integer"
+                },
+                "last_checked_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "url",
+                "score",
+                "open_count",
+                "last_checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_pages_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_pages": {
+            "type": "integer"
+          },
+          "excluded_count": {
+            "type": "integer"
+          },
+          "next_scan_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "project",
+          "site_score",
+          "recent_runs",
+          "pages",
+          "next_pages_cursor",
+          "total_pages",
+          "excluded_count",
+          "next_scan_at"
+        ],
+        "additionalProperties": false
+      },
+      "CheckSettings": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "confidence_floor": {
+            "type": "integer",
+            "description": "0 to 100: a finding under it writes no comment."
+          },
+          "default_owners": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "usr_ id"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "email": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "email"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "design": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "usr_ id"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "email": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "email"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dev": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "usr_ id"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "email": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "email"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "content",
+              "design",
+              "dev"
+            ],
+            "additionalProperties": false
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "confidence_floor",
+          "default_owners",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "RejectResult": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "$ref": "#/components/schemas/CommentFull"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "wrong",
+              "not_important",
+              "not_applicable",
+              "cannot_tell"
+            ]
+          }
+        },
+        "required": [
+          "comment",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "CommentSource": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "page_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "line_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "line": {
+            "type": "string"
+          },
+          "line_offset": {
+            "type": "integer"
+          },
+          "match_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "comment_id",
+          "page_url",
+          "line_number",
+          "line",
+          "line_offset",
+          "match_start",
+          "match_end",
+          "version_id"
         ],
         "additionalProperties": false
       },
@@ -13043,7 +15319,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "description": "The rule key the comment carries: an agent finding's kind (image-alt, broken-link, ...) or one a person attached with updateComment rule_key."
+                "description": "The check rule key the comment carries: the Checks Engine's key (image-alt, link-broken, ...), on an agent finding or a person's comment attached to a check."
               },
               {
                 "type": "null"
@@ -13442,7 +15718,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "description": "The rule key the comment carries: an agent finding's kind or one a person attached."
+                "description": "The check rule key the comment carries, on an agent finding or a person's comment attached to a check."
               },
               {
                 "type": "null"
@@ -14666,6 +16942,9 @@
                 "type": "null"
               }
             ]
+          },
+          "verify": {
+            "$ref": "#/components/schemas/Verify"
           }
         },
         "required": [
@@ -15157,7 +17436,7 @@
         "name": "rule_key",
         "in": "query",
         "required": false,
-        "description": "Rule keys (image-alt, image-broken, broken-link, ...; aliases such as link-broken are accepted). Matches agent findings of that kind and comments a person attached to it. Comma separated, or repeated.",
+        "description": "Check rule keys (image-alt, image-broken, link-broken, ...; the names used before checks, such as broken-link, are accepted for one release). Matches agent findings of that check and comments a person attached to it. Comma separated, or repeated.",
         "schema": {
           "type": "array",
           "items": {

@@ -8,30 +8,33 @@ import { defineTool, hints } from "./define.ts";
 import { asData, join } from "./helpers.ts";
 import { idempotencySchema, projectRefSchema } from "./schemas.ts";
 
-/** Superflow's own rule keys an outside finding should use when its kind matches (the API checks them). */
+/** Superflow's own check rule keys (the Checks Engine's) an outside finding should use when its kind matches (the API checks them). */
 export const COMMON_RULE_KEYS = [
   "image-alt",
   "image-broken",
-  "image-quality",
+  "image-empty",
+  "image-blurry",
   "image-stretched",
-  "image-crop",
-  "broken-link",
-  "dead-button",
-  "dead-form",
-  "staging-link",
-  "malformed-link",
-  "unlinked-phone",
-  "unlinked-email",
-  "unlinked-logo",
-  "social-link",
-  "same-tab-link",
-  "new-tab-internal-link",
-  "style-mismatch",
-  "missing-hover",
-  "small-tap-target",
-  "horizontal-scroll",
-  "cut-off-text",
-  "broken-mobile-menu",
+  "image-bad-crop",
+  "link-broken",
+  "link-dead-button",
+  "form-dead",
+  "link-staging",
+  "link-malformed",
+  "link-unlinked-phone",
+  "link-unlinked-email",
+  "link-unlinked-logo",
+  "link-social-mismatch",
+  "link-external-same-tab",
+  "link-internal-new-tab",
+  "design-style-mismatch",
+  "design-missing-hover",
+  "mobile-small-tap-target",
+  "mobile-horizontal-scroll",
+  "mobile-cut-off",
+  "mobile-broken-menu",
+  "copy-typo",
+  "copy-placeholder",
 ] as const;
 
 const findingSchema = z
@@ -43,7 +46,7 @@ const findingSchema = z
     rule_key: z
       .string()
       .min(1)
-      .max(64)
+      .max(120)
       .describe(`The kind of problem. Use Superflow's key when it matches (${COMMON_RULE_KEYS.join(", ")}), so it merges with what Superflow already found; otherwise your own key starting with ext-, for example ext-cookie-banner.`),
     fix_type: z.enum(["content", "design", "code"]).describe("content (copy, alt text, a link in the CMS), design, or code (theme or repository)."),
     confidence: z.number().int().min(0).max(100).optional().describe("0 to 100. Below 50 the finding is dropped."),

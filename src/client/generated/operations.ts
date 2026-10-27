@@ -170,6 +170,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  excludeCheck: {
+    method: "POST",
+    path: "/projects/{project}/checks/{rule_key}/exclude",
+    pathParams: ["project", "rule_key"],
+    queryParams: [],
+  },
   exportComments: {
     method: "GET",
     path: "/comments/export",
@@ -194,11 +200,29 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  getCheck: {
+    method: "GET",
+    path: "/projects/{project}/checks/{rule_key}",
+    pathParams: ["project", "rule_key"],
+    queryParams: ["cursor", "limit", "status"],
+  },
+  getCheckSettings: {
+    method: "GET",
+    path: "/projects/{project}/check-settings",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   getComment: {
     method: "GET",
     path: "/comments/{comment}",
     pathParams: ["comment"],
     queryParams: ["include_replies", "project"],
+  },
+  getCommentSource: {
+    method: "GET",
+    path: "/comments/{comment}/source",
+    pathParams: ["comment"],
+    queryParams: ["page_url", "project"],
   },
   getCommentStats: {
     method: "GET",
@@ -272,6 +296,12 @@ export const operations = {
     pathParams: ["run"],
     queryParams: [],
   },
+  getSiteScore: {
+    method: "GET",
+    path: "/projects/{project}/score",
+    pathParams: ["project"],
+    queryParams: ["page_size", "pages_cursor"],
+  },
   getTeamAnalytics: {
     method: "GET",
     path: "/analytics/team",
@@ -288,6 +318,12 @@ export const operations = {
     method: "POST",
     path: "/projects/{project}/findings/import",
     pathParams: ["project"],
+    queryParams: [],
+  },
+  includeCheck: {
+    method: "POST",
+    path: "/projects/{project}/checks/{rule_key}/include",
+    pathParams: ["project", "rule_key"],
     queryParams: [],
   },
   inviteGuests: {
@@ -325,6 +361,12 @@ export const operations = {
     path: "/api-keys",
     pathParams: [],
     queryParams: [],
+  },
+  listChecks: {
+    method: "GET",
+    path: "/projects/{project}/checks",
+    pathParams: ["project"],
+    queryParams: ["agent", "owner", "severity", "state"],
   },
   listComments: {
     method: "GET",
@@ -452,6 +494,12 @@ export const operations = {
     pathParams: ["comment"],
     queryParams: [],
   },
+  rejectComment: {
+    method: "POST",
+    path: "/comments/{comment}/reject",
+    pathParams: ["comment"],
+    queryParams: [],
+  },
   removeGuest: {
     method: "DELETE",
     path: "/projects/{project}/guests/{guest}",
@@ -481,6 +529,12 @@ export const operations = {
     path: "/statuses/order",
     pathParams: [],
     queryParams: ["project"],
+  },
+  resolveCheck: {
+    method: "POST",
+    path: "/projects/{project}/checks/{rule_key}/resolve",
+    pathParams: ["project", "rule_key"],
+    queryParams: [],
   },
   resolveComment: {
     method: "POST",
@@ -512,6 +566,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  setCheckOwner: {
+    method: "PUT",
+    path: "/projects/{project}/checks/{rule_key}/owner",
+    pathParams: ["project", "rule_key"],
+    queryParams: [],
+  },
   testWebhook: {
     method: "POST",
     path: "/webhooks/{webhook}/test",
@@ -534,6 +594,12 @@ export const operations = {
     method: "PATCH",
     path: "/agent-packs/{pack}",
     pathParams: ["pack"],
+    queryParams: [],
+  },
+  updateCheckSettings: {
+    method: "PATCH",
+    path: "/projects/{project}/check-settings",
+    pathParams: ["project"],
     queryParams: [],
   },
   updateComment: {
@@ -608,7 +674,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "399fcbaebf05c81ab66fbc3f81825ff38932d60c3b133d367f1946434cda1cb2";
+export const OPENAPI_SHA256 = "1e05f9482855cbd8eab08ba7c89c31be55e7b7cb62ead421f86b0d032062d0b9";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

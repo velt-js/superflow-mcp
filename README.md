@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 94 tools: playbooks, comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
+| Tools | 105 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -162,6 +162,26 @@ claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=
 ### Tools
 
 Full parameters and examples: [`docs/tools.md`](docs/tools.md).
+
+#### Checks
+
+A check is one kind of problem the agents look for (`link-broken`, `image-alt`, `mobile-overflow` and the rest, by `rule_key`). Each check groups its open findings across the site.
+
+| Tool | What it does |
+|---|---|
+| `superflow_list_failing_checks` | The failing checks of a site, worst first: severity, open findings, pages, owner and how many score points fixing it is worth. |
+| `superflow_get_check_details` | One check: its fix guide and its open findings with their pages and links, 20 at a time. |
+| `superflow_get_site_score` | The site score, the runs before it, and the lowest scoring pages. |
+| `superflow_get_finding_source` | The line of stored HTML a finding points at, to find it in the code. |
+| `superflow_mark_check_fixed` | Resolves every open finding of a check and has a rescan verify it (1 credit). Needs `confirm: true`; without it the tool shows what it would resolve. |
+| `superflow_exclude_check` | Turns a check off for a site, with a reason. Needs `confirm: true`. |
+| `superflow_include_check` | Turns an excluded check back on. |
+| `superflow_assign_check_owner` | Sets who owns a check, or back to the default owner. |
+| `superflow_reject_comment` | Rejects an agent finding as wrong, not important, a duplicate or out of scope. |
+| `superflow_get_check_settings` | The confidence floor and the default owners for content, design and dev checks. |
+| `superflow_set_default_owners` | Sets the default owners for content, design and dev checks. |
+
+Resolving or marking a check fixed is a claim: a rescan verifies it, and a finding that is still there reopens. `superflow_resolve_comment` and `superflow_update_comment` say when they queued that rescan.
 
 #### Comments
 
@@ -326,25 +346,26 @@ The server also ships ten prompts (`triage`, `fix`, `push_my_review`, `stale_thr
 ### Example prompts
 
 1. What's broken on acme-dental.com? Then fix the critical ones.
-2. Show me open comments on usesuperflow.ai/pricing.
-3. How many unresolved comments per page on the Acme project?
-4. Which comments from guests have had no reply from us in 3 days?
-5. Resolve everything tagged `copy` on the homepage.
-6. Assign all high priority mobile comments on Acme to Jen.
-7. What did the agents find in the last run? Which ones look like false positives?
-8. Reply to comment 4821: fixed, please check.
-9. Draft a client update for Acme covering what was closed this week.
-10. Export every resolved comment on Acme from last week as a CSV.
-11. What is our median time to first reply on client comments, week by week?
-12. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
-13. Is the Superflow snippet live on acme.com yet?
-14. How many member seats do we have left, and which agent used the most AI credits this month?
-15. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
-16. Estimate a full run of the Pre-Launch pack on Acme, then run it.
-17. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
-18. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
-19. Post the open critical comments on Acme to our #design-feedback Slack channel.
-20. Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
+2. What is the site score of Acme, and which checks cost it the most points?
+3. Show me open comments on usesuperflow.ai/pricing.
+4. How many unresolved comments per page on the Acme project?
+5. Which comments from guests have had no reply from us in 3 days?
+6. Resolve everything tagged `copy` on the homepage.
+7. Assign all high priority mobile comments on Acme to Jen.
+8. What did the agents find in the last run? Which ones look like false positives?
+9. Reply to comment 4821: fixed, please check.
+10. Draft a client update for Acme covering what was closed this week.
+11. Export every resolved comment on Acme from last week as a CSV.
+12. What is our median time to first reply on client comments, week by week?
+13. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
+14. Is the Superflow snippet live on acme.com yet?
+15. How many member seats do we have left, and which agent used the most AI credits this month?
+16. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
+17. Estimate a full run of the Pre-Launch pack on Acme, then run it.
+18. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
+19. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
+20. Post the open critical comments on Acme to our #design-feedback Slack channel.
+21. Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
 
 More in [`examples/prompts.md`](examples/prompts.md).
 
@@ -355,6 +376,7 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - A review link makes a project visible to anyone who has the link.
 - Agent runs spend AI credits. The assistant prices the run with `superflow_estimate_run`, shows you the credits and asks; `superflow_run_agents` starts nothing without `confirm: true`. When the balance is too low it tells you how to add credits and does not retry.
 - Pushing a comment creates a real issue or task in your Jira, Asana, ClickUp or Monday, and a Slack post is seen by everyone in the channel. The assistant asks first, and a Slack post needs `confirm: true`.
+- Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, and excluding a check hides it for the whole site. Both need `confirm: true`; without it the tool only reads and shows what would happen.
 - A new webhook's signing secret is shown once. Store it right away.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.

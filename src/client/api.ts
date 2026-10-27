@@ -31,6 +31,8 @@ export interface SuperflowApiErrorInit {
   preview?: ApiPreview;
   /** Every validation problem when there was more than one (`findings[37].fix_type`). */
   issues?: ApiIssue[];
+  /** Why the Checks Engine refused, when it did (`already_verified`, `not_agent_comment`, ...). */
+  reason?: string;
 }
 
 /** One validation problem the API listed. */
@@ -48,6 +50,7 @@ export class SuperflowApiError extends Error {
   readonly candidates: Candidate[];
   readonly preview: ApiPreview | undefined;
   readonly issues: ApiIssue[];
+  readonly reason: string | undefined;
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -57,10 +60,18 @@ export class SuperflowApiError extends Error {
     this.candidates = init.candidates ?? [];
     this.preview = init.preview;
     this.issues = init.issues ?? [];
+    this.reason = init.reason;
   }
 
-  toJSON(): { code: string; message: string; hint: string; candidates: Candidate[]; issues?: ApiIssue[] } {
-    return { code: this.code, message: this.message, hint: this.hint, candidates: this.candidates, ...(this.issues.length > 0 ? { issues: this.issues } : {}) };
+  toJSON(): { code: string; message: string; hint: string; candidates: Candidate[]; issues?: ApiIssue[]; reason?: string } {
+    return {
+      code: this.code,
+      message: this.message,
+      hint: this.hint,
+      candidates: this.candidates,
+      ...(this.issues.length > 0 ? { issues: this.issues } : {}),
+      ...(this.reason ? { reason: this.reason } : {}),
+    };
   }
 }
 
@@ -403,7 +414,18 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
   }
   if (!hint) hint = FALLBACK_HINTS[knownCode] ?? "";
 
-  return new SuperflowApiError({ status, code, message, hint, candidates, ...(preview ? { preview } : {}), ...(issues.length > 0 ? { issues } : {}) });
+  const reason = typeof errorBody?.reason === "string" && /^[a-z_]{1,64}$/.test(errorBody.reason) ? errorBody.reason : undefined;
+
+  return new SuperflowApiError({
+    status,
+    code,
+    message,
+    hint,
+    candidates,
+    ...(preview ? { preview } : {}),
+    ...(issues.length > 0 ? { issues } : {}),
+    ...(reason ? { reason } : {}),
+  });
 }
 
 /** One request to the OAuth server (`superflow-mcp login`, token refresh, revoke). */

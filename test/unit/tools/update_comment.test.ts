@@ -18,11 +18,11 @@ describe(TOOL, () => {
   });
 
   it("attaches a rule key, and null detaches it", async () => {
-    on("patch", "/comments/:comment", ok({ ...fullComment, rule_key: "broken-link" }), ok(fullComment));
+    on("patch", "/comments/:comment", ok({ ...fullComment, rule_key: "link-broken" }), ok(fullComment));
     const h = await connect();
-    const attached = await h.call(TOOL, { comment: "cmt_8f3k2", rule_key: "broken-link" });
+    const attached = await h.call(TOOL, { comment: "cmt_8f3k2", rule_key: "link-broken" });
     expect(attached.isError).toBeFalsy();
-    expect(recorded[0]?.body).toEqual({ rule_key: "broken-link" });
+    expect(recorded[0]?.body).toEqual({ rule_key: "link-broken" });
     await h.call(TOOL, { comment: "cmt_8f3k2", rule_key: null });
     expect(recorded[1]?.body).toEqual({ rule_key: null });
   });

@@ -10,14 +10,25 @@ versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
 ## [0.4.0] - Unreleased
 
 The MCP spec addendum (v2.1): agent findings by kind, playbooks the server serves,
-pushing your own agent's findings in, and signing in without a key. Built on what the
-API serves today; check, report and billing-mode tools follow when their engines ship.
+pushing your own agent's findings in, signing in without a key, and the checks of the
+Checks Engine. Built on what the API serves today; report and billing-mode tools follow
+when their engines ship.
 
 ### Added
 - `superflow_list_comments` takes `rule_key` (the kind of problem, for example `image-alt`
-  or `broken-link`). Rows carry `rule_key` and the agent's `suggested_fix`.
-- `superflow_update_comment` takes `rule_key` to attach a human comment to a rule
+  or `link-broken`). Rows carry `rule_key` and the agent's `suggested_fix`.
+- `superflow_update_comment` takes `rule_key` to attach a human comment to a check
   (`null` detaches it).
+- Checks (105 tools): `superflow_list_failing_checks`, `superflow_get_check_details`,
+  `superflow_get_site_score`, `superflow_get_finding_source`, `superflow_mark_check_fixed`,
+  `superflow_exclude_check`, `superflow_include_check`, `superflow_assign_check_owner`,
+  `superflow_reject_comment`, `superflow_get_check_settings` and
+  `superflow_set_default_owners`, over the new `/v1/projects/{project}/checks`, `/score`,
+  `/check-settings` and `/v1/comments/{comment}/reject` and `/source` routes. Marking a check
+  fixed and excluding one gate on `confirm: true` and preview without it.
+- `superflow_resolve_comment` and `superflow_update_comment` say when resolving an agent
+  finding queued its verify rescan (`verify` in the result).
+- API errors carry `reason` (for example `already_verified`) when the API names one.
 - `superflow_use_playbook` (85 tools): step-by-step plans the server serves, built from
   `skills/<name>/SKILL.md` by `pnpm playbooks`. `triage` builds one ordered P0, P1, P2 fix
   list from agent findings and human comments; `fix` fixes the approved items (one subagent
@@ -50,8 +61,12 @@ API serves today; check, report and billing-mode tools follow when their engines
   so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
 
 ### Changed
-- The `triage` prompt follows the triage playbook: agent findings by kind plus human
-  comments, attached where they match.
+- The `triage` prompt follows the triage playbook, which now builds its list from the
+  failing checks and attaches human comments to them. The `fix` playbook marks checks fixed
+  and reads the check until the rescan decides, instead of running the agents again. The
+  playbooks write with the new check tools.
+- Rule keys are the Checks Engine's names (`link-broken`, `image-alt`, `mobile-overflow`).
+  The old names (`broken-link`, `alt-text`) are still accepted for one release.
 - Every request sends `X-Superflow-Client`, so the API's audit log records the package's
   writes as made by the MCP.
 - `superflow_run_agents`: the API allows 10 runs per project per hour and answers

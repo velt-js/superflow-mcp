@@ -36,19 +36,30 @@ describe("playbooks (skills/*/SKILL.md)", () => {
   it("fix keeps its safety rules: one item per fixer, one deploy, two attempts, no client-facing tools", () => {
     const fix = PLAYBOOKS.find((playbook) => playbook.name === "fix")!.body;
     expect(fix).toContain("at most 3 at a time");
-    expect(fix).toContain("Fixers resolve only their own item's comments.");
+    expect(fix).toContain("Fixers mark fixed only their own item.");
     expect(fix).toContain("deploy once");
-    expect(fix).toContain("Two attempts,\nnever more.");
+    expect(fix).toContain("Two\nattempts, never more.");
     expect(fix).toContain("never calls\n`superflow_post_to_slack`, `superflow_push_comment`");
-    expect(fix).toContain("superflow_estimate_run");
   });
 
-  it("triage writes nothing before the approval and dry-runs the bulk change", () => {
+  it("fix verifies with the checks engine: mark fixed, then read the check until the rescan decides", () => {
+    const fix = PLAYBOOKS.find((playbook) => playbook.name === "fix")!.body.replace(/\s+/g, " ");
+    expect(fix).toContain("`superflow_mark_check_fixed` with its `rule_key` and `confirm: true`");
+    expect(fix.indexOf("superflow_mark_check_fixed")).toBeLessThan(fix.lastIndexOf("superflow_get_check_details"));
+    expect(fix).toContain("Only the rescan verifies it.");
+    expect(fix).toContain("superflow_get_site_score");
+    expect(fix).not.toContain("superflow_run_agents");
+  });
+
+  it("triage builds its list from the failing checks and writes nothing before the approval", () => {
     const triage = PLAYBOOKS.find((playbook) => playbook.name === "triage")!.body;
     const approval = triage.indexOf("Nothing is written before this yes.");
     expect(approval).toBeGreaterThan(0);
-    expect(triage.indexOf("superflow_update_comment")).toBeGreaterThan(approval);
-    expect(triage.indexOf("superflow_bulk_update_comments")).toBeGreaterThan(approval);
-    expect(triage).toContain('group_by: "rule_key"');
+    expect(triage.indexOf("superflow_list_failing_checks")).toBeLessThan(approval);
+    expect(triage.indexOf("superflow_get_check_details")).toBeLessThan(approval);
+    for (const write of ["superflow_update_comment", "superflow_bulk_update_comments", "superflow_assign_check_owner"]) {
+      expect(triage.indexOf(write), write).toBeGreaterThan(approval);
+    }
+    expect(triage).toContain("`dry_run: false`");
   });
 });
