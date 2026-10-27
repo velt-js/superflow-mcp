@@ -72,6 +72,16 @@ when their engines ship.
 - `superflow_run_agents`: the API allows 10 runs per project per hour and answers
   `rate_limited` past that.
 
+### Fixed
+- A sign-in that `login` saved to the file because the keyring refused it is now found on
+  the next start, and `logout` removes it.
+- Several MCP processes can share one sign-in: when the server refuses a refresh token
+  that another process already rotated, the server reads the newer sign-in from the store
+  instead of ending it.
+- `superflow_delete_tag` and `superflow_merge_tags` send the ids of the tags the preview
+  showed, so a tag name used in two projects no longer fails after a clean preview.
+- `pnpm playbooks` works on Windows.
+
 ## [0.3.0] - Unreleased
 
 Agents, integrations and webhooks (Phase 3): run the AI review agents, send their

@@ -6,8 +6,10 @@
 // `--check` fails when the committed file is out of date (CI runs it).
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: a pathname keeps percent-encoding and, on Windows, a leading slash before the drive.
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SKILLS = join(ROOT, "skills");
 const OUT = join(ROOT, "src", "playbooks", "generated.ts");
 const NAME = /^[a-z][a-z0-9_]*$/;

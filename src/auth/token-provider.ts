@@ -58,27 +58,59 @@ export class SessionTokenProvider implements TokenProvider {
   private async doRefresh(): Promise<string | null> {
     const logger = this.options.logger ?? silentLogger;
     try {
-      const tokens = await refreshTokens({
-        tokenEndpoint: this.session.tokenEndpoint,
-        refreshToken: this.session.refreshToken,
-        clientId: this.session.clientId,
-        now: this.now(),
-        ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
-      });
-      this.session = { ...this.session, ...tokens, scope: tokens.scope || this.session.scope };
-      try {
-        await this.options.store.write(this.session);
-      } catch {
-        logger.warn("The renewed Superflow sign-in could not be saved. Run npx superflow-mcp login if the next start fails.");
-      }
-      return this.session.accessToken;
+      return await this.refreshAndSave(this.session);
     } catch (error) {
       if (error instanceof AuthError && (error.oauthError === "invalid_grant" || error.oauthError === "invalid_client")) {
+        // Another process sharing this sign-in may have rotated the refresh token first.
+        const recovered = await this.recoverFromStore();
+        if (recovered) return recovered;
         this.dead = true;
         logger.error("The Superflow sign-in has ended (revoked or expired). Run npx superflow-mcp login again.");
         return null;
       }
       logger.warn("Could not renew the Superflow sign-in. It will be tried again on the next call.");
+      return null;
+    }
+  }
+
+  /** Refreshes from `from`, keeps the rotated pair and saves it. Throws what the token endpoint answered. */
+  private async refreshAndSave(from: StoredSession): Promise<string> {
+    const logger = this.options.logger ?? silentLogger;
+    const tokens = await refreshTokens({
+      tokenEndpoint: from.tokenEndpoint,
+      refreshToken: from.refreshToken,
+      clientId: from.clientId,
+      now: this.now(),
+      ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
+    });
+    this.session = { ...from, ...tokens, scope: tokens.scope || from.scope };
+    try {
+      await this.options.store.write(this.session);
+    } catch {
+      logger.warn("The renewed Superflow sign-in could not be saved. Run npx superflow-mcp login if the next start fails.");
+    }
+    return this.session.accessToken;
+  }
+
+  /**
+   * After the server refused our refresh token: when the store holds a different one (another
+   * MCP process refreshed and saved its rotated pair), use that sign-in instead of ending
+   * this one. Its access token if it is still fresh, else one refresh with its refresh token.
+   * Null when the store has nothing newer, or that refresh fails too.
+   */
+  private async recoverFromStore(): Promise<string | null> {
+    let stored: StoredSession | null;
+    try {
+      stored = await this.options.store.read();
+    } catch {
+      return null;
+    }
+    if (!stored || stored.refreshToken === this.session.refreshToken) return null;
+    this.session = stored;
+    if (stored.expiresAt - EARLY_REFRESH_MS > this.now()) return stored.accessToken;
+    try {
+      return await this.refreshAndSave(stored);
+    } catch {
       return null;
     }
   }

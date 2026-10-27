@@ -148,8 +148,11 @@ export async function login(options: LoginOptions): Promise<{ session: StoredSes
       ...tokens,
     };
     try {
+      const preferred = options.store.location;
       await options.store.write(session);
-      return { session, savedTo: options.store.location };
+      // A keyring store from chooseCredentialStore falls back to the file on its own: say so.
+      const savedTo = options.store.location;
+      return savedTo === preferred ? { session, savedTo } : { session, savedTo, warning: `${preferred} refused the sign-in, so it is saved in ${savedTo}, readable only by you.` };
     } catch {
       // A keyring that refuses (locked, no session bus) must not lose a finished sign-in.
       const fallback = fileStore(defaultCredentialsFile(options.env ?? process.env));

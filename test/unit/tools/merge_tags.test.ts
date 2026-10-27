@@ -33,20 +33,30 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
-  it("merges with confirm: true, sending confirm in the body", async () => {
+  it("merges with confirm: true by the ids of the tags the preview showed, sending confirm in the body", async () => {
+    on("get", "/projects/:project/tags", ok(list(all)));
     on("post", "/tags/:tag/merge", ok({ merged: true, from: "tag_copytext", into: "tag_copy", comments_updated: 3 }));
     const h = await connect();
-    const result = await h.call(TOOL, { tag: "Copy text", into: "copy", confirm: true });
+    const result = await h.call(TOOL, { tag: "Copy text", into: "copy", project: "Acme Dental", confirm: true });
     expect(summaryOf(result)).toBe("Merged tag Copy text into copy: 3 comments updated, and Copy text was deleted.");
-    expect(recorded[0]?.path).toBe("/tags/Copy%20text/merge");
-    expect(recorded[0]?.body).toEqual({ into: "copy", confirm: true });
+    expect(recorded.map((r) => r.operationId)).toEqual(["listProjectTags", "mergeTags"]);
+    expect(recorded[1]?.path).toBe("/tags/tag_copytext/merge");
+    expect(recorded[1]?.body).toEqual({ into: "tag_copy", confirm: true });
   });
 
+  it("refuses merging a tag into itself without writing, even with confirm", async () => {
+    on("get", "/projects/:project/tags", ok(list(all)));
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { tag: "copy", into: "tag_copy", project: "Acme Dental", confirm: true })).code).toBe("invalid");
+    expect(writes()).toEqual([]);
+  });
+
+  // The first request of every call is the tag list read, confirmed or not.
   standardErrorCases({
     tool: TOOL,
-    args: { tag: "Copy text", into: "copy", confirm: true },
-    method: "post",
-    path: "/tags/:tag/merge",
-    success: ok({ merged: true, from: "tag_copytext", into: "tag_copy", comments_updated: 0 }),
+    args: { tag: "Copy text", into: "copy", project: "Acme Dental" },
+    method: "get",
+    path: "/projects/:project/tags",
+    success: ok(list(all)),
   });
 });
