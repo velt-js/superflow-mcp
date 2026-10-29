@@ -91,3 +91,10 @@ export const CONFIRM_MARK_CHECK_FIXED_MESSAGE =
 
 export const CONFIRM_EXCLUDE_CHECK_MESSAGE =
   "Nothing was excluded. Show the user the check and how many open findings it has, and ask whether to exclude it for this site. Its open findings are rejected with the reason and new ones are kept out until superflow_include_check. If the user says yes, call superflow_exclude_check again with confirm: true.";
+
+export const CONFIRM_SITE_CARE_MESSAGE =
+  "Nothing was changed. Show the user what care means for this site: Superflow runs the agents on a schedule and each run spends AI credits; on a site that was never monitored it also starts a full check now. Ask whether to turn it on. If the user says yes, call superflow_set_site_mode again with confirm: true.";
+
+export const CONFIRM_FORM_TEST_MESSAGE =
+  "Nothing was changed. Show the user the form and explain that each test submits it for real, so every test lands in the client's inbox as a lead. Ask whether to turn testing on and accept those test leads. If the user says yes, call superflow_set_form_testing again with confirm: true.";
+

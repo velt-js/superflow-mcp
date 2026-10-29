@@ -400,5 +400,47 @@
     "prompt": "Make me the default owner of dev checks on {project}.",
     "expect_first_tool": ["superflow_set_default_owners", "superflow_get_check_settings", "superflow_get_me"],
     "check": [{ "tool": "superflow_set_default_owners", "arg_includes": { "dev": "me" } }]
+  },
+  {
+    "id": "set-site-care",
+    "prompt": "Put {project} on care, weekly checks.",
+    "expect_first_tool": ["superflow_set_site_mode", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_mode", "arg_includes": { "mode": "care", "cadence": "weekly" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "set-site-watch",
+    "prompt": "Stop running agents on {project}, just keep the version history.",
+    "expect_first_tool": ["superflow_set_site_mode", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_mode", "arg_includes": { "mode": "watch" } }]
+  },
+  {
+    "id": "set-site-timezone",
+    "prompt": "The client for {project} is in Chicago. Run its checks on their time.",
+    "expect_first_tool": ["superflow_set_site_timezone", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_timezone", "arg_includes": { "timezone": "America/Chicago" } }]
+  },
+  {
+    "id": "list-forms",
+    "prompt": "Which forms on {project} are being tested?",
+    "expect_first_tool": "superflow_list_forms"
+  },
+  {
+    "id": "set-form-testing",
+    "prompt": "Start testing the contact form on {project} every day.",
+    "expect_first_tool": ["superflow_list_forms", "superflow_set_form_testing"],
+    "expect_tools_any_order": ["superflow_set_form_testing"],
+    "check": [{ "tool": "superflow_set_form_testing", "arg_includes": { "enabled": true, "daily_test": true } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "get-invoices",
+    "prompt": "Send me our last three invoices.",
+    "expect_first_tool": "superflow_get_invoices",
+    "check": [{ "tool": "superflow_get_invoices", "arg_includes": { "limit": 3 } }]
+  },
+  {
+    "id": "set-onboard-agency",
+    "prompt": "I just signed up. Set up Superflow for my client acme-dental.com, they are in Chicago.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_get_me", "superflow_get_billing"],
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_set_site_mode" }, { "no_confirmed_writes": true }]
   }
 ]

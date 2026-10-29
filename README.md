@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 105 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
+| Tools | 111 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -195,6 +195,16 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 | `superflow_get_check_settings` | The confidence floor and the default owners for content, design and dev checks. |
 | `superflow_set_default_owners` | Sets the default owners for content, design and dev checks. |
 
+#### Site settings
+
+| Tool | What it does |
+|---|---|
+| `superflow_get_site_monitoring` | Whether a site is in care (agents run on a schedule) or watch (Version history only), with the cadence, time zone and the run in progress. |
+| `superflow_set_site_mode` | Moves a site to care or watch. care runs agents and spends AI credits, so it needs `confirm: true`; on a site never monitored it starts a full check now. |
+| `superflow_set_site_timezone` | The time zone scheduled checks and Version history captures run in. |
+| `superflow_list_forms` | The forms the Forms agent found on a site, with their test settings and last result. |
+| `superflow_set_form_testing` | Turns a form's test on or off. On needs `confirm: true`: each test lands in the client's inbox as a lead. |
+
 Resolving or marking a check fixed is a claim: a rescan verifies it, and a finding that is still there reopens. `superflow_resolve_comment` and `superflow_update_comment` say when they queued that rescan.
 
 #### Comments
@@ -320,7 +330,7 @@ Some agent and integration features are not available yet: a run cannot be cance
 
 | Tool | What it does |
 |---|---|
-| `superflow_use_playbook` | Gets a step-by-step plan for a job that takes several tools in order, and the model follows it: `triage` (what is broken on a site, as one ordered P0, P1, P2 list), `fix` (fix the approved items, have a rescan verify each, report) and `push_my_review` (push your own review's findings in). Nothing to install: the server serves them. |
+| `superflow_use_playbook` | Gets a step-by-step plan for a job that takes several tools in order, and the model follows it: `triage` (what is broken on a site, as one ordered P0, P1, P2 list), `fix` (fix the approved items, have a rescan verify each, report), `push_my_review` (push your own review's findings in) and `onboard_agency` (a first client site, checked on a schedule). Nothing to install: the server serves them. |
 
 #### Billing
 
@@ -328,6 +338,7 @@ Some agent and integration features are not available yet: a run cannot be cance
 |---|---|
 | `superflow_get_billing` | Plan, whether it is active, when the period or trial ends, the billing interval, and the portal page to change it. |
 | `superflow_get_payment_link` | The portal page where a person picks a plan and pays, or changes seats. Nothing is charged from a tool, and a workspace that already pays is never offered a second subscription. |
+| `superflow_get_invoices` | The workspace's invoices, newest first, with Stripe's links to view, pay or download each. Owner only. |
 
 #### API keys
 
@@ -353,9 +364,9 @@ Analytics are computed once a day. When `is_stale` is true the numbers are not a
 |---|---|
 | `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
 
-In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix`, `/triage` and `/push_my_review`.
+In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix`, `/triage`, `/push_my_review` and `/onboard_agency`.
 
-The server also ships ten prompts (`triage`, `fix`, `push_my_review`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
+The server also ships eleven prompts (`triage`, `fix`, `push_my_review`, `onboard_agency`, `stale_threads`, `client_update`, `agent_findings_review`, `find_duplicates`, `launch_checklist`, `onboard_client`, `prelaunch_run`) and six resources (`superflow://projects`, `superflow://projects/{project}`, `superflow://projects/{project}/comments`, `superflow://comments/{comment}`, `superflow://organization`, `superflow://runs/{run}`).
 
 ### Example prompts
 

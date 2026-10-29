@@ -61,6 +61,19 @@ when their engines ship.
   so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
 - Gemini CLI setup in the README and `examples/gemini-settings.json`. Tested with Gemini
   CLI 0.65.0: all 105 tools load, and a tool call reaches the API.
+- Site settings (110 tools): `superflow_get_site_monitoring`, `superflow_set_site_mode`
+  (care runs the agents on a schedule and spends credits, so it gates on `confirm: true`;
+  watch does not), `superflow_set_site_timezone`, `superflow_list_forms` and
+  `superflow_set_form_testing` (turning a test on gates on `confirm: true`, because each test
+  lands in the client's inbox as a lead), over the new `/v1/projects/{project}/monitoring`
+  and `/forms` routes. Billing for care follows with the pricing engine.
+- The `onboard_agency` playbook and prompt: from a fresh sign-in to a client site checked on a
+  schedule in the client's time zone, with its first results. It stops for payment only at
+  the checkout link, and turns care on only after the user agrees to the credits.
+  `superflow_get_site_monitoring` reports `active_run`, which it waits on.
+- `superflow_get_invoices` (111 tools): the workspace's invoices, newest first, with Stripe's
+  links to view, pay or download each, over the new read-only `GET /v1/billing/invoices`.
+  Owner only.
 
 ### Changed
 - The `triage` prompt follows the triage playbook, which now builds its list from the

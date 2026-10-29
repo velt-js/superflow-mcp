@@ -82,12 +82,16 @@ playbook line in the server instructions.
   is `superflow_remove_member`, which asks the API without confirm and shows its 409
   preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
-- Three tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
+- Five tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
   (it spends AI credits; without confirm it calls the estimate and returns it as the
   preview), `superflow_mark_check_fixed` (it resolves every open finding of a check and
   spends 1 credit on the verify rescan; without confirm it reads the check and returns it as
-  the preview) and `superflow_post_to_slack` (people see the post). A credits refusal is
-  explained with Settings > Billing and never retried.
+  the preview), `superflow_post_to_slack` (people see the post), `superflow_set_site_mode`
+  with `mode: care` on a site not in care (it runs agents on a schedule and spends credits;
+  without confirm it reads the site's monitoring and returns it as the preview) and
+  `superflow_set_form_testing` turning a test on (each test lands in the client's inbox as a
+  lead; confirm also sends `accept_test_leads: true`). A credits refusal is explained with
+  Settings > Billing and never retried.
 - Run polling: `superflow_get_run` asks for at most one call every 20 seconds
   (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
 - `superflow_create_webhook` returns the signing secret once: the summary tells the user

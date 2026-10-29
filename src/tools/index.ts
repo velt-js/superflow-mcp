@@ -19,6 +19,7 @@ import { billingTools } from "./billing.ts";
 import { checkTools } from "./checks.ts";
 import { runTools } from "./runs.ts";
 import { scheduleTools } from "./schedules.ts";
+import { siteTools } from "./sites.ts";
 import { statusTools } from "./statuses.ts";
 import { tagTools } from "./tags.ts";
 import { webhookTools } from "./webhooks.ts";
@@ -33,6 +34,8 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   ...commentTools,
   // Addendum: checks (the Checks Engine), the layer above comments.
   ...checkTools,
+  // Addendum: site settings (monitoring mode, time zone, form tests).
+  ...siteTools,
   // Phase 2: admin.
   ...projectTools,
   ...pageTools,

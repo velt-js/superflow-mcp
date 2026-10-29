@@ -6913,6 +6913,439 @@
         }
       }
     },
+    "/billing/invoices": {
+      "get": {
+        "operationId": "listInvoices",
+        "summary": "The workspace invoices, newest first (owner only, read only)",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "workspace:read"
+            ]
+          }
+        ],
+        "x-required-scope": "workspace:read",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/monitoring": {
+      "get": {
+        "operationId": "getSiteMonitoring",
+        "summary": "The site's monitoring mode (care or watch), cadence, time zone and Version history schedule",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteMonitoring"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSiteMonitoring",
+        "summary": "Change the monitoring mode, time zone or cadence. care on a site never monitored starts its first full check, which spends credits, and needs the agents:run scope.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "care",
+                      "watch"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA time zone, such as America/Los_Angeles."
+                  },
+                  "cadence": {
+                    "type": "string",
+                    "enum": [
+                      "daily",
+                      "weekly",
+                      "off"
+                    ],
+                    "description": "How often monitoring runs. Needs a monitored site, or mode=care in the same request."
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedSiteMonitoring"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/forms": {
+      "get": {
+        "operationId": "listForms",
+        "summary": "The forms found on the site, with their test settings",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:read"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/forms/{form}": {
+      "patch": {
+        "operationId": "updateFormTest",
+        "summary": "Turn a form's test on or off. On needs accept_test_leads=true: each test lands in the client's inbox as a lead.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "projects:write"
+            ]
+          }
+        ],
+        "x-required-scope": "projects:write",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "form",
+            "in": "path",
+            "required": true,
+            "description": "Form id, as listForms lists it. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "test_enabled": {
+                    "type": "boolean"
+                  },
+                  "daily_test": {
+                    "type": "boolean"
+                  },
+                  "accept_test_leads": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "test_enabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedForm"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
     "/api-keys": {
       "get": {
         "operationId": "listApiKeys",
@@ -14942,6 +15375,596 @@
           "match_start",
           "match_end",
           "version_id"
+        ],
+        "additionalProperties": false
+      },
+      "SiteMonitoring": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "care",
+              "watch"
+            ],
+            "description": "care: monitoring runs the agents on a schedule. watch: Version history only, no agent runs."
+          },
+          "monitored": {
+            "type": "boolean",
+            "description": "False when monitoring was never turned on for the site."
+          },
+          "cadence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "off"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "IANA time zone."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active_run": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "started_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "UTC ISO 8601 with Z"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "version",
+                  "status",
+                  "started_at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_run_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version_history": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "frequency": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hour": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "timezone": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "frequency",
+              "hour",
+              "timezone"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "project",
+          "mode",
+          "monitored",
+          "cadence",
+          "timezone",
+          "agents",
+          "active_run",
+          "last_run_at",
+          "last_run_status",
+          "score",
+          "version_history"
+        ],
+        "additionalProperties": false
+      },
+      "UpdatedSiteMonitoring": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SiteMonitoring"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "first_run": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "first_run"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "FormList": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Form"
+            }
+          },
+          "notice": {
+            "type": "string"
+          },
+          "test_email": {
+            "type": "string",
+            "description": "Where test submissions are sent."
+          }
+        },
+        "required": [
+          "project",
+          "data",
+          "notice",
+          "test_email"
+        ],
+        "additionalProperties": false
+      },
+      "Form": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "page_url": {
+            "type": "string"
+          },
+          "selector": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "test_enabled": {
+            "type": "boolean"
+          },
+          "daily_test": {
+            "type": "boolean",
+            "description": "Test it every day, not only on each scan."
+          },
+          "accepted_test_leads_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_test_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_result": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "passed, or the rule key of what failed."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_result_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "missing_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 with Z"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "page_url",
+          "selector",
+          "action",
+          "method",
+          "test_enabled",
+          "daily_test",
+          "accepted_test_leads_at",
+          "delivery_verified_at",
+          "last_test_at",
+          "last_result",
+          "last_result_detail",
+          "delivery_state",
+          "delivery_note",
+          "missing_since"
+        ],
+        "additionalProperties": false
+      },
+      "UpdatedForm": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "form": {
+            "$ref": "#/components/schemas/Form"
+          }
+        },
+        "required": [
+          "project",
+          "form"
+        ],
+        "additionalProperties": false
+      },
+      "InvoiceList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "draft, open, paid, uncollectible or void."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "amount_due": {
+                  "type": "integer",
+                  "description": "Smallest currency unit (cents)."
+                },
+                "amount_paid": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "created_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "period_start": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "period_end": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO 8601 with Z"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hosted_invoice_url": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "Stripe's page to view or pay it."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pdf_url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "status",
+                "currency",
+                "amount_due",
+                "amount_paid",
+                "total",
+                "created_at",
+                "period_start",
+                "period_end",
+                "hosted_invoice_url",
+                "pdf_url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "type": "null"
+          },
+          "applied_filters": {
+            "type": "object"
+          },
+          "manage_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "applied_filters",
+          "manage_url"
         ],
         "additionalProperties": false
       },

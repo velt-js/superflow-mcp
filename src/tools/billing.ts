@@ -1,7 +1,8 @@
 // Billing tools: what the workspace is on and where to change it (GET /billing). Read only:
 // buying and changing plans happens in the Superflow portal, never from a tool.
-import type { Billing } from "../client/types.ts";
-import { okResult } from "../lib/format.ts";
+import { z } from "zod";
+import type { Billing, Invoice, InvoiceList } from "../client/types.ts";
+import { okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool } from "./define.ts";
 import { asData, join } from "./helpers.ts";
 
@@ -62,4 +63,35 @@ export const getPaymentLink = defineTool({
   },
 });
 
-export const billingTools = [getBilling, getPaymentLink];
+function money(cents: number, currency: string): string {
+  const amount = (cents / 100).toFixed(2);
+  return `${amount} ${currency.toUpperCase()}`;
+}
+
+function invoiceLine(invoice: Invoice): string {
+  const when = invoice.created_at ? invoice.created_at.slice(0, 10) : "undated";
+  const owed = invoice.status === "open" && invoice.amount_due > invoice.amount_paid ? `, ${money(invoice.amount_due - invoice.amount_paid, invoice.currency)} due` : "";
+  return `${invoice.number ?? invoice.id} (${when}): ${money(invoice.total, invoice.currency)}, ${invoice.status ?? "unknown"}${owed}.`;
+}
+
+export const getInvoices = defineTool({
+  name: "superflow_get_invoices",
+  title: "Invoices",
+  description: [
+    "The workspace's invoices, newest first: number, date, total, whether it is paid, and the Stripe links to view, pay or download each one. Only the workspace owner can read them.",
+    "Use it for questions like \"send me last month's invoice\" or \"do we owe anything\". For the plan itself use superflow_get_billing. Never ask for card details: paying happens on the invoice page or in the portal.",
+    'Example: {"limit": 3}',
+  ].join("\n"),
+  inputSchema: {
+    limit: z.number().int().min(1).max(50).optional().describe("How many invoices, newest first. Default 12, max 50."),
+  },
+  annotations: READ_HINTS,
+  write: false,
+  async run(args, { api }) {
+    const list = await api.call<InvoiceList>("listInvoices", { query: args.limit !== undefined ? { limit: args.limit } : {} });
+    if (!list.items.length) return okResult(`No invoices yet. Billing: ${list.manage_url}`, asData(list), { untrusted: false });
+    return okResult(join(`${plural(list.items.length, "invoice")}, newest first.`, ...list.items.map(invoiceLine)), asData(list), { untrusted: false });
+  },
+});
+
+export const billingTools = [getBilling, getPaymentLink, getInvoices];

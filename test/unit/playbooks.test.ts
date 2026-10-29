@@ -62,4 +62,18 @@ describe("playbooks (skills/*/SKILL.md)", () => {
     }
     expect(triage).toContain("`dry_run: false`");
   });
+
+  it("onboard_agency stops for payment only at the link, and turns care on only after its stop", () => {
+    const onboard = PLAYBOOKS.find((playbook) => playbook.name === "onboard_agency")!.body.replace(/\s+/g, " ");
+    expect(onboard.indexOf("superflow_get_payment_link")).toBeLessThan(onboard.indexOf("superflow_set_site_mode"));
+    expect(onboard).toContain("Never ask for card details.");
+    expect(onboard).toContain("Do not send them to buy a second plan.");
+    const careStop = onboard.indexOf("**Stop:** explain care");
+    expect(careStop).toBeGreaterThan(0);
+    expect(onboard.indexOf("`confirm: true`", careStop)).toBeGreaterThan(careStop);
+    expect(onboard).toContain("no more often than every 20 seconds");
+    expect(onboard).toContain("Never retry a credits refusal.");
+    // Invites send real email: never in the setup steps, only offered at the end.
+    expect(onboard.indexOf("superflow_invite_guest")).toBeGreaterThan(onboard.indexOf("## 7. What next"));
+  });
 });

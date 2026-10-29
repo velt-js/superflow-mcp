@@ -494,6 +494,78 @@ export interface Billing {
   manage_url: string;
 }
 
+export interface Invoice {
+  id: string;
+  number: string | null;
+  /** draft, open, paid, uncollectible or void. */
+  status: string | null;
+  currency: string;
+  /** Smallest currency unit (cents). */
+  amount_due: number;
+  amount_paid: number;
+  total: number;
+  created_at: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  hosted_invoice_url: string | null;
+  pdf_url: string | null;
+}
+
+export interface InvoiceList {
+  items: Invoice[];
+  next_cursor: null;
+  applied_filters: Record<string, unknown>;
+  manage_url: string;
+}
+
+export interface SiteMonitoring {
+  project: { id: string; name: string | null };
+  /** care: monitoring runs agents on a schedule. watch: Version history only. */
+  mode: "care" | "watch";
+  monitored: boolean;
+  cadence: "daily" | "weekly" | "off" | null;
+  timezone: string | null;
+  agents: string[];
+  /** The run in progress, null when none. */
+  active_run: { version: number; status: string; started_at: string | null } | null;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  score: number | null;
+  version_history: { enabled: boolean; frequency: string | null; hour: number | null; timezone: string | null };
+  /** Only on an update that turned monitoring on for the first time. */
+  first_run?: { version: number } | null;
+}
+
+export interface SiteForm {
+  id: string;
+  page_url: string;
+  selector: string;
+  action: string;
+  method: string;
+  test_enabled: boolean;
+  daily_test: boolean;
+  accepted_test_leads_at: string | null;
+  delivery_verified_at: string | null;
+  last_test_at: string | null;
+  last_result: string | null;
+  last_result_detail: string | null;
+  delivery_state: string | null;
+  delivery_note: string | null;
+  missing_since: string | null;
+}
+
+export interface FormList {
+  project: { id: string; name: string | null };
+  data: SiteForm[];
+  notice: string;
+  test_email: string;
+}
+
+export interface UpdatedForm {
+  project: { id: string; name: string | null };
+  form: SiteForm;
+}
+
 export interface ApiKey {
   id: string;
   kind: "api_key" | "oauth";

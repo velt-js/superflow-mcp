@@ -296,6 +296,12 @@ export const operations = {
     pathParams: ["run"],
     queryParams: [],
   },
+  getSiteMonitoring: {
+    method: "GET",
+    path: "/projects/{project}/monitoring",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   getSiteScore: {
     method: "GET",
     path: "/projects/{project}/score",
@@ -374,11 +380,23 @@ export const operations = {
     pathParams: [],
     queryParams: ["agent", "agent_run", "assignee", "author", "author_type", "created_after", "created_before", "cursor", "device", "fields", "has_attachments", "has_external_link", "has_replies", "limit", "page_match", "page_url", "priority", "project", "query", "resolved_after", "resolved_before", "rule_key", "sort", "source", "stale_days", "status", "tags", "tags_match", "unanswered", "updated_after", "updated_before"],
   },
+  listForms: {
+    method: "GET",
+    path: "/projects/{project}/forms",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   listIntegrations: {
     method: "GET",
     path: "/integrations",
     pathParams: [],
     queryParams: [],
+  },
+  listInvoices: {
+    method: "GET",
+    path: "/billing/invoices",
+    pathParams: [],
+    queryParams: ["limit"],
   },
   listMembers: {
     method: "GET",
@@ -608,6 +626,12 @@ export const operations = {
     pathParams: ["comment"],
     queryParams: [],
   },
+  updateFormTest: {
+    method: "PATCH",
+    path: "/projects/{project}/forms/{form}",
+    pathParams: ["project", "form"],
+    queryParams: [],
+  },
   updateIntegration: {
     method: "PATCH",
     path: "/integrations/{integration}",
@@ -644,6 +668,12 @@ export const operations = {
     pathParams: ["schedule"],
     queryParams: [],
   },
+  updateSiteMonitoring: {
+    method: "PATCH",
+    path: "/projects/{project}/monitoring",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   updateStatus: {
     method: "PATCH",
     path: "/statuses/{status}",
@@ -674,7 +704,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "1e05f9482855cbd8eab08ba7c89c31be55e7b7cb62ead421f86b0d032062d0b9";
+export const OPENAPI_SHA256 = "1d35fbf381b12d00c9a3b56933028cfe62627066aec2715c5b71cc40ba387e99";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];
