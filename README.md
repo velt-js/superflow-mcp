@@ -489,7 +489,7 @@ See [`docs/migrating-from-bugherd.md`](docs/migrating-from-bugherd.md) for how B
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `pnpm install`, `pnpm test`, `pnpm build`, `pnpm check:drift`.
 
-The integration suite (`test/integration/`) runs against a real API when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project. The admin tools can now create and delete a throwaway project, but the suite does not do that yet.
+The e2e suite (`pnpm test:e2e`) runs the built package over real stdio against a local fake API on every pull request and every push to staging and main. The live suite (`pnpm test:live`, `test/live/` plus `test/integration/`) runs against a real API on every push to staging and main when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project. The admin tools can now create and delete a throwaway project, but the suite does not do that yet.
 
 ## Support
 

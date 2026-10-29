@@ -31,7 +31,8 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
   and run `pnpm generate:client`.
 - **No em dashes or en dashes** in code, comments, descriptions, docs or commit
   messages. Use periods, commas or colons.
-- Run `pnpm test` and `pnpm check:drift` before every commit.
+- Run `pnpm test` and `pnpm check:drift` before every commit; after `pnpm build`, `pnpm test:e2e`.
+  A new tool needs no e2e change: the suite reads tools/list and calls each tool's Example.
 
 ## Tool descriptions are for a language model
 
@@ -124,6 +125,8 @@ pnpm build
 pnpm check:drift
 pnpm docs:tools
 pnpm smoke:stdio   # after build
+pnpm test:e2e      # after build: every tool over real stdio, fake API
+pnpm test:live     # after build: against a real API (needs the test key)
 ```
 
 Node 22 for development (pnpm needs it); the built package supports Node 20+.

@@ -102,6 +102,20 @@ when their engines ship.
 Agents, integrations and webhooks (Phase 3): run the AI review agents, send their
 findings where your team works, and connect Superflow to other systems.
 
+
+### Tests
+- `pnpm test:e2e`: the built package over real stdio against a local fake API, in CI on
+  every pull request and every push to staging and main. It checks the handshake, that the
+  bundle registers exactly the source's tools, every tool's metadata and Example, that every
+  tool answers its Example (and an empty or HTML upstream) with a well-formed result, that no
+  gated tool writes without `confirm: true` while it does with it, read-only mode, error
+  mapping and retries, idempotency keys on retried creates, that logs never carry the key or
+  comment text, that stdout carries only protocol messages, and startup refusals. Every
+  request is checked against the OpenAPI snapshot.
+- `pnpm test:live` and `.github/workflows/live.yml`: the built package against the real API
+  on every push to staging and main: core reads, every read tool that needs at most a
+  project, cursor paging, a tag lifecycle with its confirmation gate, a bulk dry run, a wrong
+  key and read-only mode. With the secrets set, a skipped suite fails the run.
 ### Added
 - 30 tools, 84 in total:
   - Agents: `superflow_list_agents`, `superflow_get_agent`, `superflow_create_agent`,

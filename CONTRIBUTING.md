@@ -34,6 +34,8 @@ Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
 | `pnpm check:drift` | Fails if the generated client is stale; with `SUPERFLOW_DRIFT_BASE_URL`, also compares the snapshot with the live API document. |
 | `pnpm docs:tools` | Regenerates `docs/tools.md` from the server's tools/list. |
 | `pnpm smoke:stdio` | Starts `dist/index.js` and lists tools over real stdio. |
+| `pnpm test:e2e` | After a build: the built package over real stdio against a local fake API. Every tool, every confirmation gate, read-only mode, error mapping, log hygiene and the OpenAPI contract. CI runs it on every pull request and push to staging and main. |
+| `pnpm test:live` | After a build: the built package against a real API, plus the integration tests (needs `SUPERFLOW_TEST_API_KEY`, `SUPERFLOW_TEST_PROJECT`, `SUPERFLOW_API_BASE_URL`). CI runs it on every push to staging and main (`.github/workflows/live.yml`). |
 | `pnpm evals:tools` | First-tool-choice eval (needs `ANTHROPIC_API_KEY`). |
 | `pnpm evals` | End-to-end eval against staging (needs `ANTHROPIC_API_KEY`, `SUPERFLOW_TEST_API_KEY`, `SUPERFLOW_API_BASE_URL`). |
 | `pnpm seed:staging` | Creates test comments on staging or localhost only, at most 8 per second. |

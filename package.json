@@ -50,6 +50,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "pnpm typecheck && node scripts/check-copy.mjs",
     "test": "vitest run",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "generate:client": "node scripts/generate-client.mjs",
     "playbooks": "node scripts/build-playbooks.mjs",
     "check:playbooks": "node scripts/build-playbooks.mjs --check",

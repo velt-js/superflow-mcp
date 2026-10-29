@@ -1,0 +1,52 @@
+name: Live
+
+# The live suite (test/live, test/integration): the built package over stdio against the real
+# Superflow API, on every push to staging and main. It reads broadly and writes only what it
+# creates, then removes it. The nightly evals job runs the integration tests too.
+
+on:
+  push:
+    branches: [staging, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time: every run writes into the same test project.
+concurrency:
+  group: live-suite
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Live suite against the Superflow API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPERFLOW_TEST_API_KEY: ${{ secrets.SUPERFLOW_TEST_API_KEY }}
+      SUPERFLOW_TEST_PROJECT: ${{ secrets.SUPERFLOW_TEST_PROJECT }}
+      SUPERFLOW_API_BASE_URL: ${{ vars.SUPERFLOW_API_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Credentials
+        id: credentials
+        run: |
+          if [ -z "$SUPERFLOW_TEST_API_KEY" ] || [ -z "$SUPERFLOW_TEST_PROJECT" ]; then
+            echo "::warning title=Live suite not run::Set the SUPERFLOW_TEST_API_KEY and SUPERFLOW_TEST_PROJECT secrets (and the SUPERFLOW_API_BASE_URL variable for staging) to run it."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Live suite
+        if: steps.credentials.outputs.present == 'true'
+        run: pnpm test:live
+        env:
+          # With the secrets set, a skipped suite is a failure, never a silent pass.
+          SUPERFLOW_LIVE_REQUIRED: "1"
