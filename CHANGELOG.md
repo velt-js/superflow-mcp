@@ -1,16 +1,269 @@
 # Changelog
 
-All notable changes to the Superflow MCP server are documented here.
+All notable changes to the Superflow MCP servers are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.0.0]
+There are two release lines: the `superflow-mcp` npm package (local stdio server,
+versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
+(versions 1.x).
 
-Initial public release.
+## [0.4.0] - Unreleased
+
+The MCP spec addendum (v2.1): agent findings by kind, playbooks the server serves,
+pushing your own agent's findings in, signing in without a key, and the checks of the
+Checks Engine. Built on what the API serves today; report and billing-mode tools follow
+when their engines ship.
+
+### Added
+- `superflow_list_comments` takes `rule_key` (the kind of problem, for example `image-alt`
+  or `link-broken`). Rows carry `rule_key` and the agent's `suggested_fix`.
+- `superflow_update_comment` takes `rule_key` to attach a human comment to a check
+  (`null` detaches it).
+- Checks (105 tools): `superflow_list_failing_checks`, `superflow_get_check_details`,
+  `superflow_get_site_score`, `superflow_get_finding_source`, `superflow_mark_check_fixed`,
+  `superflow_exclude_check`, `superflow_include_check`, `superflow_assign_check_owner`,
+  `superflow_reject_comment`, `superflow_get_check_settings` and
+  `superflow_set_default_owners`, over the new `/v1/projects/{project}/checks`, `/score`,
+  `/check-settings` and `/v1/comments/{comment}/reject` and `/source` routes. Marking a check
+  fixed and excluding one gate on `confirm: true` and preview without it.
+- `superflow_resolve_comment` and `superflow_update_comment` say when resolving an agent
+  finding queued its verify rescan (`verify` in the result).
+- API errors carry `reason` (for example `already_verified`) when the API names one.
+- `superflow_use_playbook` (85 tools): step-by-step plans the server serves, built from
+  `skills/<name>/SKILL.md` by `pnpm playbooks`. `triage` builds one ordered P0, P1, P2 fix
+  list from agent findings and human comments; `fix` fixes the approved items (one subagent
+  per item in Claude Code, up to 3 at a time), verifies each with a rescan, and reports.
+- The `fix` prompt, and the server instructions point to the playbooks.
+- `superflow_comment_stats` takes `group_by: "rule_key"`.
+- `superflow_import_findings` (86 tools, scope `ingest`): push the findings of your own
+  review into Superflow as agent comments under your agent's name. Creates or merges, never
+  deletes; one invalid finding refuses the batch and every problem comes back in
+  `error.issues`. The `push_my_review` playbook and prompt walk through it.
+- API errors carry `issues` (every validation problem) through to the tool result.
+- Billing (94 tools): `superflow_get_billing` and `superflow_get_payment_link` over the new
+  read-only `GET /v1/billing`. Paying happens in the Superflow portal; the link never
+  suggests a second subscription, and a failed subscription check says so.
+- API key tools (92 tools): `superflow_list_api_keys`, `superflow_create_api_key` and
+  `superflow_revoke_api_key` over the new `/v1/api-keys` routes. Create and revoke gate on
+  `confirm: true`; a new key's scopes are a subset of the current key's.
+- `npx superflow-mcp login`: sign in (or sign up) in the browser instead of pasting a key.
+  OAuth 2.1 with dynamic client registration and PKCE on a loopback redirect; the sign-in is
+  saved in the macOS Keychain, the Linux Secret Service, or a file only you can read, and
+  the access token is renewed while the server runs (one retry after a 401).
+  `npx superflow-mcp logout` revokes and removes it. `SUPERFLOW_API_KEY` still wins.
+- Analytics (89 tools): `superflow_get_team_analytics`, `superflow_get_people_analytics`,
+  `superflow_get_all_time_analytics`, over the new `/v1/analytics` routes. A stale rollup is
+  reported as unavailable, never as zero activity.
+- A library entry, `superflow-mcp/server` (ESM and CommonJS): `createServer`, `ApiClient`,
+  `OPENAPI_SHA256`, `PLAYBOOKS`, `TOOL_NAMES`, `VERSION`. `createServer` takes `surface`
+  (`hosted` drops every SUPERFLOW_ variable from the wording), `renamedTools` and
+  `onToolCall`. The hosted server at mcp.usesuperflow.ai uses it to serve these same tools,
+  so one tool set serves both. `pnpm smoke:lib` checks the CommonJS build in CI.
+- Gemini CLI setup in the README and `examples/gemini-settings.json`. Tested with Gemini
+  CLI 0.65.0: all 105 tools load, and a tool call reaches the API.
+- Site settings (110 tools): `superflow_get_site_monitoring`, `superflow_set_site_mode`
+  (care runs the agents on a schedule and spends credits, so it gates on `confirm: true`;
+  watch does not), `superflow_set_site_timezone`, `superflow_list_forms` and
+  `superflow_set_form_testing` (turning a test on gates on `confirm: true`, because each test
+  lands in the client's inbox as a lead), over the new `/v1/projects/{project}/monitoring`
+  and `/forms` routes. Billing for care follows with the pricing engine.
+- The `onboard_agency` playbook and prompt: from a fresh sign-in to a client site checked on a
+  schedule in the client's time zone, with its first results. It stops for payment only at
+  the checkout link, and turns care on only after the user agrees to the credits.
+  `superflow_get_site_monitoring` reports `active_run`, which it waits on.
+- `superflow_get_invoices` (111 tools): the workspace's invoices, newest first, with Stripe's
+  links to view, pay or download each, over the new read-only `GET /v1/billing/invoices`.
+  Owner only.
+
+### Changed
+- The `triage` prompt follows the triage playbook, which now builds its list from the
+  failing checks and attaches human comments to them. The `fix` playbook marks checks fixed
+  and reads the check until the rescan decides, instead of running the agents again. The
+  playbooks write with the new check tools.
+- Rule keys are the Checks Engine's names (`link-broken`, `image-alt`, `mobile-overflow`).
+  The old names (`broken-link`, `alt-text`) are still accepted for one release.
+- Every request sends `X-Superflow-Client`, so the API's audit log records the package's
+  writes as made by the MCP.
+- `superflow_run_agents`: the API allows 10 runs per project per hour and answers
+  `rate_limited` past that.
+
+### Removed
+- The seven webhook tools (`superflow_list_webhooks`, `superflow_get_webhook`,
+  `superflow_create_webhook`, `superflow_update_webhook`, `superflow_delete_webhook`,
+  `superflow_test_webhook`, `superflow_list_webhook_deliveries`), `docs/webhooks.md` and the
+  `webhooks:read` and `webhooks:write` scopes. The first release ships without webhooks; they
+  come later on the platform's own webhooks. 104 tools, 45 of them read-only.
+
+### Fixed
+- A sign-in that `login` saved to the file because the keyring refused it is now found on
+  the next start, and `logout` removes it.
+- Several MCP processes can share one sign-in: when the server refuses a refresh token
+  that another process already rotated, the server reads the newer sign-in from the store
+  instead of ending it.
+- `superflow_delete_tag` and `superflow_merge_tags` send the ids of the tags the preview
+  showed, so a tag name used in two projects no longer fails after a clean preview.
+- `pnpm playbooks` works on Windows.
+
+## [0.3.0] - Unreleased
+
+Agents, integrations and webhooks (Phase 3): run the AI review agents, send their
+findings where your team works, and connect Superflow to other systems.
+
+
+### Tests
+- `pnpm test:e2e`: the built package over real stdio against a local fake API, in CI on
+  every pull request and every push to staging and main. It checks the handshake, that the
+  bundle registers exactly the source's tools, every tool's metadata and Example, that every
+  tool answers its Example (and an empty or HTML upstream) with a well-formed result, that no
+  gated tool writes without `confirm: true` while it does with it, read-only mode, error
+  mapping and retries, idempotency keys on retried creates, that logs never carry the key or
+  comment text, that stdout carries only protocol messages, and startup refusals. Every
+  request is checked against the OpenAPI snapshot.
+- `pnpm test:live` and `.github/workflows/live.yml`: the built package against the real API
+  on every push to staging and main: core reads, every read tool that needs at most a
+  project, cursor paging, a tag lifecycle with its confirmation gate, a bulk dry run, a wrong
+  key and read-only mode. With the secrets set, a skipped suite fails the run.
+### Added
+- 30 tools, 84 in total:
+  - Agents: `superflow_list_agents`, `superflow_get_agent`, `superflow_create_agent`,
+    `superflow_update_agent`, `superflow_delete_agent`, `superflow_duplicate_agent`,
+    `superflow_list_agent_packs`, `superflow_create_agent_pack`,
+    `superflow_update_agent_pack`.
+  - Runs: `superflow_estimate_run`, `superflow_run_agents`, `superflow_get_run`,
+    `superflow_list_runs`, `superflow_list_findings`.
+  - Schedules: `superflow_set_schedule`, `superflow_list_schedules`,
+    `superflow_delete_schedule`.
+  - Integrations: `superflow_list_integrations`, `superflow_get_integration`,
+    `superflow_connect_integration`, `superflow_update_integration`,
+    `superflow_push_comment`, `superflow_post_to_slack`.
+  - Webhooks: `superflow_list_webhooks`, `superflow_get_webhook`,
+    `superflow_create_webhook`, `superflow_update_webhook`, `superflow_delete_webhook`,
+    `superflow_test_webhook`, `superflow_list_webhook_deliveries`.
+- Runs spend AI credits, so `superflow_run_agents` asks for an estimate first: without
+  `confirm: true` it returns the estimate (credits, pages, agents, balance) as a preview
+  and starts nothing. When the balance is too low it says so, points to Settings >
+  Billing, and does not retry. `superflow_get_run` names the finished statuses
+  (`done`, `failed`, `partial`) and asks for at most one check every 20 seconds.
+- Confirm gates on `superflow_delete_agent`, `superflow_delete_schedule`,
+  `superflow_delete_webhook` and `superflow_post_to_slack`: without `confirm: true` they
+  only read and return a preview.
+- `superflow_create_webhook` returns the signing secret once and says to store it.
+  [`docs/webhooks.md`](docs/webhooks.md) lists the events and the payload and shows how
+  to verify the Svix signature in Node.
+- `superflow_push_comment` creates a Jira issue or an Asana, ClickUp or Monday task from
+  a comment and saves the link on the comment, so `external_links` and the
+  `has_external_link` filter now work. Targets are ids: Jira `KEY:12345`, Asana
+  `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`.
+  `superflow_connect_integration` returns a link the user opens to connect a tool.
+- The `prelaunch_run` prompt: estimate, ask, run, follow the run, summarize the findings
+  by severity, and offer to push the critical ones to Jira. `agent_findings_review` now
+  reads runs and findings, and picks the latest finished run when none is given.
+- The `superflow://runs/{run}` resource.
+- New scopes: `integrations:read`, `integrations:write`, `webhooks:read`,
+  `webhooks:write`. The agent tools use `agents:read`, `agents:write` and `agents:run`.
+- Read-only mode keeps the 33 read tools, including `superflow_estimate_run` and
+  `superflow_connect_integration`, which only read.
+
+### Not yet
+- Cancelling a run (the engine has no way to stop one), schedules that run when a page
+  changes, and disconnecting a tool (use the Superflow portal).
+- Webhooks for comments made in the Superflow toolbar or changes made in the portal, and
+  for bulk updates, restores, project deletes and guest removals. Events cover single
+  changes through the API and this server, and agent runs.
+- Exact prices outside scan pricing: flat pricing is an estimate, and workspaces billed
+  by model usage cannot be priced in advance.
+
+## [0.2.0] - Unreleased
+
+Admin tools (Phase 2): run the setup side of Superflow from the assistant.
+
+### Added
+- 33 admin tools, 54 in total:
+  - Projects: `superflow_get_project`, `superflow_create_project`,
+    `superflow_update_project`, `superflow_archive_project`,
+    `superflow_unarchive_project`, `superflow_delete_project`,
+    `superflow_get_install_snippet`, `superflow_verify_install`.
+  - Pages: `superflow_get_page`, `superflow_add_page`, `superflow_remove_page`.
+  - People: `superflow_invite_member`, `superflow_remove_member`,
+    `superflow_list_guests`, `superflow_invite_guest`, `superflow_remove_guest`.
+  - Statuses: `superflow_create_status`, `superflow_update_status`,
+    `superflow_reorder_statuses`, `superflow_delete_status`.
+  - Tags: `superflow_create_tag`, `superflow_update_tag`, `superflow_delete_tag`,
+    `superflow_merge_tags`.
+  - Workspace: `superflow_get_organization`, `superflow_update_organization`,
+    `superflow_get_credit_usage`, `superflow_list_activity`.
+  - Review links: `superflow_list_review_links`, `superflow_create_review_link`
+    (Velt-internal accounts only for now), `superflow_revoke_review_link`.
+  - Notifications: `superflow_get_notification_settings`,
+    `superflow_update_notification_settings` (your own settings only).
+- Confirm gates on the eight destructive admin tools. Without `confirm: true` they
+  only read and return a preview: the project with its comment and page counts, the
+  page and its comments, the member and their open assigned comments, the guest,
+  the status and where its comments go, the tag and its usage, both tags of a
+  merge, the review link.
+- The `onboard_client` prompt: create the project, invite the client's reviewers,
+  hand over the install snippet and verify it, asking before each write.
+  `launch_checklist` now also checks the install status and the guests.
+- The `superflow://organization` resource.
+- Creates and invites send an idempotency key, so a retried call does not create
+  a second project or send a second email.
+- New scopes for the admin tools: `users:write` (remove members and guests) and
+  `workspace:write` (rename the workspace, notification settings).
+
+### Not yet
+- Changing member roles or per-project member access, refreshing a page
+  screenshot, and choosing the digest time. The API has no way to do them.
+- Review link expiry and per-page links.
+- Clearing an assignee when removing a member: pass `reassign_to`, or the open
+  comments stay assigned to the removed person.
+
+## [0.1.0] - Unreleased
+
+First release of the `superflow-mcp` npm package, a local stdio server:
+`npx -y superflow-mcp`.
+
+### Added
+- 21 comment tools over the Superflow REST API v1: `superflow_get_me`,
+  `superflow_list_projects`, `superflow_list_pages`, `superflow_list_members`,
+  `superflow_list_statuses`, `superflow_list_tags`, `superflow_list_comments`,
+  `superflow_get_comment`, `superflow_comment_stats`, `superflow_export_comments`,
+  `superflow_create_comment`, `superflow_update_comment`,
+  `superflow_resolve_comment`, `superflow_reopen_comment`, `superflow_add_reply`,
+  `superflow_update_reply`, `superflow_delete_reply`, `superflow_delete_comment`,
+  `superflow_restore_comment`, `superflow_bulk_update_comments`,
+  `superflow_add_attachment`.
+- Six prompts: `triage`, `stale_threads`, `client_update`, `agent_findings_review`,
+  `find_duplicates`, `launch_checklist`.
+- Four resources: `superflow://projects`, `superflow://projects/{project}`,
+  `superflow://projects/{project}/comments`, `superflow://comments/{comment}`.
+- Ids accept names, site URLs, emails and comment numbers, resolved by the API.
+  Ambiguous matches come back with candidates.
+- Confirm gates for deletes and bulk writes; bulk updates are dry runs by default and
+  report how many comments would change, already match, were updated, skipped or failed.
+- Write limits from the API built into the schemas: three priorities (critical, high,
+  medium), one assignee, and comments created as public, like a toolbar comment.
+- `SUPERFLOW_READ_ONLY=true` leaves every write tool unregistered.
+- `SUPERFLOW_DEFAULT_PROJECT` for bare comment numbers.
+- Retries with `Retry-After` on rate limits, and safe retries on 502, 503 and 504.
+- Results carry structured content plus a one-line summary, are capped at about
+  8k tokens, and mark visitor-written comment text as untrusted.
+
+### Not yet
+- Streamable HTTP transport (`src/http.ts`) and a Docker image. The hosted server
+  already covers remote clients; a follow-up runs this package's tools there.
+- Admin tools (projects, members, statuses, tags), agents, integrations and
+  webhooks. Those are Phase 2 and Phase 3.
+- Removing an assignee, clearing a priority and deleting an attachment. The API does
+  not support them yet; use the Superflow toolbar.
+
+## [1.0.0] - Hosted server
+
+Initial public release of the hosted server at `https://mcp.usesuperflow.ai/mcp`.
 
 ### Added
 - Remote MCP server over Streamable HTTP at `/mcp`.
 - 20 scoped tools across workspace, projects, agents, comments, analytics, and team.
 - No-account demo endpoint at `/mcp/try` with `run_site_preview` and `get_site_preview`.
-- Personal access tokens (`sf_pat_…`) with per-scope selection and 30-day, 90-day, or no expiry.
+- Personal access tokens (`sf_pat_...`) with per-scope selection and 30-day, 90-day, or no expiry.
 - OAuth 2.1 with PKCE and RFC 7591 dynamic client registration, for clients that
   register themselves instead of taking a pasted token.
