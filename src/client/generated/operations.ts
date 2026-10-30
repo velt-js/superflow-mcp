@@ -104,12 +104,6 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
-  createWebhook: {
-    method: "POST",
-    path: "/webhooks",
-    pathParams: [],
-    queryParams: [],
-  },
   deleteAgent: {
     method: "DELETE",
     path: "/agents/{agent}",
@@ -150,12 +144,6 @@ export const operations = {
     method: "DELETE",
     path: "/tags/{tag}",
     pathParams: ["tag"],
-    queryParams: ["confirm"],
-  },
-  deleteWebhook: {
-    method: "DELETE",
-    path: "/webhooks/{webhook}",
-    pathParams: ["webhook"],
     queryParams: ["confirm"],
   },
   duplicateAgent: {
@@ -313,12 +301,6 @@ export const operations = {
     path: "/analytics/team",
     pathParams: [],
     queryParams: ["lookback_days"],
-  },
-  getWebhook: {
-    method: "GET",
-    path: "/webhooks/{webhook}",
-    pathParams: ["webhook"],
-    queryParams: [],
   },
   importFindings: {
     method: "POST",
@@ -482,18 +464,6 @@ export const operations = {
     pathParams: [],
     queryParams: ["project"],
   },
-  listWebhookDeliveries: {
-    method: "GET",
-    path: "/webhooks/{webhook}/deliveries",
-    pathParams: ["webhook"],
-    queryParams: [],
-  },
-  listWebhooks: {
-    method: "GET",
-    path: "/webhooks",
-    pathParams: [],
-    queryParams: [],
-  },
   mergeTags: {
     method: "POST",
     path: "/tags/{tag}/merge",
@@ -590,12 +560,6 @@ export const operations = {
     pathParams: ["project", "rule_key"],
     queryParams: [],
   },
-  testWebhook: {
-    method: "POST",
-    path: "/webhooks/{webhook}/test",
-    pathParams: ["webhook"],
-    queryParams: [],
-  },
   unarchiveProject: {
     method: "POST",
     path: "/projects/{project}/unarchive",
@@ -686,12 +650,6 @@ export const operations = {
     pathParams: ["tag"],
     queryParams: [],
   },
-  updateWebhook: {
-    method: "PATCH",
-    path: "/webhooks/{webhook}",
-    pathParams: ["webhook"],
-    queryParams: [],
-  },
   verifyInstall: {
     method: "POST",
     path: "/projects/{project}/install/verify",
@@ -704,7 +662,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "5d390ad110190f7b175d08d2ac5a8ece72cbf091f6275664256c6006c6fa5bc3";
+export const OPENAPI_SHA256 = "ea38ebd30ef7621480e1b9f9bdf5e119e55adf4ec88958960d5842ee03904f57";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];
