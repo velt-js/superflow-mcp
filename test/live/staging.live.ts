@@ -33,6 +33,10 @@ const CORE_READS = [
   "superflow_list_comments",
   "superflow_comment_stats",
 ];
+/** Arguments a core read needs beyond the project (comment_stats requires group_by by design). */
+const CORE_READ_ARGS: Record<string, Record<string, unknown>> = {
+  superflow_comment_stats: { group_by: "status" },
+};
 
 function env(extra: Record<string, string> = {}): Record<string, string> {
   return {
@@ -95,7 +99,7 @@ describe.skipIf(!enabled)("live: the built package against the real API", () => 
     for (const name of CORE_READS) {
       const tool = tools.find((t) => t.name === name);
       expect(tool, name).toBeDefined();
-      const result = await server.call(name, readArgs(tool!) ?? { project: PROJECT });
+      const result = await server.call(name, { ...(readArgs(tool!) ?? { project: PROJECT }), ...CORE_READ_ARGS[name] });
       expect(result.isError, `${name}: ${textOf(result).split("\n")[0]}`).toBeFalsy();
     }
   }, 120_000);
@@ -149,7 +153,8 @@ describe.skipIf(!enabled)("live: the built package against the real API", () => 
 
   it("a bulk change without dry_run: false only previews", async () => {
     const result = await server.call("superflow_bulk_update_comments", {
-      filter: { project: PROJECT, tags: [`mcp-live-none-${runId}`] },
+      // A text filter that matches nothing: a tag that does not exist is refused as not_found before any preview.
+      filter: { project: PROJECT, query: `mcp-live-none-${runId}` },
       patch: { priority: "high" },
     });
     expect(result.isError, textOf(result).split("\n")[0]).toBeFalsy();

@@ -1,6 +1,6 @@
 // Checks (spec addendum "Checks tools"): the layer above comments. A check is one kind of
 // problem on a site (broken links, images without alt text), with every finding of that kind
-// under it. Fixing is a claim: the scan verifies it, and a finding that is still there reopens.
+// under it. Fixing is a claim: the scan verifies it, and a problem that is still there comes back as an open finding.
 import { z } from "zod";
 import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, okResult, plural } from "../lib/format.ts";
@@ -234,7 +234,7 @@ export const markCheckFixed = defineTool({
   name: "superflow_mark_check_fixed",
   title: "Mark a check fixed",
   description: [
-    "Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A finding that is still there reopens, so this is a claim the scan checks, never the final word.",
+    "Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.",
     "Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).",
     `Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every ${POLL_SECONDS} seconds. For one finding use superflow_resolve_comment, which verifies the same way.`,
     'Example: {"project": "dental-smiles.com", "rule_key": "image-alt", "confirm": true}',
@@ -262,7 +262,7 @@ export const markCheckFixed = defineTool({
         result.resolved > 0 ? `Marked ${rule_key} fixed: ${plural(result.resolved, "finding")} resolved, rescan queued.` : `Nothing new to resolve on ${rule_key}.`,
         result.already_pending > 0 && `${result.already_pending} already waiting for their rescan.`,
         result.truncated && "Some findings stayed open (over the server limit): call again to resolve the rest.",
-        `Check again in a minute with superflow_get_check_details; a finding that is still there reopens.`,
+        `Check again in a minute with superflow_get_check_details; a problem that is still there comes back as an open finding.`,
       ),
       asData(result),
       { untrusted: false },

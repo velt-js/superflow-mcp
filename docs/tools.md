@@ -271,7 +271,7 @@ Returns compact rows by default; set fields "full" only when you need every fiel
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
-| `author_type` | array of `member`, `guest`, `agent` | no | member (your team), guest (clients and reviewers) or agent (AI review agents). |
+| `author_type` | array of `member`, `guest`, `agent` | no | One or more of member (your team), guest (clients and reviewers) and agent (AI review agents), as an array. |
 | `tags` | array of string | no | Tag names or ids. See tags_match. |
 | `tags_match` | `any`, `all` | no | any (default): a comment with any of the tags. all: every tag. |
 | `query` | string | no | Case-insensitive text search over every message in the thread. |
@@ -339,7 +339,7 @@ To read the comments behind a number use superflow_list_comments with the same f
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
-| `author_type` | array of `member`, `guest`, `agent` | no | member (your team), guest (clients and reviewers) or agent (AI review agents). |
+| `author_type` | array of `member`, `guest`, `agent` | no | One or more of member (your team), guest (clients and reviewers) and agent (AI review agents), as an array. |
 | `tags` | array of string | no | Tag names or ids. See tags_match. |
 | `tags_match` | `any`, `all` | no | any (default): a comment with any of the tags. all: every tag. |
 | `query` | string | no | Case-insensitive text search over every message in the thread. |
@@ -385,7 +385,7 @@ To read or count comments in the conversation use superflow_list_comments or sup
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
-| `author_type` | array of `member`, `guest`, `agent` | no | member (your team), guest (clients and reviewers) or agent (AI review agents). |
+| `author_type` | array of `member`, `guest`, `agent` | no | One or more of member (your team), guest (clients and reviewers) and agent (AI review agents), as an array. |
 | `tags` | array of string | no | Tag names or ids. See tags_match. |
 | `tags_match` | `any`, `all` | no | any (default): a comment with any of the tags. all: every tag. |
 | `query` | string | no | Case-insensitive text search over every message in the thread. |
@@ -481,7 +481,7 @@ Example:
 **Resolve a comment**
 
 Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).
-On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a finding that is still there reopens. If the finding is wrong rather than fixed, use superflow_reject_comment.
+On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.
 Safe to repeat: if it is already resolved nothing changes and the note is not posted.
 To resolve many comments at once use superflow_bulk_update_comments with patch {"resolve": true}. To undo use superflow_reopen_comment.
 
@@ -750,7 +750,7 @@ Example:
 
 **Mark a check fixed**
 
-Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A finding that is still there reopens, so this is a claim the scan checks, never the final word.
+Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.
 Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).
 Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every 20 seconds. For one finding use superflow_resolve_comment, which verifies the same way.
 

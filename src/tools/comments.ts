@@ -384,7 +384,7 @@ interface VerifyInfo {
 /** One sentence on the verify rescan a resolve of an agent finding queued. */
 function verifyNote(verify: VerifyInfo): string {
   if (verify.already_pending) return "It was already waiting for its verify rescan.";
-  return "Its page is rescanned within a minute to verify it; check again with superflow_get_comment (it reopens if the problem is still there).";
+  return "Its page is rescanned within a minute to verify it; check again with superflow_get_comment, or superflow_get_check_details for the check (a problem that is still there comes back as an open finding).";
 }
 
 function resolveTool(kind: "resolve" | "reopen") {
@@ -395,7 +395,7 @@ function resolveTool(kind: "resolve" | "reopen") {
     description: (resolve
       ? [
           "Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).",
-          "On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a finding that is still there reopens. If the finding is wrong rather than fixed, use superflow_reject_comment.",
+          "On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.",
           "Safe to repeat: if it is already resolved nothing changes and the note is not posted.",
           "To resolve many comments at once use superflow_bulk_update_comments with patch {\"resolve\": true}. To undo use superflow_reopen_comment.",
           'Example: {"comment": "4821", "project": "Acme Dental", "note": "Fixed in the latest deploy, please check."}',

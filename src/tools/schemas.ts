@@ -108,7 +108,7 @@ export const filterShape = {
     .optional()
     .describe("Assignees: names, emails, ids, \"me\", or \"unassigned\" for comments with no assignee."),
   author: peopleListSchema("Authors"),
-  author_type: z.array(z.enum(AUTHOR_TYPES)).optional().describe("member (your team), guest (clients and reviewers) or agent (AI review agents)."),
+  author_type: z.array(z.enum(AUTHOR_TYPES)).optional().describe("One or more of member (your team), guest (clients and reviewers) and agent (AI review agents), as an array."),
   tags: z.array(z.string().min(1)).optional().describe("Tag names or ids. See tags_match."),
   tags_match: z.enum(["any", "all"]).optional().describe("any (default): a comment with any of the tags. all: every tag."),
   query: z.string().min(1).optional().describe("Case-insensitive text search over every message in the thread."),

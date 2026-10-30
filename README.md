@@ -167,7 +167,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 54 write tools are not registered at all. The 40 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`, `ingest`).
+Set `SUPERFLOW_READ_ONLY=true` and the 63 write tools are not registered at all. The 48 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`, `ingest`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -205,7 +205,7 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 | `superflow_list_forms` | The forms the Forms agent found on a site, with their test settings and last result. |
 | `superflow_set_form_testing` | Turns a form's test on or off. On needs `confirm: true`: each test lands in the client's inbox as a lead. |
 
-Resolving or marking a check fixed is a claim: a rescan verifies it, and a finding that is still there reopens. `superflow_resolve_comment` and `superflow_update_comment` say when they queued that rescan.
+Resolving or marking a check fixed is a claim: a rescan verifies it, and a problem that is still there comes back as an open finding. `superflow_resolve_comment` and `superflow_update_comment` say when they queued that rescan.
 
 #### Comments
 

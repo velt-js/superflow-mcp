@@ -142,7 +142,7 @@ describe("superflow_mark_check_fixed", () => {
     const result = await h.call(TOOL, { project: "Acme Dental", rule_key: "link-broken", confirm: true });
     expect(recorded.map((r) => [r.method, r.operationId])).toEqual([["POST", "resolveCheck"]]);
     expect(summaryOf(result)).toContain("Marked link-broken fixed: 3 findings resolved, rescan queued.");
-    expect(summaryOf(result)).toContain("a finding that is still there reopens");
+    expect(summaryOf(result)).toContain("a problem that is still there comes back as an open finding");
   });
 
   it("an engine refusal keeps its reason", async () => {
