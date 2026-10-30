@@ -95,8 +95,6 @@ playbook line in the server instructions.
   Settings > Billing and never retried.
 - Run polling: `superflow_get_run` asks for at most one call every 20 seconds
   (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
-- `superflow_create_webhook` returns the signing secret once: the summary tells the user
-  to save it. Never log it.
 - `superflow_estimate_run` and `superflow_connect_integration` are POSTs that only read,
   so they are read-only tools (`write: false`) and stay in read-only mode.
 - Invite tools send real email, and their descriptions say so. Creates and invites send a
@@ -105,7 +103,7 @@ playbook line in the server instructions.
   comment text is present, then the JSON. Text is capped at 30,000 characters.
 - `idempotency_key`: generated per call for create comment, add reply, create project,
   invites, create review link, create agent, duplicate agent, create agent pack, run agents,
-  create schedule, create webhook and push comment when missing. A push that times out hands
+  create schedule and push comment when missing. A push that times out hands
   its key back in the error hint, so a retry picks up the result instead of a second issue.
 - Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
   create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still

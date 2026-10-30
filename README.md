@@ -2,7 +2,7 @@
 
 Talk to your [Superflow](https://usesuperflow.ai) comments from Claude Code, Claude Desktop, Cursor, Gemini CLI, claude.ai, ChatGPT or any MCP client.
 
-Superflow is a visual feedback and AI review layer for websites. Your team, your clients and AI review agents leave comments pinned on live pages. With this MCP server your assistant can read that feedback, filter and count it, reply, resolve, triage in bulk, and draft client updates. It can also run the admin side: create a project for a new client, invite their reviewers, hand over the install snippet and check it, and manage statuses, tags and the team. And it can run the AI review agents (with a credit estimate first), schedule them, push findings to Jira, Asana, ClickUp or Monday, post to Slack, and send webhooks to your other systems. All without leaving the editor or the chat.
+Superflow is a visual feedback and AI review layer for websites. Your team, your clients and AI review agents leave comments pinned on live pages. With this MCP server your assistant can read that feedback, filter and count it, reply, resolve, triage in bulk, and draft client updates. It can also run the admin side: create a project for a new client, invite their reviewers, hand over the install snippet and check it, and manage statuses, tags and the team. And it can run the AI review agents (with a credit estimate first), schedule them, push findings to Jira, Asana, ClickUp or Monday, and post to Slack. All without leaving the editor or the chat.
 
 ## Two ways to connect
 
@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 111 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules, integrations and webhooks | Workspace, project, agent, analytics and team tools |
+| Tools | 104 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -125,7 +125,6 @@ More examples: [`examples/`](examples/).
    - Integrations: `integrations:read` (connected tools) and `integrations:write` (connect
      links, default projects, push a comment to a tracker, post to Slack; pushing also needs
      `comments:read`).
-   - Webhooks: `webhooks:read` and `webhooks:write`.
 
    Leave out the write scopes for a read-only key. A tool whose scope the key lacks answers with a clear forbidden error.
 4. Pick an expiry, then copy the key. It is shown once. Superflow stores only a hash.
@@ -167,7 +166,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 63 write tools are not registered at all. The 48 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules, integrations and webhooks, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `webhooks:write`, `ingest`).
+Set `SUPERFLOW_READ_ONLY=true` and the 59 write tools are not registered at all. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -304,27 +303,13 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_push_comment` | Create a Jira issue or a task from a comment, and link it on the comment. |
 | `superflow_post_to_slack` | Post a message, with comments, to a Slack channel (needs confirm). |
 
-#### Webhooks
-
-| Tool | What it does |
-|---|---|
-| `superflow_list_webhooks` | Webhook endpoints, their events and the last delivery. |
-| `superflow_get_webhook` | One endpoint. |
-| `superflow_create_webhook` | Add an endpoint. Shows the signing secret once. |
-| `superflow_update_webhook` | Change an endpoint's URL, events or project, or pause it. |
-| `superflow_delete_webhook` | Delete an endpoint (needs confirm). |
-| `superflow_test_webhook` | Send a signed ping. |
-| `superflow_list_webhook_deliveries` | The last 100 deliveries to an endpoint. |
-
-How to receive and verify webhook events: [`docs/webhooks.md`](docs/webhooks.md).
-
 Superflow has three priorities you can set: critical (P0), high (P1) and medium (P2). Removing an assignee or clearing a priority is not supported yet, so the assistant will ask you to do that in the Superflow toolbar. Filters can still find `low` and `none` priority comments and `unassigned` ones.
 
 Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
 Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent. While a project has an active review link it is in preview: archiving, install checks and settings changes wait until the link is revoked. Site, domain and page addresses are full `https://` URLs.
 
-Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Webhooks cover single changes made through the API or this server, and agent runs; not yet comments made in the Superflow toolbar, bulk updates, restores, project deletes or guest removals. Pushing a comment needs the target's ids, not names: Jira `KEY:12345` (project key and numeric project id), Asana `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`. Asana, ClickUp and Monday connections must also be set up to create items from Superflow.
+Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Pushing a comment needs the target's ids, not names: Jira `KEY:12345` (project key and numeric project id), Asana `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`. Asana, ClickUp and Monday connections must also be set up to create items from Superflow.
 
 #### Playbooks
 
@@ -390,7 +375,6 @@ The server also ships eleven prompts (`triage`, `fix`, `push_my_review`, `onboar
 18. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
 19. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
 20. Post the open critical comments on Acme to our #design-feedback Slack channel.
-21. Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
 
 More in [`examples/prompts.md`](examples/prompts.md).
 
@@ -402,7 +386,6 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - Agent runs spend AI credits. The assistant prices the run with `superflow_estimate_run`, shows you the credits and asks; `superflow_run_agents` starts nothing without `confirm: true`. When the balance is too low it tells you how to add credits and does not retry.
 - Pushing a comment creates a real issue or task in your Jira, Asana, ClickUp or Monday, and a Slack post is seen by everyone in the channel. The assistant asks first, and a Slack post needs `confirm: true`.
 - Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, and excluding a check hides it for the whole site. Both need `confirm: true`; without it the tool only reads and shows what would happen.
-- A new webhook's signing secret is shown once. Store it right away.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
 - The key is only ever sent as the bearer token to the Superflow API, and it is never logged. See [SECURITY.md](SECURITY.md).
@@ -477,8 +460,6 @@ The authenticated endpoint never serves these two, and this endpoint never serve
 | `workspace:write` | Rename the workspace and change your own notification settings (local package and REST API). |
 | `integrations:read` | Read connected tools (local package and REST API). |
 | `integrations:write` | Get connect links, set default projects, push comments to a tracker and post to Slack (local package and REST API). |
-| `webhooks:read` | Read webhook endpoints and deliveries (local package and REST API). |
-| `webhooks:write` | Create, change, test and delete webhook endpoints (local package and REST API). |
 | `ingest` | Push your own review's findings in as agent comments; creates or merges, never deletes (local package and REST API). |
 
 ## Migrating from BugHerd

@@ -86,13 +86,6 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_update_integration: [false, false, true, false],
   superflow_push_comment: [false, false, false, true],
   superflow_post_to_slack: [false, false, false, true],
-  superflow_list_webhooks: [true, false, true, false],
-  superflow_get_webhook: [true, false, true, false],
-  superflow_create_webhook: [false, false, false, true],
-  superflow_update_webhook: [false, false, true, true],
-  superflow_delete_webhook: [false, true, true, false],
-  superflow_test_webhook: [false, false, false, true],
-  superflow_list_webhook_deliveries: [true, false, true, false],
   // Spec addendum v2.1.
   superflow_use_playbook: [true, false, true, false],
   superflow_import_findings: [false, false, true, false],
@@ -144,10 +137,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 111 contract tools", async () => {
+  it("registers exactly the 104 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(111);
+    expect(listed).toHaveLength(104);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -217,14 +210,14 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(48);
+    expect(READ_ONLY_COUNT).toBe(45);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
   });
 
   it("gives every destructive tool a confirm flag that defaults to false", async () => {
-    expect(CONFIRM_GATED).toHaveLength(20);
+    expect(CONFIRM_GATED).toHaveLength(19);
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
     // Not destructive, but it puts a credential into the conversation, so it gates too.
@@ -258,8 +251,6 @@ describe("tool registration", () => {
       "superflow_set_schedule",
       "superflow_push_comment",
       "superflow_post_to_slack",
-      "superflow_create_webhook",
-      "superflow_test_webhook",
     ]) {
       expect(names, name).not.toContain(name);
     }
@@ -274,7 +265,6 @@ describe("tool registration", () => {
     expect(describe("superflow_run_agents")).toContain("Do not retry");
     expect(describe("superflow_get_run")).toContain("done, failed or partial");
     expect(describe("superflow_get_run")).toContain("no more often than every 20 seconds");
-    expect(describe("superflow_create_webhook")).toContain("shown once");
     expect(describe("superflow_connect_integration")).toContain("cannot finish the sign-in");
     expect(describe("superflow_push_comment")).toContain("their team will see");
     expect(describe("superflow_post_to_slack")).toContain("Everyone in that channel sees it");

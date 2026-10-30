@@ -3,14 +3,11 @@ import type {
   ActivityEntry,
   Agent,
   AgentPack,
-  CreatedWebhook,
   Finding,
   Integration,
   Run,
   RunEstimate,
   Schedule,
-  Webhook,
-  WebhookDelivery,
   CommentCompact,
   CommentFull,
   InviteResponse,
@@ -443,28 +440,3 @@ export const jiraIntegration: Integration = {
   settings: { default_project: "WEB:10001" },
 };
 
-export const webhook: Webhook = {
-  id: "whk_2b3c4d",
-  url: "https://hooks.example.com/superflow",
-  events: ["comment.created", "comment.resolved", "agent_run.completed"],
-  project_id: "prj_1a2b",
-  active: true,
-  description: null,
-  secret_hint: "x9Qz",
-  created_at: "2026-10-08T09:00:00Z",
-  last_delivery: { status: "succeeded", at: "2026-10-08T09:30:00Z" },
-};
-
-export const createdWebhook: CreatedWebhook = {
-  ...webhook,
-  last_delivery: null,
-  secret: "whsec_dGVzdC1zZWNyZXQtbm90LXJlYWw=",
-};
-
-export const delivery: WebhookDelivery = {
-  id: "msg_1",
-  event: "comment.created",
-  status: "succeeded",
-  response_code: 200,
-  at: "2026-10-08T09:30:00Z",
-};

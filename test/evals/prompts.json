@@ -292,14 +292,6 @@
     "check": [{ "tool": "superflow_connect_integration", "arg_includes": { "type": "jira" } }]
   },
   {
-    "id": "p3-create-webhook",
-    "prompt": "Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved on {project}. Go ahead and set it up.",
-    "expect_first_tool": ["superflow_create_webhook", "superflow_list_webhooks"],
-    "check": [
-      { "tool": "superflow_create_webhook", "arg_includes": { "url": "https://hooks.example.com/superflow", "events": ["comment.resolved"] } }
-    ]
-  },
-  {
     "id": "p3-read-only-run-refusal",
     "prompt": "Run the AI agents on {project} now.",
     "read_only": true,

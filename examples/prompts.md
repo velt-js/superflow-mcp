@@ -61,7 +61,7 @@ show a preview first.
 - Switch my email digest to weekly and only email me about my own threads.
 - Archive the Acme project, we are done with it.
 
-## Agents, integrations and webhooks
+## Agents and integrations
 
 Runs spend AI credits: the assistant estimates first and asks. Pushes and Slack posts land
 in your team's own tools, so it asks before those too.
@@ -76,8 +76,6 @@ in your team's own tools, so it asks before those too.
 - Push comment 4821 on Acme to Jira, project WEB.
 - Connect our Jira to Superflow.
 - Post the open critical comments on Acme to #design-feedback in Slack.
-- Send a webhook to https://hooks.example.com/superflow whenever a comment is resolved.
-- Why is our webhook not receiving events? Show me the last deliveries.
 
 ## Prompts that ship with the server
 

@@ -22,7 +22,7 @@ const SAFETY_RULES = [
 ];
 
 const WRITE_RULE =
-  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install, run agents, schedule, push to a tracker, post to Slack, webhook) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
+  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install, run agents, schedule, push to a tracker, post to Slack) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
 
 const READ_ONLY_RULE =
   "- Writes are disabled on this server (SUPERFLOW_READ_ONLY=true), so the write tools are not available. Present every change as a recommendation the user can apply in Superflow. Do not try to apply it.";

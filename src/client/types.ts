@@ -600,7 +600,7 @@ export interface NotificationSettings {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Phase 3: agents, runs, schedules, integrations, webhooks (the backend's OpenAPI document).
+// Phase 3: agents, runs, schedules, integrations (the backend's OpenAPI document).
 // ---------------------------------------------------------------------------------------------
 
 /** An issue or task created from a comment in a connected tool (Phase 3 push). */
@@ -763,40 +763,3 @@ export interface SlackPostResponse {
   comments_posted: number;
 }
 
-export interface Webhook {
-  id: string;
-  url: string;
-  events: string[];
-  project_id: string | null;
-  active: boolean;
-  /** The last 4 characters of the signing secret. */
-  secret_hint: string | null;
-  description: string | null;
-  created_at: string | null;
-  last_delivery: { status: string; at: string | null } | null;
-}
-
-/** POST /webhooks: the signing secret is returned this once. */
-export interface CreatedWebhook extends Webhook {
-  secret: string;
-}
-
-export interface DeleteWebhookResponse {
-  deleted: true;
-  id: string;
-}
-
-export interface WebhookTestResponse {
-  sent: boolean;
-  id: string;
-  event: "ping";
-  message_id: string | null;
-}
-
-export interface WebhookDelivery {
-  id: string;
-  event: string | null;
-  status: string;
-  response_code: number | null;
-  at: string | null;
-}

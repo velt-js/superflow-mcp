@@ -87,6 +87,13 @@ when their engines ship.
 - `superflow_run_agents`: the API allows 10 runs per project per hour and answers
   `rate_limited` past that.
 
+### Removed
+- The seven webhook tools (`superflow_list_webhooks`, `superflow_get_webhook`,
+  `superflow_create_webhook`, `superflow_update_webhook`, `superflow_delete_webhook`,
+  `superflow_test_webhook`, `superflow_list_webhook_deliveries`), `docs/webhooks.md` and the
+  `webhooks:read` and `webhooks:write` scopes. The first release ships without webhooks; they
+  come later on the platform's own webhooks. 104 tools, 45 of them read-only.
+
 ### Fixed
 - A sign-in that `login` saved to the file because the keyring refused it is now found on
   the next start, and `logout` removes it.

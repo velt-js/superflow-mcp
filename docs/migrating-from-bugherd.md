@@ -63,13 +63,10 @@ planned are not in this release.
 | Managing tags | `superflow_create_tag`, `superflow_update_tag`, `superflow_delete_tag`, `superflow_merge_tags` | available |
 | Install code for a project | `superflow_get_install_snippet`, `superflow_verify_install` | available |
 | `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | removing an attachment (not offered by the API yet) | planned |
-| `GET /webhooks.json` | `superflow_list_webhooks`, `superflow_get_webhook`, `superflow_list_webhook_deliveries` | available |
-| `POST /webhooks.json` | `superflow_create_webhook` (returns the signing secret once) | available |
-| `DELETE /webhooks/{id}.json` | `superflow_delete_webhook` (with `confirm: true`) | available |
-| Changing or testing a webhook | `superflow_update_webhook`, `superflow_test_webhook` | available |
+| BugHerd webhooks (`/webhooks.json`) | not in this release; planned on Superflow's platform webhooks | planned |
 | `external_id` on tasks | `superflow_push_comment` (creates the Jira issue, Asana, ClickUp or Monday task and stores its link on the comment) | available |
 | Sending a task to Jira or another tracker (BugHerd integrations) | `superflow_push_comment`; connect the tool with `superflow_connect_integration` | available |
-| Slack notifications | `superflow_post_to_slack` (with `confirm: true`), or a webhook | available |
+| Slack notifications | `superflow_post_to_slack` (with `confirm: true`) | available |
 
 ## Filters you used in BugHerd
 
@@ -87,19 +84,3 @@ Superflow adds filters BugHerd does not have: `page_url` with `page_match`, `que
 (full-text over the thread), `unanswered`, `stale_days`, `author_type`, `device`,
 `source`, `agent` and `agent_run`.
 
-## Webhook events
-
-BugHerd sends four webhook events. Superflow splits them into finer events, and
-signs every delivery (see [webhooks.md](webhooks.md)).
-
-| BugHerd event | Superflow events |
-|---|---|
-| `task_create` | `comment.created` |
-| `task_update` | `comment.updated`, `comment.resolved`, `comment.reopened` |
-| `comment` | `reply.created` (also `reply.updated`, `reply.deleted`) |
-| `task_destroy` | `comment.deleted` |
-
-Superflow also sends project, page, member, guest and agent run events. Events cover
-single changes made through the API or the MCP server, and agent runs. Comments made in
-the Superflow toolbar, bulk updates, restores, project deletes and guest removals do not
-send events yet.

@@ -157,7 +157,7 @@ export class FakeSuperflowApi {
 
 /**
  * A responder that makes lookups succeed: every GET answers with items built from the string
- * values the tool was called with (so `findOne` finds the tag, project or webhook it was asked
+ * values the tool was called with (so `findOne` finds the tag, project or form it was asked
  * about), and an object GET reads as the first of them. Previews then run to the end, which is
  * what a confirmation-gate test needs to be meaningful.
  */

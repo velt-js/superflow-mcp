@@ -22,7 +22,6 @@ import { scheduleTools } from "./schedules.ts";
 import { siteTools } from "./sites.ts";
 import { statusTools } from "./statuses.ts";
 import { tagTools } from "./tags.ts";
-import { webhookTools } from "./webhooks.ts";
 
 export type { ToolContext, ToolDefinition, ToolHints } from "./define.ts";
 
@@ -50,14 +49,13 @@ export const tools: ReadonlyArray<ToolDefinition<z.ZodRawShape>> = [
   // Addendum: billing reads (buying stays in the portal).
   ...billingTools,
   ...notificationTools,
-  // Phase 3: agents, runs, schedules, integrations, webhooks.
+  // Phase 3: agents, runs, schedules, integrations.
   ...agentTools,
   ...runTools,
   // Addendum: findings from your own agent.
   ...findingTools,
   ...scheduleTools,
   ...integrationTools,
-  ...webhookTools,
 ];
 
 export const TOOL_NAMES: readonly string[] = tools.map((tool) => tool.name);

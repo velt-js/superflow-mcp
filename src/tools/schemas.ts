@@ -225,7 +225,7 @@ export const hexColorSchema = z
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex color like #605CEC");
 
 // ---------------------------------------------------------------------------------------------
-// Phase 3 (agents, runs, schedules, integrations, webhooks).
+// Phase 3 (agents, runs, schedules, integrations).
 // ---------------------------------------------------------------------------------------------
 
 export const RUN_SCOPES = ["page", "list", "site"] as const;
@@ -234,33 +234,6 @@ export const TERMINAL_RUN_STATUSES = ["done", "failed", "partial"] as const;
 export const FINDING_SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;
 export const INTEGRATION_TYPES = ["slack", "jira", "asana", "clickup", "monday"] as const;
 export const SLACK_TEMPLATES = ["summary", "list"] as const;
-export const WEBHOOK_EVENTS = [
-  "comment.created",
-  "comment.updated",
-  "comment.resolved",
-  "comment.reopened",
-  "comment.deleted",
-  "reply.created",
-  "reply.updated",
-  "reply.deleted",
-  "project.created",
-  "project.updated",
-  "project.archived",
-  "page.created",
-  "page.removed",
-  "member.invited",
-  "member.removed",
-  "guest.invited",
-  "agent_run.started",
-  "agent_run.completed",
-  "agent_run.failed",
-  "check.resolved",
-  "check.excluded",
-  "check.included",
-  "check.owner_changed",
-  "comment.rejected",
-] as const;
-
 /** Most agents one run or schedule can use (CONTRACT-P3 section 4). */
 export const MAX_RUN_AGENTS = 25;
 /** Most page URLs a list-scope run can take. */
@@ -286,11 +259,6 @@ export const integrationRefSchema = z
   .min(1)
   .describe("Connected tool: its id (int_...) or name, from superflow_list_integrations.");
 
-export const webhookRefSchema = z
-  .string()
-  .min(1)
-  .describe("Webhook id (whk_...), from superflow_list_webhooks.");
-
 export const agentListSchema = (what: string) =>
   z
     .array(z.string().min(1))
@@ -311,7 +279,3 @@ export const runPagesSchema = z
   .optional()
   .describe(`Page URLs to review, at most ${MAX_RUN_PAGES}. Needed for scope list; for scope page give the one page.`);
 
-export const webhookEventsSchema = z
-  .array(z.enum(WEBHOOK_EVENTS))
-  .min(1)
-  .describe("Events to send, for example comment.created, comment.resolved, agent_run.completed. At least one.");

@@ -77,9 +77,6 @@ export const CONFIRM_DELETE_SCHEDULE_MESSAGE =
 export const CONFIRM_POST_TO_SLACK_MESSAGE =
   "Nothing was posted. Show the user the channel and what would be posted (the text and the comments), and ask whether to post it. Everyone in that Slack channel will see the message. If the user says yes, call superflow_post_to_slack again with the same arguments and confirm: true.";
 
-export const CONFIRM_DELETE_WEBHOOK_MESSAGE =
-  "Nothing was deleted. Show the user the webhook (URL and events) and ask whether to delete it. The receiving system stops getting events right away, and the signing secret is gone. To pause it instead, use superflow_update_webhook with active: false. If the user says yes, call superflow_delete_webhook again with confirm: true.";
-
 /** Where to add AI credits, for runs that cannot start. */
 export const ADD_CREDITS_HINT =
   "Add AI credits in Superflow under Settings > Billing, or turn on auto refill there. Do not retry the run until the balance covers it.";
