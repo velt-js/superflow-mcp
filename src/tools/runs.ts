@@ -139,7 +139,7 @@ export function runSummary(run: Run, lead = "Run"): string {
     );
   }
   return join(
-    `${head}. ${plural(run.findings_count ?? 0, "finding")} from ${agentNames(run.agents)}.`,
+    `${head}. ${plural(run.findings_count ?? 0, "finding")} reported by ${agentNames(run.agents)} (duplicates across agents merge into fewer comments).`,
     typeof run.credits_charged === "number" && `Credits charged: ${count(run.credits_charged)}.`,
     run.status === "partial" && "Some agents did not finish; their status is in executions.",
     run.status === "failed" && "No agent finished; see executions for each agent's status.",

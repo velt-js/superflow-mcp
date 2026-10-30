@@ -22,7 +22,7 @@ describe(TOOL, () => {
     on("get", "/runs/:run", ok(doneRun));
     const h = await connect();
     expect(summaryOf(await h.call(TOOL, { run: "run_8f3k2" }))).toBe(
-      "Run run_8f3k2 on Acme Dental: done. 5 findings from 2 agents (Proofreader, Legal footer). Credits charged: 10. Read them with superflow_list_findings.",
+      "Run run_8f3k2 on Acme Dental: done. 5 findings reported by 2 agents (Proofreader, Legal footer) (duplicates across agents merge into fewer comments). Credits charged: 10. Read them with superflow_list_findings.",
     );
   });
 

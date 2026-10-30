@@ -13057,7 +13057,8 @@
           "findings_count": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "description": "Findings the agents reported, summed per agent before duplicates across agents merged into comments; the comments themselves are counted by list_findings or comment_stats with agent_run."
               },
               {
                 "type": "null"
