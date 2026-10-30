@@ -56,7 +56,8 @@ describe("superflow_set_site_mode", () => {
     on("patch", "/projects/:project/monitoring", ok({ ...CARE, first_run: { version: 1 } }));
     const h = await connect();
     const result = await h.call(TOOL, { project: "Acme Dental", mode: "care", cadence: "weekly", timezone: "America/Chicago", confirm: true });
-    expect(recorded.map((r) => [r.method, r.operationId, r.body])).toEqual([["PATCH", "updateSiteMonitoring", { mode: "care", cadence: "weekly", timezone: "America/Chicago" }]]);
+    // care carries confirm: true to the API, which gates it server-side too.
+    expect(recorded.map((r) => [r.method, r.operationId, r.body])).toEqual([["PATCH", "updateSiteMonitoring", { mode: "care", cadence: "weekly", timezone: "America/Chicago", confirm: true }]]);
     expect(summaryOf(result)).toContain("First full check started (version 1).");
   });
 

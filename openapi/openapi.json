@@ -7062,7 +7062,7 @@
       },
       "patch": {
         "operationId": "updateSiteMonitoring",
-        "summary": "Change the monitoring mode, time zone or cadence. care on a site never monitored starts its first full check, which spends credits, and needs the agents:run scope.",
+        "summary": "Change the monitoring mode, time zone or cadence. Turning care on needs confirm=true and the agents:run scope: on a site never monitored it starts its first full check, which spends credits. Without confirm: 409 needs_confirmation with the current monitoring as preview.",
         "tags": [
           "projects"
         ],
@@ -7111,6 +7111,10 @@
                       "off"
                     ],
                     "description": "How often monitoring runs. Needs a monitored site, or mode=care in the same request."
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "description": "Required true to turn care on. Without it: 409 needs_confirmation with the current monitoring as preview. watch, and a site already in care, need none."
                   }
                 },
                 "required": [],

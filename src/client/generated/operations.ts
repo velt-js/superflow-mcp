@@ -704,7 +704,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "1d35fbf381b12d00c9a3b56933028cfe62627066aec2715c5b71cc40ba387e99";
+export const OPENAPI_SHA256 = "1e4d2cb41a29fad4a06e409d46ed0373a09740ee05e5019fbfe4a674bf95423d";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

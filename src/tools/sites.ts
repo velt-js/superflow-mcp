@@ -108,7 +108,12 @@ export const setSiteMode = defineTool({
         );
       }
     }
-    const site = await api.call<SiteMonitoring>("updateSiteMonitoring", { path: { project }, body: compact({ mode, cadence: args.cadence, timezone: args.timezone }) });
+    // The API gates care server-side too (409 needs_confirmation without it): by here the user has
+    // confirmed, or the site is already in care, so the call carries confirm: true for care.
+    const site = await api.call<SiteMonitoring>("updateSiteMonitoring", {
+      path: { project },
+      body: compact({ mode, cadence: args.cadence, timezone: args.timezone, confirm: mode === "care" ? true : undefined }),
+    });
     return okResult(
       join(monitoringLine(site), site.first_run && `First full check started (version ${site.first_run.version}). Follow it with superflow_get_site_score.`),
       asData(site),
