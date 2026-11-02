@@ -70,9 +70,8 @@ describe(TOOL, () => {
     const h = await connect();
     const error = errorOf(await h.call(TOOL, { comment: "cmt_8f3k2", integration: "int_7g8h9i", idempotency_key: "k-push" }));
     expect(error.code).toBe("upstream");
-    expect(error.hint).toBe(
-      'Retry with the same idempotency_key. To check again without creating a second item, call superflow_push_comment with the same arguments and idempotency_key "k-push".',
-    );
+    expect(error.idempotency_key).toBe("k-push");
+    expect(error.hint).toMatch(/^Retry with the same idempotency_key\. The change may still have gone through\. To retry safely, call the tool again with the same arguments and idempotency_key "k-push"/);
     // The client retried the 502 with the same key, which is safe.
     expect(new Set(recorded.map((r) => (r.body as { idempotency_key: string }).idempotency_key))).toEqual(new Set(["k-push"]));
   });

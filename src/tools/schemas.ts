@@ -178,7 +178,7 @@ export const idempotencySchema = z
   .min(1)
   .max(255)
   .optional()
-  .describe("Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result.");
+  .describe("Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned.");
 
 // ---------------------------------------------------------------------------------------------
 // Phase 2 (admin tools).

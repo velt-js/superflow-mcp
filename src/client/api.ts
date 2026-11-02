@@ -22,6 +22,13 @@ export type ErrorCode =
 export const UNAUTHORIZED_MESSAGE =
   "The Superflow API key was rejected. Create a new key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.";
 
+/** The 401 message for a signed-in session (`superflow-mcp login`) instead of an API key. */
+export const SESSION_ENDED_MESSAGE = "Your Superflow sign-in expired or was revoked. Run npx superflow-mcp login.";
+
+/** A 403 for a signed-in session: its scopes are fixed, so the way out is a new sign-in. */
+export const SESSION_SCOPE_HINT =
+  "A sign-in's scopes cannot be changed: run npx superflow-mcp login --scope \"...\" again, naming every scope you need (login --help lists them).";
+
 export interface SuperflowApiErrorInit {
   status: number;
   code: ErrorCode | string;
@@ -33,6 +40,10 @@ export interface SuperflowApiErrorInit {
   issues?: ApiIssue[];
   /** Why the Checks Engine refused, when it did (`already_verified`, `not_agent_comment`, ...). */
   reason?: string;
+  /** The key a write was sent with, when it may still have run: a retry with it is safe. */
+  idempotencyKey?: string;
+  /** When a rate limit resets (ISO time), from Retry-After. */
+  resetAt?: string;
 }
 
 /** One validation problem the API listed. */
@@ -51,6 +62,8 @@ export class SuperflowApiError extends Error {
   readonly preview: ApiPreview | undefined;
   readonly issues: ApiIssue[];
   readonly reason: string | undefined;
+  readonly idempotencyKey: string | undefined;
+  readonly resetAt: string | undefined;
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -61,9 +74,20 @@ export class SuperflowApiError extends Error {
     this.preview = init.preview;
     this.issues = init.issues ?? [];
     this.reason = init.reason;
+    this.idempotencyKey = init.idempotencyKey;
+    this.resetAt = init.resetAt;
   }
 
-  toJSON(): { code: string; message: string; hint: string; candidates: Candidate[]; issues?: ApiIssue[]; reason?: string } {
+  toJSON(): {
+    code: string;
+    message: string;
+    hint: string;
+    candidates: Candidate[];
+    issues?: ApiIssue[];
+    reason?: string;
+    idempotency_key?: string;
+    reset_at?: string;
+  } {
     return {
       code: this.code,
       message: this.message,
@@ -71,6 +95,8 @@ export class SuperflowApiError extends Error {
       candidates: this.candidates,
       ...(this.issues.length > 0 ? { issues: this.issues } : {}),
       ...(this.reason ? { reason: this.reason } : {}),
+      ...(this.idempotencyKey ? { idempotency_key: this.idempotencyKey } : {}),
+      ...(this.resetAt ? { reset_at: this.resetAt } : {}),
     };
   }
 }
@@ -178,7 +204,7 @@ const FALLBACK_MESSAGES: Record<ErrorCode, string> = {
 
 const FALLBACK_HINTS: Partial<Record<ErrorCode, string>> = {
   forbidden:
-    "Check the key's scopes with superflow_get_me. Change them in Superflow under Settings > Integrations > API keys.",
+    "Check the scopes with superflow_get_me. Scopes cannot be added to an existing key or sign-in: create a key with the scope this needs in Superflow under Settings > Integrations > API keys, or sign in again with npx superflow-mcp login --scope \"...\".",
   ambiguous: "Pick one of the candidates and call again with its id.",
 };
 
@@ -200,10 +226,35 @@ function encodeQueryValue(value: Exclude<QueryValue, null | undefined>): string 
   return encodeURIComponent(String(value));
 }
 
-function hasIdempotencyKey(body: unknown): boolean {
-  if (!body || typeof body !== "object") return false;
+function idempotencyKeyOf(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
   const key = (body as { idempotency_key?: unknown }).idempotency_key;
-  return typeof key === "string" && key.length > 0;
+  return typeof key === "string" && key.length > 0 ? key : undefined;
+}
+
+/**
+ * What to do after a write whose outcome is unknown (a timeout, a dropped connection, a 5xx):
+ * with an idempotency key, repeat it with that key; without one, look before repeating.
+ */
+export function uncertainWriteHint(idempotencyKey: string | undefined): string {
+  return idempotencyKey
+    ? `The change may still have gone through. To retry safely, call the tool again with the same arguments and idempotency_key "${idempotencyKey}": the API then returns the first result instead of doing it twice.`
+    : "The change may still have gone through. Check first (read the item, or list them) before calling again.";
+}
+
+/** Adds the retry guidance and the key to an error from a write that may have run. */
+function asUncertainWrite(error: SuperflowApiError, idempotencyKey: string | undefined): SuperflowApiError {
+  return new SuperflowApiError({
+    status: error.status,
+    code: error.code,
+    message: error.message,
+    hint: [error.hint, uncertainWriteHint(idempotencyKey)].filter(Boolean).join(" "),
+    candidates: error.candidates,
+    ...(error.preview ? { preview: error.preview } : {}),
+    ...(error.issues.length > 0 ? { issues: error.issues } : {}),
+    ...(error.reason ? { reason: error.reason } : {}),
+    ...(idempotencyKey ? { idempotencyKey } : {}),
+  });
 }
 
 export class ApiClient {
@@ -269,7 +320,8 @@ export class ApiClient {
       body = JSON.stringify(args.body);
     }
     // 5xx and network errors are retried only when a repeat cannot double-apply a change.
-    const safeToRepeat = method === "GET" || (method === "POST" && hasIdempotencyKey(args.body));
+    const idempotencyKey = method === "GET" ? undefined : idempotencyKeyOf(args.body);
+    const safeToRepeat = method === "GET" || (method === "POST" && idempotencyKey !== undefined);
 
     let refreshed = false;
     for (let attempt = 0; ; attempt++) {
@@ -295,16 +347,20 @@ export class ApiClient {
           await this.sleep(BACKOFF_MS[attempt] ?? 1500);
           continue;
         }
-        throw new SuperflowApiError({
+        const failure = new SuperflowApiError({
           status: 0,
           code: "upstream",
           message: timedOut
             ? `The Superflow API did not answer within ${Math.max(1, Math.round(timeoutMs / 1000))} seconds.`
             : `Could not reach the Superflow API at ${new URL(this.baseUrl).host}.`,
           hint: timedOut
-            ? "Try again with narrower filters or a smaller limit."
+            ? method === "GET"
+              ? "Try again with narrower filters or a smaller limit."
+              : ""
             : "Check the network connection and SUPERFLOW_API_BASE_URL, then try again.",
         });
+        // A write that timed out may still be running on the server: say how to retry it safely.
+        throw method === "GET" ? failure : asUncertainWrite(failure, idempotencyKey);
       }
 
       this.logger.debug("request", { method, operationId, status, duration_ms: Date.now() - started });
@@ -334,16 +390,18 @@ export class ApiClient {
           continue;
         }
       }
-      if (status === 429 && attempt < MAX_RETRIES) {
-        // A rate-limited request was not run, so any method may repeat it.
-        await this.sleep(Math.min(retryAfterMs ?? BACKOFF_MS[attempt] ?? 1500, RETRY_AFTER_CAP_MS));
+      // A rate-limited request was not run, so any method may repeat it, but only when the
+      // wait fits under the cap: a longer one is the caller's to wait out, with the reset time.
+      if (status === 429 && attempt < MAX_RETRIES && (retryAfterMs === undefined || retryAfterMs <= RETRY_AFTER_CAP_MS)) {
+        await this.sleep(retryAfterMs ?? BACKOFF_MS[attempt] ?? 1500);
         continue;
       }
       if (RETRYABLE_UPSTREAM.has(status) && safeToRepeat && attempt < MAX_RETRIES) {
         await this.sleep(BACKOFF_MS[attempt] ?? 1500);
         continue;
       }
-      throw toApiError(status, text, retryAfterMs);
+      const error = toApiError(status, text, retryAfterMs, { signedIn: this.tokenProvider !== undefined });
+      throw status >= 500 && method !== "GET" ? asUncertainWrite(error, idempotencyKey) : error;
     }
   }
 
@@ -376,8 +434,12 @@ export class ApiClient {
   }
 }
 
-/** Maps a non-2xx response to SuperflowApiError, using the contract body when present. */
-export function toApiError(status: number, text: string, retryAfterMs?: number): SuperflowApiError {
+/**
+ * Maps a non-2xx response to SuperflowApiError, using the contract body when present.
+ * `signedIn`: the token came from `superflow-mcp login`, not an API key, so a 401 or 403 says
+ * how to sign in again.
+ */
+export function toApiError(status: number, text: string, retryAfterMs?: number, context: { signedIn?: boolean } = {}): SuperflowApiError {
   let parsed: unknown = null;
   try {
     parsed = text ? JSON.parse(text) : null;
@@ -406,11 +468,18 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
 
   let message = apiMessage || FALLBACK_MESSAGES[knownCode] || `The Superflow API returned HTTP ${status}.`;
   if (code === "unauthorized") {
-    if (!hint && apiMessage && apiMessage !== UNAUTHORIZED_MESSAGE) hint = `The API said: ${apiMessage}`;
-    message = UNAUTHORIZED_MESSAGE;
+    if (!hint && apiMessage && apiMessage !== UNAUTHORIZED_MESSAGE && apiMessage !== SESSION_ENDED_MESSAGE) hint = `The API said: ${apiMessage}`;
+    message = context.signedIn ? SESSION_ENDED_MESSAGE : UNAUTHORIZED_MESSAGE;
   }
-  if (!hint && code === "rate_limited" && retryAfterMs !== undefined) {
-    hint = `Wait about ${Math.ceil(retryAfterMs / 1000)} seconds before trying again.`;
+  let resetAt: string | undefined;
+  if (code === "rate_limited" && retryAfterMs !== undefined) {
+    const seconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    resetAt = new Date(Date.now() + retryAfterMs).toISOString();
+    hint = [hint, `The limit resets in about ${seconds} seconds (${resetAt}). Wait until then before trying again.`].filter(Boolean).join(" ");
+  }
+  if (code === "forbidden" && context.signedIn) {
+    // The fallback hint offers a new key or a new sign-in; a signed-in session needs the second.
+    hint = [hint || "Check the scopes with superflow_get_me.", SESSION_SCOPE_HINT].join(" ");
   }
   if (!hint) hint = FALLBACK_HINTS[knownCode] ?? "";
 
@@ -425,6 +494,7 @@ export function toApiError(status: number, text: string, retryAfterMs?: number):
     ...(preview ? { preview } : {}),
     ...(issues.length > 0 ? { issues } : {}),
     ...(reason ? { reason } : {}),
+    ...(resetAt ? { resetAt } : {}),
   });
 }
 

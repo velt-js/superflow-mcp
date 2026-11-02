@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiClient, SuperflowApiError, UNAUTHORIZED_MESSAGE, toApiError } from "../../src/client/api.ts";
+import { ApiClient, SESSION_ENDED_MESSAGE, SESSION_SCOPE_HINT, SuperflowApiError, UNAUTHORIZED_MESSAGE, toApiError } from "../../src/client/api.ts";
+import { errorResult } from "../../src/lib/format.ts";
 import { createLogger, redact } from "../../src/lib/logger.ts";
 import { VERSION } from "../../src/version.ts";
 import { BASE, TEST_KEY, fail, ok, on, recorded, useMsw } from "../helpers/harness.ts";
@@ -103,11 +104,26 @@ describe("ApiClient URL building", () => {
 });
 
 describe("ApiClient retries", () => {
-  it("honors Retry-After on 429 and caps it at 10 seconds", async () => {
-    on("get", "/me", fail(429, { code: "rate_limited", message: "slow down" }, { "Retry-After": "120" }), ok({ ok: 1 }));
+  it("honors a Retry-After of up to 10 seconds on 429", async () => {
+    on("get", "/me", fail(429, { code: "rate_limited", message: "slow down" }, { "Retry-After": "7" }), ok({ ok: 1 }));
     const { api, sleeps } = client();
     await expect(api.call("getMe")).resolves.toEqual({ ok: 1 });
-    expect(sleeps).toEqual([10_000]);
+    expect(sleeps).toEqual([7_000]);
+  });
+
+  it("does not retry when Retry-After is past the 10 second cap: rate_limited with the reset time", async () => {
+    on("get", "/me", fail(429, { code: "rate_limited", message: "slow down", hint: "Slow down." }, { "Retry-After": "120" }), ok({ ok: 1 }));
+    const { api, sleeps } = client();
+    const before = Date.now();
+    const error = await rejection(api.call("getMe"));
+    expect(error.code).toBe("rate_limited");
+    expect(sleeps).toEqual([]);
+    expect(recorded).toHaveLength(1);
+    expect(error.hint).toMatch(/^Slow down\. The limit resets in about 120 seconds \(.+\)\. Wait until then before trying again\.$/);
+    const reset = Date.parse(error.resetAt ?? "");
+    expect(reset - before).toBeGreaterThanOrEqual(119_000);
+    expect(reset - before).toBeLessThanOrEqual(121_000);
+    expect(error.toJSON().reset_at).toBe(error.resetAt);
   });
 
   it("backs off 500 ms then 1500 ms on 429 without Retry-After, then fails with a hint", async () => {
@@ -154,6 +170,15 @@ describe("ApiClient retries", () => {
     expect(error.code).toBe("upstream");
     expect(recorded).toHaveLength(1);
     expect(sleeps).toEqual([]);
+  });
+
+  it("hands back the idempotency key when a keyed POST still fails upstream after its retries", async () => {
+    on("post", "/comments", () => new Response("", { status: 503 }));
+    const { api } = client();
+    const error = await rejection(api.call("createComment", { body: { text: "x", idempotency_key: "k-503" } }));
+    expect(recorded).toHaveLength(3);
+    expect(error.idempotencyKey).toBe("k-503");
+    expect(error.hint).toContain('idempotency_key "k-503"');
   });
 
   it("retries a POST that carries an idempotency key on 503", async () => {
@@ -229,6 +254,37 @@ describe("ApiClient timeouts", () => {
     }
   });
 
+  it("hands back the idempotency key when a write times out, and says to retry with it", async () => {
+    vi.useFakeTimers();
+    const hanging = hangingFetch();
+    const { api } = client({ fetch: hanging.fetch });
+    const pending = rejection(api.call("createComment", { body: { text: "x", idempotency_key: "k-timeout" } }));
+    await vi.advanceTimersByTimeAsync(30_000);
+    const error = await pending;
+    expect(error.code).toBe("upstream");
+    expect(error.idempotencyKey).toBe("k-timeout");
+    expect(error.hint).toContain('idempotency_key "k-timeout"');
+    expect(error.hint).not.toContain("narrower filters");
+    expect(hanging.calls).toHaveLength(1);
+    const result = errorResult(error);
+    expect((result.structuredContent as { error: { idempotency_key?: string } }).error.idempotency_key).toBe("k-timeout");
+  });
+
+  it("tells a timed-out write without a key to check before repeating, and a timed-out read to narrow it", async () => {
+    vi.useFakeTimers();
+    const write = client({ fetch: hangingFetch().fetch });
+    const pendingWrite = rejection(write.api.call("updateComment", { path: { comment: "cmt_1" }, body: { priority: "high" } }));
+    const read = client({ fetch: hangingFetch().fetch });
+    const pendingRead = rejection(read.api.call("listComments"));
+    await vi.advanceTimersByTimeAsync(30_000);
+    const writeError = await pendingWrite;
+    expect(writeError.idempotencyKey).toBeUndefined();
+    expect(writeError.hint).toContain("Check first");
+    const readError = await pendingRead;
+    expect(readError.hint).toBe("Try again with narrower filters or a smaller limit.");
+    expect(readError.idempotencyKey).toBeUndefined();
+  });
+
   it("uses a timeout override when given", async () => {
     vi.useFakeTimers();
     const hanging = hangingFetch();
@@ -267,6 +323,28 @@ describe("error mapping", () => {
     const error = toApiError(401, JSON.stringify({ error: { code: "unauthorized", message: "Token revoked.", hint: "", candidates: [] } }));
     expect(error.message).toBe(UNAUTHORIZED_MESSAGE);
     expect(error.hint).toBe("The API said: Token revoked.");
+  });
+
+  it("says the sign-in ended, not that a key was rejected, for a 401 on a login session", () => {
+    const error = toApiError(401, JSON.stringify({ error: { code: "unauthorized", message: "Token revoked." } }), undefined, { signedIn: true });
+    expect(error.message).toBe(SESSION_ENDED_MESSAGE);
+    expect(error.message).toBe("Your Superflow sign-in expired or was revoked. Run npx superflow-mcp login.");
+    expect(error.message).not.toContain("API key");
+  });
+
+  it("403 without an API hint: scopes cannot be changed, so a new key or a new sign-in", () => {
+    const error = toApiError(403, "");
+    expect(error.hint).not.toMatch(/Change them/);
+    expect(error.hint).toContain("cannot be added to an existing key or sign-in");
+    expect(error.hint).toContain("create a key with the scope this needs");
+    expect(error.hint).toContain("npx superflow-mcp login --scope");
+  });
+
+  it("403 on a login session keeps the API's hint and adds how to sign in with more scopes", () => {
+    const body = JSON.stringify({ error: { code: "forbidden", message: "This key does not have the comments:write scope.", hint: "Create a key with the comments:write scope." } });
+    const error = toApiError(403, body, undefined, { signedIn: true });
+    expect(error.hint).toBe(`Create a key with the comments:write scope. ${SESSION_SCOPE_HINT}`);
+    expect(toApiError(403, body).hint).toBe("Create a key with the comments:write scope.");
   });
 
   it("maps a non-JSON 2xx body to upstream", async () => {
@@ -360,6 +438,13 @@ describe("ApiClient with a token provider (superflow-mcp login)", () => {
     expect(calls).toHaveLength(2);
     expect((calls[1]!.init!.headers as Record<string, string>).Authorization).toBe("Bearer sf_at_new");
     expect(provider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an ended sign-in with the sign-in message", async () => {
+    const once = scriptedFetch(unauthorized);
+    const ended = { token: vi.fn(async () => "a"), refresh: vi.fn(async () => null) };
+    const error = await rejection(client({ fetch: once.fetch, tokenProvider: ended }).api.call("getMe"));
+    expect(error.message).toBe(SESSION_ENDED_MESSAGE);
   });
 
   it("gives up after one refresh, and when the sign-in cannot be renewed", async () => {

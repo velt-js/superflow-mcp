@@ -103,8 +103,15 @@ playbook line in the server instructions.
   comment text is present, then the JSON. Text is capped at 30,000 characters.
 - `idempotency_key`: generated per call for create comment, add reply, create project,
   invites, create review link, create agent, duplicate agent, create agent pack, run agents,
-  create schedule and push comment when missing. A push that times out hands
-  its key back in the error hint, so a retry picks up the result instead of a second issue.
+  create schedule, import findings and push comment when missing, and every one of those tools
+  takes it as an input. A write that may still have run (a timeout, a dropped connection, a
+  5xx after the retries) comes back with `error.idempotency_key` and a hint to retry with it,
+  so a retry picks up the result instead of doing it twice (`ApiClient`, for every tool). A
+  write without a key gets "check first" instead; a timed-out read gets "narrow it".
+- Rate limits: a 429 is retried only when Retry-After is at most 10 seconds. A longer wait
+  comes back as `rate_limited` with `error.reset_at` and the reset time in the hint.
+- 401 and 403 on a `login` session say how to sign in again (`login --scope`), not how to
+  replace an API key. A sign-in's or key's scopes cannot be edited.
 - Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
   create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
   accept `low`, `none` and `unassigned`.

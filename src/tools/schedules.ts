@@ -78,7 +78,7 @@ export const setSchedule = defineTool({
     pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, for scope list. On a change, null clears them."),
     enabled: z.boolean().optional().describe("false pauses the schedule, true turns it back on. New schedules start on."),
     idempotency_key: idempotencySchema.describe(
-      "Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out.",
+      "Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned.",
     ),
   },
   annotations: hints(false, false, true, false),

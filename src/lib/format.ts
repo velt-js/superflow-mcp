@@ -128,6 +128,10 @@ export interface ToolErrorShape {
   issues?: Array<{ field: string; reason: string }>;
   /** Why the Checks Engine refused (already_verified, not_agent_comment, ...). */
   reason?: string;
+  /** The key a write that may still have run was sent with: retry with it. */
+  idempotency_key?: string;
+  /** When a rate limit resets (ISO time). */
+  reset_at?: string;
 }
 
 /** Builds an isError tool result in the contract's error shape. Never throws. */

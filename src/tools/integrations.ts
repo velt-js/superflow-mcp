@@ -2,7 +2,6 @@
 // its settings, pushing a comment to a tracker, and posting to Slack.
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { SuperflowApiError } from "../client/api.ts";
 import type {
   CommentCompact,
   CommentFull,
@@ -14,7 +13,7 @@ import type {
 } from "../client/types.ts";
 import { CONFIRM_POST_TO_SLACK_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { findInvalidDate } from "../lib/dates.ts";
-import { commentLabel, confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
+import { commentLabel, confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { isCommentNumber, normalizeCommentRef, projectForComment } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join } from "./helpers.ts";
@@ -198,27 +197,13 @@ export const pushComment = defineTool({
       });
       comment = found.id;
     }
-    // Generated once per tool call, so the client's own retries cannot create two issues.
-    const idempotencyKey = args.idempotency_key ?? randomUUID();
-    let result: PushCommentResponse;
-    try {
-      result = await api.call<PushCommentResponse>("pushComment", {
-        path: { comment },
-        body: compact({ integration: args.integration, project_key: args.project_key, title: args.title, idempotency_key: idempotencyKey }),
-      });
-    } catch (error) {
-      // The item may still be created after a timeout: the same key picks up the result.
-      if (!(error instanceof SuperflowApiError) || error.code !== "upstream") throw error;
-      return errorResult({
-        code: error.code,
-        message: error.message,
-        hint: join(
-          error.hint,
-          `To check again without creating a second item, call superflow_push_comment with the same arguments and idempotency_key "${idempotencyKey}".`,
-        ),
-        candidates: error.candidates,
-      });
-    }
+    // Generated once per tool call, so the client's own retries cannot create two issues. When
+    // the push times out or fails upstream, the error hands this key back (ApiClient), so a
+    // retry with it picks up the result instead of creating a second item.
+    const result = await api.call<PushCommentResponse>("pushComment", {
+      path: { comment },
+      body: compact({ integration: args.integration, project_key: args.project_key, title: args.title, idempotency_key: args.idempotency_key ?? randomUUID() }),
+    });
     const link = result.link;
     return okResult(
       join(

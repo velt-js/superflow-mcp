@@ -202,9 +202,18 @@ export function data<T = Record<string, unknown>>(result: CallToolResult): T {
   return result.structuredContent as T;
 }
 
-export function errorOf(result: CallToolResult): { code: string; message: string; hint: string; candidates: unknown[] } {
+export interface ToolError {
+  code: string;
+  message: string;
+  hint: string;
+  candidates: unknown[];
+  idempotency_key?: string;
+  reset_at?: string;
+}
+
+export function errorOf(result: CallToolResult): ToolError {
   expect(result.isError).toBe(true);
-  return (result.structuredContent as { error: { code: string; message: string; hint: string; candidates: unknown[] } }).error;
+  return (result.structuredContent as { error: ToolError }).error;
 }
 
 /** Methods that change data. */

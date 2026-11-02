@@ -51,6 +51,18 @@ describe(TOOL, () => {
     });
   });
 
+  it("hands back the generated idempotency key when the run fails upstream, so a retry cannot start a second run", async () => {
+    on("post", "/runs", () => new Response("", { status: 503 }));
+    const h = await connect();
+    const error = errorOf(await h.call(TOOL, { project: "Acme Dental", confirm: true }));
+    expect(error.code).toBe("upstream");
+    const sent = new Set(recorded.map((r) => (r.body as { idempotency_key: string }).idempotency_key));
+    expect(sent.size).toBe(1);
+    const key = [...sent][0]!;
+    expect(error.idempotency_key).toBe(key);
+    expect(error.hint).toContain(`idempotency_key "${key}"`);
+  });
+
   it("explains a refusal for too few credits and never retries it", async () => {
     on(
       "post",

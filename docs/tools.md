@@ -429,7 +429,7 @@ Ask the user before creating comments they did not ask for.
 | `tags` | array of string | no | Tags to add. Unknown tag names are created in the comment's project. |
 | `attachments` | array of object (url, name) | no | Files to attach, by public URL. |
 | `on_behalf_of` | string | no | Post as this existing project guest (email). Needs the users:invite scope. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -524,7 +524,7 @@ Ask the user before posting replies they did not ask for.
 | `project` | string | no | Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
 | `text` | string | yes | Reply text. Mentions: @Name, @First Last or @email. |
 | `attachments` | array of object (url, name) | no | Files to attach, by public URL. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -625,7 +625,7 @@ For one comment use superflow_update_comment or superflow_resolve_comment.
 | `patch` | object (status, priority, assignees, add_assignees, add_tags, remove_tags, resolve, reopen, note) | yes | The change to apply to every selected comment. At least one field. |
 | `dry_run` | boolean | no | Default true: preview only. false writes, and also needs confirm: true. |
 | `confirm` | boolean | no | Must be true (with dry_run false) to write. Set it only after the user explicitly agreed. Default: `false`. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1005,7 +1005,7 @@ Next, get the script tag with superflow_get_install_snippet. Ask the user before
 | `platform` | `webflow`, `shopify`, `wordpress`, `framer`, `html`, `netlify`, `nextjs`, `vercel`, `other` | no | What the site is built with, for the install steps: webflow, shopify, wordpress, framer, html, netlify, nextjs, vercel or other. Default other. |
 | `guests` | array of string | no | Guests to invite to the new project: 1 to 10 email addresses. Each one gets a real invite email. |
 | `copy_settings_from` | string | no | An existing project (name, site URL or id) whose settings, access and project statuses to copy. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1197,7 +1197,7 @@ For clients and reviewers who should see one project only use superflow_invite_g
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `emails` | array of string | yes | People to invite as members: 1 to 10 email addresses. Each one gets a real invite email. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1256,7 +1256,7 @@ For teammates who should see every project use superflow_invite_member. Ask the 
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
 | `emails` | array of string | yes | People to invite as guests: 1 to 10 email addresses. Each one gets a real invite email. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1597,7 +1597,7 @@ Ask the user before creating one, and tell them who will be able to see the proj
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1813,7 +1813,7 @@ Ask the user before creating. To change an existing agent use superflow_update_a
 | `instructions` | string | yes | What the agent should check and report, in plain language. Used word for word as the agent's prompt. Up to 20,000 characters. |
 | `description` | string | no | Short description shown in the agent list, up to 1,000 characters. |
 | `packs` | array of string | no | Agent packs (names or pck_ ids) to add the new agent to. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1873,7 +1873,7 @@ Built-in agents cannot be copied: create a custom agent with superflow_create_ag
 |---|---|---|---|
 | `agent` | string | yes | Agent: its name ("Proofreader") or id (agt_...). |
 | `name` | string | no | Name for the copy. Default "<name> copy". |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1909,7 +1909,7 @@ Ask the user before creating. To change a pack use superflow_update_agent_pack. 
 | `name` | string | yes | Pack name. |
 | `description` | string | no | Short description of what the pack is for. |
 | `agents` | array of string | yes | Agents in the pack: names or agt_ ids. At least one. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -1978,7 +1978,7 @@ When the balance is too low the run is refused: tell the user the balance and to
 | `agents` | array of string | no | Agents to run: agent names or ids (agt_...), at most 25. Give agents or pack, not both. Leave both out for the default agents. |
 | `pack` | string | no | Run every agent in this pack (name or pck_ id) instead of naming agents. Give agents or pack, not both. |
 | `confirm` | boolean | no | Must be true to start the run and spend the credits. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -2061,7 +2061,7 @@ Not for one comment a person writes: use superflow_create_comment. Not for runni
 | `source_name` | string | no | Display name of your agent, for example "Stache review". Default: source. |
 | `min_confidence` | integer | no | Raise the confidence floor above 50 for this call. |
 | `findings` | array of object (page_url, title, description, severity, rule_key, fix_type, confidence, suggestion, anchor, fingerprint, external_id) | yes | The findings, at most 500. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -2088,7 +2088,7 @@ Runs at most once an hour: more frequent crons are refused. Pause with enabled: 
 | `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
 | `pages` | any or array of string or null | no | Page URLs to review, at most 500, for scope list. On a change, null clears them. |
 | `enabled` | boolean | no | false pauses the schedule, true turns it back on. New schedules start on. |
-| `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. |
+| `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
@@ -2217,7 +2217,7 @@ Ask the user before pushing. Find the integration id with superflow_list_integra
 | `integration` | string | yes | The tracker connection (int_... or its name), from superflow_list_integrations. |
 | `project_key` | string | no | Where to create it. Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>. Defaults to the integration's default project. |
 | `title` | string | no | Issue title. Defaults to the start of the comment text. |
-| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. |
+| `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
 
 Example:
 
