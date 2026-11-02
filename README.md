@@ -141,12 +141,25 @@ own.
 
 - It is OAuth 2.1 with PKCE on a one-time loopback address (`http://127.0.0.1:<port>`), the
   same consent screen the hosted connector uses. No key is copied by hand.
+- It asks for the scopes the tools need: `workspace:read`, `projects:read`, `projects:write`,
+  `agents:read`, `agents:run`, `agents:write`, `analytics:read`, `comments:read`,
+  `comments:write`, `integrations:read`, `integrations:write` and `ingest`. Untick any on the
+  consent screen. Four are left out, so you ask for them by name: `users:invite` (sends real
+  invite email), `users:write` (removes members and guests), `workspace:write` (creates and
+  revokes API keys, renames the workspace) and `users:read` (no tool needs it).
+- `--scope` replaces that list, to narrow it or to add one of the four. Name every scope you
+  want, separated by spaces or commas. A sign-in's scopes cannot be changed afterwards: run
+  `login` again with the new list. `npx -y superflow-mcp login --help` prints both lists.
+
+  ```bash
+  npx -y superflow-mcp login --scope "comments:read projects:read"
+  ```
 - The sign-in is saved in the macOS Keychain, the Linux Secret Service (`secret-tool`), or,
   when neither is available, `~/.config/superflow-mcp/credentials.json` (`%APPDATA%` on
   Windows) readable only by you. The command says which.
 - Access tokens last an hour and are renewed in the background while the server runs.
 - `npx -y superflow-mcp logout` ends the sign-in and removes it. You can also revoke it in
-  Superflow under Settings > Integrations > Connected apps.
+  Superflow under Settings > Integrations > API keys > Connected AI apps.
 - `SUPERFLOW_API_KEY`, when set, always wins over a saved sign-in.
 
 ### Environment variables

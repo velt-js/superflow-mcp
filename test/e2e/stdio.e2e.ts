@@ -382,9 +382,9 @@ describe("hygiene", () => {
 });
 
 describe("startup", () => {
-  function run(env: Record<string, string>): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  function run(env: Record<string, string>, args: string[] = []): Promise<{ code: number | null; stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const child = spawn(process.execPath, [ENTRY], { env: { PATH: process.env.PATH ?? "", ...isolatedEnv(env) }, stdio: ["pipe", "pipe", "pipe"] });
+      const child = spawn(process.execPath, [ENTRY, ...args], { env: { PATH: process.env.PATH ?? "", ...isolatedEnv(env) }, stdio: ["pipe", "pipe", "pipe"] });
       let stdout = "";
       let stderr = "";
       const timer = setTimeout(() => {
@@ -405,6 +405,14 @@ describe("startup", () => {
     expect(out.code).not.toBe(0);
     expect(out.stdout).toBe("");
     expect(out.stderr).toMatch(/login|SUPERFLOW_API_KEY/);
+  });
+
+  it("login --help explains --scope and names the default scopes, without signing in", async () => {
+    const out = await run({}, ["login", "--help"]);
+    expect(out.code).toBe(0);
+    expect(out.stdout).toContain("--scope");
+    expect(out.stdout).toContain("comments:write");
+    expect(out.stdout).toContain("users:invite");
   });
 
   it("refuses a plain-http API outside localhost", async () => {

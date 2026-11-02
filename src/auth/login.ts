@@ -7,6 +7,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { AuthError, discover, exchangeCode, registerClient, type AuthServerMetadata } from "./oauth.ts";
 import { challengeFor, createState, createVerifier } from "./pkce.ts";
+import { DEFAULT_LOGIN_SCOPES, OPT_IN_SCOPES } from "./scopes.ts";
 import { fileStore, defaultCredentialsFile, type CredentialStore, type StoredSession } from "./store.ts";
 
 export const LOGIN_TIMEOUT_MS = 5 * 60_000;
@@ -112,7 +113,10 @@ export interface LoginOptions {
   authUrl: string;
   apiBaseUrl: string;
   store: CredentialStore;
-  /** Space-separated scopes. Default: what the consent screen ticks by default. */
+  /**
+   * Space-separated scopes. Default: DEFAULT_LOGIN_SCOPES. Always sent: without a scope the
+   * consent screen grants its own narrower default, which a sign-in cannot widen later.
+   */
   scope?: string;
   /** Prints a line for the person (stderr). */
   print: (line: string) => void;
@@ -132,8 +136,10 @@ export async function login(options: LoginOptions): Promise<{ session: StoredSes
   const callback = await startCallbackServer({ state, timeoutMs: options.timeoutMs ?? LOGIN_TIMEOUT_MS });
   try {
     const clientId = await registerClient({ metadata, redirectUri: callback.redirectUri, ...fetchOption });
-    const url = buildAuthorizeUrl({ metadata, clientId, redirectUri: callback.redirectUri, challenge: challengeFor(verifier), state, ...(options.scope ? { scope: options.scope } : {}) });
+    const scope = options.scope?.trim() || DEFAULT_LOGIN_SCOPES.join(" ");
+    const url = buildAuthorizeUrl({ metadata, clientId, redirectUri: callback.redirectUri, challenge: challengeFor(verifier), state, scope });
     options.print("Opening Superflow in your browser to sign in. New to Superflow? You can sign up on the same page.");
+    options.print(`Asking for: ${scope}. Untick any on the consent screen, or choose them with --scope.`);
     options.print(`If the browser does not open, visit:\n${url}`);
     (options.open ?? openInBrowser)(url);
     const { code } = await callback.code;
@@ -162,4 +168,22 @@ export async function login(options: LoginOptions): Promise<{ session: StoredSes
   } finally {
     callback.close();
   }
+}
+
+/** `superflow-mcp login --help`. */
+export function loginHelp(): string {
+  return `Usage: npx -y superflow-mcp login [--scope "<scopes>"] [--auth-url <url>] [--api-url <url>]
+
+Sign in (or sign up) in the browser and save the sign-in for the MCP server.
+
+  --scope     The scopes to ask for, separated by spaces or commas. It replaces the default
+              list, so name every scope you want. A sign-in's scopes cannot be changed later:
+              run login again to change them.
+              Default: ${DEFAULT_LOGIN_SCOPES.join(" ")}
+              Not in the default (ask for them by name): ${OPT_IN_SCOPES.join(" ")}
+  --auth-url  The sign-in server. Default SUPERFLOW_AUTH_URL, else https://mcp.usesuperflow.ai
+  --api-url   The API the sign-in is for. Default SUPERFLOW_API_BASE_URL, else the Superflow API.
+
+Example: npx -y superflow-mcp login --scope "${[...DEFAULT_LOGIN_SCOPES, "users:invite"].join(" ")}"
+`;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildAuthorizeUrl, login } from "../../../src/auth/login.ts";
 import { challengeFor } from "../../../src/auth/pkce.ts";
+import { DEFAULT_LOGIN_SCOPES } from "../../../src/auth/scopes.ts";
 import type { CredentialStore, StoredSession } from "../../../src/auth/store.ts";
 import { AUTH, fakeOAuthServer } from "./fake-oauth.ts";
 
@@ -72,6 +73,20 @@ describe("superflow-mcp login", () => {
     expect(result.session).toMatchObject({ clientId: "client-123", accessToken: "sf_at_1", refreshToken: "sf_rt_1", tokenEndpoint: `${AUTH}/oauth/token`, apiBaseUrl: "https://api.example.test/v1" });
     expect(store.saved).toHaveLength(1);
     expect(result.savedTo).toBe("memory");
+  });
+
+  it("asks for the default scope list when no scope is given, and for exactly the given one otherwise", async () => {
+    const server = fakeOAuthServer();
+    const lines: string[] = [];
+    const tab = browser(server);
+    await login({ ...base, print: (line) => lines.push(line), store: memoryStore(), fetch: server.fetch, open: tab.open });
+    expect(new URL(tab.seen[0]!).searchParams.get("scope")).toBe(DEFAULT_LOGIN_SCOPES.join(" "));
+    expect(DEFAULT_LOGIN_SCOPES).toContain("comments:write");
+    expect(lines.join("\n")).toContain(`Asking for: ${DEFAULT_LOGIN_SCOPES.join(" ")}.`);
+
+    const narrow = browser(server);
+    await login({ ...base, scope: "comments:read projects:read", store: memoryStore(), fetch: server.fetch, open: narrow.open });
+    expect(new URL(narrow.seen[0]!).searchParams.get("scope")).toBe("comments:read projects:read");
   });
 
   it("ignores a callback with the wrong state and finishes on the real one", async () => {

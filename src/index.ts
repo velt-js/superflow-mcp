@@ -1,8 +1,9 @@
 // CLI entry: read env, build the server, connect stdio. stdout carries the MCP protocol,
 // so every log line goes to stderr.
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { login } from "./auth/login.ts";
+import { login, loginHelp } from "./auth/login.ts";
 import { AuthError, DEFAULT_AUTH_URL, revokeToken } from "./auth/oauth.ts";
+import { normalizeScopes } from "./auth/scopes.ts";
 import { chooseCredentialStore, type StoredSession } from "./auth/store.ts";
 import { SessionTokenProvider } from "./auth/token-provider.ts";
 import { ApiClient, SuperflowApiError } from "./client/api.ts";
@@ -17,6 +18,7 @@ A local MCP server (stdio) for Superflow comments.
 
 Usage:
   npx -y superflow-mcp login     Sign in (or sign up) in the browser. Saves the sign-in.
+                                 login --help lists its options, --scope among them.
   npx -y superflow-mcp           Run the server (what your MCP client starts).
   npx -y superflow-mcp logout    Sign out and remove the saved sign-in.
 
@@ -38,7 +40,7 @@ async function main(): Promise<void> {
     return;
   }
   if (argv.includes("--help") || argv.includes("-h")) {
-    process.stdout.write(HELP);
+    process.stdout.write(argv[0] === "login" ? loginHelp() : HELP);
     return;
   }
 
@@ -114,7 +116,14 @@ const print = (line: string) => void process.stderr.write(`${line}\n`);
 async function runLogin(args: string[]): Promise<void> {
   const authUrl = readFlag(args, "--auth-url") ?? process.env.SUPERFLOW_AUTH_URL?.trim() ?? DEFAULT_AUTH_URL;
   const apiBaseUrl = (readFlag(args, "--api-url") ?? process.env.SUPERFLOW_API_BASE_URL?.trim() ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
-  const scope = readFlag(args, "--scope");
+  const rawScope = readFlag(args, "--scope");
+  const requested = rawScope === undefined ? undefined : normalizeScopes(rawScope);
+  if (requested && !requested.scope) {
+    print(`${PACKAGE_NAME}: --scope names no scopes. Run npx -y superflow-mcp login --help to see them.`);
+    process.exit(1);
+  }
+  if (requested?.unknown.length) print(`Superflow does not know ${requested.unknown.join(", ")}; the consent screen ignores ${requested.unknown.length === 1 ? "it" : "them"}.`);
+  const scope = requested?.scope;
   const { store, warning } = await chooseCredentialStore({ env: process.env });
   try {
     const result = await login({ authUrl, apiBaseUrl, store, print, env: process.env, ...(scope ? { scope } : {}) });
@@ -147,7 +156,7 @@ async function runLogout(): Promise<void> {
     try {
       await revokeToken({ revocationEndpoint: session.revocationEndpoint, token: session.refreshToken, clientId: session.clientId });
     } catch {
-      print("Could not reach Superflow to end the sign-in there. You can revoke it in Settings > Integrations > Connected apps.");
+      print("Could not reach Superflow to end the sign-in there. You can revoke it in Superflow under Settings > Integrations > API keys > Connected AI apps.");
     }
   }
   await store.clear();
