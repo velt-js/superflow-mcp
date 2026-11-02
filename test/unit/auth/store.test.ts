@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, stat } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,8 @@ import {
   defaultCredentialsFile,
   fileStore,
   keychainWriteCommand,
+  withFileFallback,
+  type CredentialStore,
   type Runner,
   type StoredSession,
 } from "../../../src/auth/store.ts";
@@ -37,6 +39,34 @@ describe("file store", () => {
     expect(JSON.parse(await readFile(path, "utf8")).refreshToken).toBe("sf_rt_1");
     await store.clear();
     expect(await store.read()).toBeNull();
+  });
+
+  it("replaces the file in one step: no temp file is left, and a reader never sees half a file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const store = fileStore(path);
+    await store.write(SESSION);
+    // Another process writes while this one reads: every read is a whole session.
+    const reads: Array<StoredSession | null> = [];
+    await Promise.all(
+      Array.from({ length: 40 }, (_, i) =>
+        i % 2 === 0
+          ? store.write({ ...SESSION, accessToken: `sf_at_${i}`, refreshToken: `sf_rt_${i}`.padEnd(2000, "x") })
+          : store.read().then((session) => void reads.push(session)),
+      ),
+    );
+    expect(reads.every((session) => session !== null)).toBe(true);
+    expect((await readdir(dir)).filter((name) => name !== "credentials.json")).toEqual([]);
+  });
+
+  it("keeps the file readable only by the user when it replaces a looser one", async () => {
+    if (process.platform === "win32") return;
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    await writeFile(path, "{}");
+    await chmod(path, 0o644);
+    await fileStore(path).write(SESSION);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
   });
 
   it("ignores a file that is not a session", async () => {
@@ -146,7 +176,7 @@ describe("chooseCredentialStore", () => {
     expect(store.location).toBe(path);
   });
 
-  it("prefers the keyring's sign-in over the file's", async () => {
+  it("on a tie, prefers the keyring's sign-in over the file's", async () => {
     const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
     const path = join(dir, "credentials.json");
     await fileStore(path).write({ ...SESSION, accessToken: "sf_at_old" });
@@ -161,5 +191,63 @@ describe("chooseCredentialStore", () => {
     const { store, warning } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_STORE: "file" }, platform: "darwin", run: runner({ security: 0 }) });
     expect(store.kind).toBe("file");
     expect(warning).toBeUndefined();
+  });
+});
+
+describe("withFileFallback", () => {
+  function memory(kind: CredentialStore["kind"], options: { refuseWrites?: boolean } = {}): CredentialStore & { held: StoredSession | null; clears: number } {
+    const store = {
+      kind,
+      location: kind,
+      held: null as StoredSession | null,
+      clears: 0,
+      async read() {
+        return store.held;
+      },
+      async write(session: StoredSession) {
+        if (options.refuseWrites) throw new Error("locked");
+        store.held = session;
+      },
+      async clear() {
+        store.clears += 1;
+        store.held = null;
+      },
+    };
+    return store;
+  }
+
+  it("after the keyring refuses a refreshed sign-in, reads the newer one from the file and drops the stale keyring copy", async () => {
+    const keyring = memory("keychain", { refuseWrites: true });
+    keyring.held = { ...SESSION, accessToken: "sf_at_stale", expiresAt: 1_000 };
+    const file = memory("file");
+    const store = withFileFallback(keyring, file);
+    await store.write({ ...SESSION, accessToken: "sf_at_fresh", expiresAt: 2_000 });
+    expect(file.held?.accessToken).toBe("sf_at_fresh");
+    expect(keyring.clears).toBe(1);
+    expect((await store.read())?.accessToken).toBe("sf_at_fresh");
+    expect(store.location).toBe("file");
+  });
+
+  it("prefers the session that expires later when the keyring could not be cleared", async () => {
+    const keyring = memory("keychain");
+    keyring.held = { ...SESSION, accessToken: "sf_at_stale", expiresAt: 1_000 };
+    const file = memory("file");
+    file.held = { ...SESSION, accessToken: "sf_at_fresh", expiresAt: 2_000 };
+    const store = withFileFallback(keyring, file);
+    expect((await store.read())?.accessToken).toBe("sf_at_fresh");
+    expect(store.location).toBe("file");
+    keyring.held = { ...SESSION, accessToken: "sf_at_newest", expiresAt: 3_000 };
+    expect((await store.read())?.accessToken).toBe("sf_at_newest");
+    expect(store.location).toBe("keychain");
+  });
+
+  it("a keyring write removes an older copy left in the file", async () => {
+    const keyring = memory("keychain");
+    const file = memory("file");
+    file.held = { ...SESSION, accessToken: "sf_at_old", expiresAt: 1_000 };
+    const store = withFileFallback(keyring, file);
+    await store.write({ ...SESSION, accessToken: "sf_at_new", expiresAt: 2_000 });
+    expect(keyring.held?.accessToken).toBe("sf_at_new");
+    expect(file.held).toBeNull();
   });
 });

@@ -71,8 +71,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const logger = createLogger({ level: config.logLevel, secrets: session ? [session.accessToken, session.refreshToken] : [config.apiKey] });
-  const tokenProvider = session && store ? new SessionTokenProvider({ session, store, logger }) : undefined;
+  // The provider's tokens change on every refresh, so the logger asks it for the current ones.
+  let tokenProvider: SessionTokenProvider | undefined;
+  const startSecrets = session ? [session.accessToken, session.refreshToken] : [config.apiKey];
+  const logger = createLogger({ level: config.logLevel, secrets: () => (tokenProvider ? [...tokenProvider.secrets(), ...startSecrets] : startSecrets) });
+  tokenProvider = session && store ? new SessionTokenProvider({ session, store, logger }) : undefined;
   const client = new ApiClient({ apiKey: config.apiKey, baseUrl: config.baseUrl, logger, ...(tokenProvider ? { tokenProvider } : {}) });
   const server = createServer({ config, client, logger });
   const transport = new StdioServerTransport();

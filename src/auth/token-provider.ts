@@ -18,6 +18,8 @@ export interface SessionTokenProviderOptions {
 
 export class SessionTokenProvider implements TokenProvider {
   private session: StoredSession;
+  /** The pair before the last rotation: still redacted, since logs may quote it. */
+  private previous: StoredSession | null = null;
   private inFlight: Promise<string | null> | null = null;
   private dead = false;
 
@@ -32,9 +34,11 @@ export class SessionTokenProvider implements TokenProvider {
     return this.options.now ? this.options.now() : Date.now();
   }
 
-  /** The secrets this provider holds now, for the logger's redaction list. */
+  /** The secrets this provider holds now (and the pair before), for the logger's redaction list. */
   secrets(): string[] {
-    return [this.session.accessToken, this.session.refreshToken];
+    const held = [this.session.accessToken, this.session.refreshToken];
+    if (this.previous) held.push(this.previous.accessToken, this.previous.refreshToken);
+    return held;
   }
 
   async token(): Promise<string> {
@@ -44,15 +48,33 @@ export class SessionTokenProvider implements TokenProvider {
     return fresh ?? this.session.accessToken;
   }
 
-  /** One refresh at a time; concurrent callers share it. Null when the sign-in is over. */
+  /**
+   * One refresh at a time; concurrent callers share it. Null when the sign-in is over. An ended
+   * sign-in reads the store again first: `login` (or another process) may have saved a new one
+   * since, and then this one carries on with it instead of staying signed out until a restart.
+   */
   refresh(): Promise<string | null> {
-    if (this.dead) return Promise.resolve(null);
     if (!this.inFlight) {
-      this.inFlight = this.doRefresh().finally(() => {
+      this.inFlight = (this.dead ? this.revive() : this.doRefresh()).finally(() => {
         this.inFlight = null;
       });
     }
     return this.inFlight;
+  }
+
+  /** After the sign-in ended: carry on only when the store now holds a different one. */
+  private async revive(): Promise<string | null> {
+    let stored: StoredSession | null;
+    try {
+      stored = await this.options.store.read();
+    } catch {
+      return null;
+    }
+    if (!stored || stored.refreshToken === this.session.refreshToken) return null;
+    this.adopt(stored);
+    this.dead = false;
+    if (stored.expiresAt - EARLY_REFRESH_MS > this.now()) return stored.accessToken;
+    return this.doRefresh();
   }
 
   private async doRefresh(): Promise<string | null> {
@@ -73,6 +95,11 @@ export class SessionTokenProvider implements TokenProvider {
     }
   }
 
+  private adopt(next: StoredSession): void {
+    if (next.accessToken !== this.session.accessToken) this.previous = this.session;
+    this.session = next;
+  }
+
   /** Refreshes from `from`, keeps the rotated pair and saves it. Throws what the token endpoint answered. */
   private async refreshAndSave(from: StoredSession): Promise<string> {
     const logger = this.options.logger ?? silentLogger;
@@ -83,7 +110,7 @@ export class SessionTokenProvider implements TokenProvider {
       now: this.now(),
       ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
     });
-    this.session = { ...from, ...tokens, scope: tokens.scope || from.scope };
+    this.adopt({ ...from, ...tokens, scope: tokens.scope || from.scope });
     try {
       await this.options.store.write(this.session);
     } catch {
@@ -106,7 +133,7 @@ export class SessionTokenProvider implements TokenProvider {
       return null;
     }
     if (!stored || stored.refreshToken === this.session.refreshToken) return null;
-    this.session = stored;
+    this.adopt(stored);
     if (stored.expiresAt - EARLY_REFRESH_MS > this.now()) return stored.accessToken;
     try {
       return await this.refreshAndSave(stored);

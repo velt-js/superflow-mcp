@@ -87,4 +87,40 @@ describe("SessionTokenProvider", () => {
     expect(await provider.refresh()).toBeNull();
     expect(server.calls).toHaveLength(1);
   });
+
+  it("comes back when the store later holds a newer sign-in (another process, or login again)", async () => {
+    const server = fakeOAuthServer();
+    server.state.refreshValid = false;
+    const store = memoryStore();
+    const provider = new SessionTokenProvider({ session: session(0), store, fetch: server.fetch, now: () => 0 });
+    expect(await provider.refresh()).toBeNull();
+    // Signed out, and the store still has nothing newer: still null, without asking the server.
+    expect(await provider.refresh()).toBeNull();
+    expect(server.calls).toHaveLength(1);
+    // npx superflow-mcp login saved a new sign-in.
+    await store.write({ ...session(10 * 60_000), accessToken: "sf_at_new", refreshToken: "sf_rt_new" });
+    expect(await provider.refresh()).toBe("sf_at_new");
+    expect(await provider.token()).toBe("sf_at_new");
+    expect(server.calls).toHaveLength(1);
+  });
+
+  it("a revived sign-in that has expired refreshes with its own refresh token", async () => {
+    const server = fakeOAuthServer();
+    server.state.refreshValid = false;
+    const store = memoryStore();
+    const provider = new SessionTokenProvider({ session: session(0), store, fetch: server.fetch, now: () => 0 });
+    expect(await provider.refresh()).toBeNull();
+    server.state.refreshValid = true;
+    await store.write({ ...session(0), accessToken: "sf_at_other", refreshToken: "sf_rt_other" });
+    expect(await provider.refresh()).toBe("sf_at_1");
+    expect(new URLSearchParams(server.calls.at(-1)!.body).get("refresh_token")).toBe("sf_rt_other");
+  });
+
+  it("lists the current and the previous pair for redaction after a refresh", async () => {
+    const server = fakeOAuthServer();
+    const provider = new SessionTokenProvider({ session: session(0), store: memoryStore(), fetch: server.fetch, now: () => 0 });
+    expect(provider.secrets()).toEqual(["sf_at_old", "sf_rt_old"]);
+    await provider.refresh();
+    expect(provider.secrets()).toEqual(["sf_at_1", "sf_rt_2", "sf_at_old", "sf_rt_old"]);
+  });
 });

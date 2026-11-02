@@ -2,7 +2,8 @@
 // Service (secret-tool), or, when neither is available, a file only the user can read.
 // SUPERFLOW_CREDENTIALS_STORE=file forces the file; SUPERFLOW_CREDENTIALS_FILE moves it.
 import { spawn } from "node:child_process";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -86,9 +87,18 @@ export function fileStore(path: string): CredentialStore {
     },
     async write(session) {
       await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-      await writeFile(path, `${JSON.stringify(session, null, 2)}\n`, { mode: 0o600 });
-      // writeFile keeps the mode of an existing file; set it every time.
-      await chmod(path, 0o600).catch(() => undefined);
+      // Write a new file next to it, then rename it over the old one: a reader in another
+      // process (two MCP clients sharing one sign-in) sees the old session or the new one,
+      // never half a file. The new file is created 0600, so the mode holds on every write.
+      const temp = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+      try {
+        await writeFile(temp, `${JSON.stringify(session, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+        await chmod(temp, 0o600).catch(() => undefined);
+        await rename(temp, path);
+      } catch (error) {
+        await rm(temp, { force: true }).catch(() => undefined);
+        throw error;
+      }
     },
     async clear() {
       await rm(path, { force: true });
@@ -155,8 +165,10 @@ function secretServiceStore(run: Runner): CredentialStore {
  * A keyring that falls back to the file. `login` saves to the file when the keyring refuses
  * a write (locked, no session bus), so every later reader must look there too, or that
  * sign-in is lost on the next start and `logout` cannot remove it.
- * - read: the keyring, else the file;
- * - write: the keyring, else the file;
+ * - read: both; when both hold a session, the one that expires later (a refresh the keyring
+ *   refused went to the file, and the keyring's copy is the stale one); a tie goes to the keyring;
+ * - write: the keyring, else the file, and then the keyring's old copy is removed (best effort)
+ *   so it cannot shadow the new one;
  * - clear: both.
  * `location` names the store the session was last read from or written to.
  */
@@ -168,27 +180,27 @@ export function withFileFallback(primary: CredentialStore, file: CredentialStore
       return current.location;
     },
     async read() {
-      let session: StoredSession | null = null;
-      try {
-        session = await primary.read();
-      } catch {
-        session = null;
-      }
-      if (session) {
+      const [fromPrimary, fromFile] = await Promise.all([
+        primary.read().catch(() => null),
+        file.read().catch(() => null),
+      ]);
+      if (fromPrimary && (!fromFile || fromPrimary.expiresAt >= fromFile.expiresAt)) {
         current = primary;
-        return session;
+        return fromPrimary;
       }
-      const saved = await file.read();
-      if (saved) current = file;
-      return saved;
+      if (fromFile) current = file;
+      return fromFile;
     },
     async write(session) {
       try {
         await primary.write(session);
         current = primary;
+        // A file left from an earlier fallback is now older than the keyring's copy: drop it.
+        await file.clear().catch(() => undefined);
       } catch {
         await file.write(session);
         current = file;
+        await primary.clear().catch(() => undefined);
       }
     },
     async clear() {

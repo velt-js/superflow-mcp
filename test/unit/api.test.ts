@@ -313,6 +313,18 @@ describe("logging", () => {
     expect(redact("custom-secret-value here", ["custom-secret-value"])).toBe("[redacted] here");
   });
 
+  it("asks a secrets function on every line, so a refreshed token is redacted too", () => {
+    const lines: string[] = [];
+    let held = ["first-secret-token"];
+    const logger = createLogger({ level: "info", secrets: () => held, write: (line) => lines.push(line) });
+    logger.info("a first-secret-token b");
+    held = ["second-secret-token"];
+    logger.info("c second-secret-token d");
+    expect(lines.join("")).not.toContain("first-secret-token");
+    expect(lines.join("")).not.toContain("second-secret-token");
+    expect(lines.join("")).toContain("[redacted]");
+  });
+
   it("drops lines below the level and writes nothing when silent", () => {
     const lines: string[] = [];
     const logger = createLogger({ level: "warn", write: (line) => lines.push(line) });

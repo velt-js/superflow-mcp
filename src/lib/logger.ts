@@ -25,8 +25,11 @@ export interface Logger {
 
 export interface LoggerOptions {
   level: LogLevel;
-  /** Exact values to scrub from every line (the API key). */
-  secrets?: readonly string[];
+  /**
+   * Exact values to scrub from every line: the API key, or a function that returns the
+   * current ones (a signed-in session's tokens change on every refresh).
+   */
+  secrets?: readonly string[] | (() => readonly string[]);
   /** Where lines go. Defaults to stderr: stdout belongs to the MCP protocol. */
   write?: (line: string) => void;
 }
@@ -34,6 +37,14 @@ export interface LoggerOptions {
 export function createLogger(options: LoggerOptions): Logger {
   const threshold = RANK[options.level];
   const secrets = options.secrets ?? [];
+  const currentSecrets = (): readonly string[] => {
+    if (typeof secrets !== "function") return secrets;
+    try {
+      return secrets();
+    } catch {
+      return [];
+    }
+  };
   const write = options.write ?? ((line: string) => void process.stderr.write(line));
 
   const emit = (level: Exclude<LogLevel, "silent">, message: string, fields?: Record<string, unknown>) => {
@@ -48,7 +59,7 @@ export function createLogger(options: LoggerOptions): Logger {
       }
       line += ` ${rendered}`;
     }
-    write(`${redact(line, secrets)}\n`);
+    write(`${redact(line, currentSecrets())}\n`);
   };
 
   return {
