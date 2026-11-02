@@ -35,8 +35,8 @@ For each check you will show (the first 10 is plenty), call `superflow_get_check
 with its `rule_key`. It gives the fix guide and the open findings with their pages and
 links (20 at a time; follow `next_cursor` only when the user asks for the full list).
 
-Then call `superflow_list_comments` with `author_type: ["member", "guest"]` and
-`status: ["open"]` for the human comments. These are what clients and the team wrote.
+Then call `superflow_list_comments` with the `project`, `author_type: ["member", "guest"]`
+and `status: ["open"]` for the human comments. These are what clients and the team wrote.
 
 ## 4. Attach human comments to checks
 
@@ -92,5 +92,5 @@ items: call `superflow_use_playbook` with `name: "fix"`.
 - Link every comment you mention with its `url`.
 - A check the user says does not apply to this site is not a fix-list item: offer
   `superflow_exclude_check` (it asks for `confirm`). A finding they say is wrong: offer
-  `superflow_reject_comment` with a reason.
+  `superflow_reject_comment` with a reason (it asks for `confirm`; a rejection cannot be undone).
 - Short sentences, plain words, no jargon. Say "site", not "project", to the user.

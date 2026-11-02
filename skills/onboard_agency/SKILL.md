@@ -40,8 +40,9 @@ the city the user named into an IANA name (Chicago is `America/Chicago`, London 
 `Europe/London`). If they gave none, ask once: "Where is the client? Checks run early morning
 their time."
 
-Call `superflow_set_site_timezone` with the project and the zone. If it answers that the site
-has no schedule yet, keep the zone and send it with step 5 instead.
+**Stop:** say the zone you will set (for example "Checks will run in America/Chicago time")
+and ask for a yes. Then call `superflow_set_site_timezone` with the project and the zone. If
+it answers that the site has no schedule yet, keep the zone and send it with step 5 instead.
 
 ## 4. The plan
 

@@ -80,7 +80,8 @@ one more mark fixed. If it still does not land, stop on that item and report it.
 attempts, never more.
 
 A finding the user says is wrong rather than broken is not fixed: offer
-`superflow_reject_comment` with a reason instead.
+`superflow_reject_comment` with a reason instead (it asks for `confirm`; a rejection cannot
+be undone).
 
 ## 6. Report
 
