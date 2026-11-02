@@ -86,6 +86,23 @@ when their engines ship.
   writes as made by the MCP.
 - `superflow_run_agents`: the API allows 10 runs per project per hour and answers
   `rate_limited` past that.
+- `npx superflow-mcp login` always asks for a scope list: every API scope except
+  `users:invite`, `users:write`, `workspace:write` and `users:read`, which you name with
+  `--scope`. `--scope` replaces the list (spaces or commas); `login --help` shows both lists.
+- `superflow_reject_comment` is destructive and gates on `confirm: true`: without it the tool
+  shows the finding and the reason. A person's comment is refused before asking.
+- `superflow_set_schedule` gates on `confirm: true` when it creates a schedule or changes what
+  or when it runs: without it the tool prices one run and shows it. Pausing and moving the
+  time zone need no confirm.
+- No description Example carries `confirm: true` or `dry_run: false`, so a copied Example
+  only previews. Every description names a sibling tool.
+- A write that may still have run (a timeout, a dropped connection, a 5xx after the retries)
+  returns `error.idempotency_key` and says to retry with it; the create tools take it as an
+  input. A 429 whose Retry-After is past 10 seconds is not retried: it returns
+  `rate_limited` with `error.reset_at`.
+- A 401 on a sign-in says the sign-in expired or was revoked and to run `login`; a 403 says
+  scopes cannot be changed and how to get a key or a sign-in with the scope.
+- The server instructions name only registered tools, so read-only mode names no write tool.
 
 ### Removed
 - The seven webhook tools (`superflow_list_webhooks`, `superflow_get_webhook`,
@@ -103,6 +120,23 @@ when their engines ship.
 - `superflow_delete_tag` and `superflow_merge_tags` send the ids of the tags the preview
   showed, so a tag name used in two projects no longer fails after a clean preview.
 - `pnpm playbooks` works on Windows.
+- The macOS Keychain write sent the sign-in's tokens as a `security` argument, visible to
+  every process list. It now goes through stdin (`security -i`); a session too long for one
+  command goes to the file instead.
+- A refreshed sign-in the keyring refused went to the file, but the next start read the
+  stale keyring copy. The store now keeps the one that expires later and drops the other.
+  The credentials file is replaced in one step (temp file and rename), and a signed-out
+  server picks up a new sign-in from the store without a restart.
+- Logs redact the session's current tokens after a refresh, not only the ones it started with.
+- `login` on Windows opened the sign-in URL cut at its first `&`; it now opens it whole.
+- `superflow_set_site_mode` and `superflow_set_form_testing` no longer add `confirm` or
+  `accept_test_leads` themselves when care or the test is already on: the same settings
+  change nothing and say so.
+- `superflow_remove_member`'s description says the preview comes from the API.
+- The logout message and README name where sign-ins are revoked: Settings > Integrations >
+  API keys > Connected AI apps.
+- `onboard_agency` stops before setting the time zone; `triage` lists its own project's
+  human comments.
 
 ## [0.3.0] - Unreleased
 
