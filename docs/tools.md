@@ -1647,9 +1647,9 @@ Example:
 
 **Create an API key**
 
-Create an API key (sf_pat_...) for this workspace, for CI or another tool. Its scopes must be ones this key already has, and it cannot outlive this key.
+Create an API key (sf_pat_...) for this workspace, for CI or another tool. It needs an API key with workspace:write: a sign-in (superflow-mcp login, Claude, Cursor) cannot create keys. The new key's scopes must be ones this key already has, and it cannot outlive this key.
 The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.
-Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.
+Without confirm: true nothing is created: you get a preview, or an error saying why the key cannot be created. Call again with confirm: true only after the user says yes to a preview. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -2012,8 +2012,9 @@ Example:
 
 **List runs**
 
-List agent runs started through the API, this server or a schedule, newest first, with status, findings count and credits. Filter by project, status or start date.
-Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live. Runs started in the Superflow portal are not in this list: their findings carry a run_ id that superflow_get_run reads.
+List agent runs started through the API or this server, by a schedule from superflow_set_schedule, or by superflow_import_findings, newest first, with status, findings count and credits. Filter by project, status or start date.
+Not listed: runs started in the Superflow portal and Always-on Monitoring (care mode) runs, so an empty list does not mean no agent ran. Their results are in superflow_list_failing_checks and superflow_get_check_details, and in superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows a site's monitoring cadence and last run.
+Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -2034,6 +2035,7 @@ Example:
 **List a run's findings**
 
 List what an agent run found: the comments its agents left, with each finding's severity and confidence, page and link. Filter by severity. Pages with cursor.
+It covers the runs superflow_list_runs lists. For runs started in the Superflow portal and Always-on Monitoring (care mode) runs, read the results with superflow_list_failing_checks and superflow_get_check_details, or superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows the monitoring cadence and last run.
 Use it after superflow_get_run says the run is done or partial, to summarize, triage or push findings to a tracker. Findings are comments: resolve, reply or bulk update them with the comment tools.
 
 | Parameter | Type | Required | Description |

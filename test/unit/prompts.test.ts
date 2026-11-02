@@ -117,7 +117,17 @@ describe("prompts", () => {
     const text = await promptText("agent_findings_review", { project: "Acme Dental" });
     expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","limit":5}');
     expect(text).toContain("done or partial");
-    expect(text).toContain('2. Call superflow_get_run with {"run":"<the run id>"}');
+    expect(text).toContain('3. Call superflow_get_run with {"run":"<the run id>"}');
+    // Portal and monitoring runs are not listed, so with no listed run it reviews the agent comments.
+    expect(text).toContain(
+      '2. If none is done or partial, say so: portal and Always-on Monitoring runs are not in that list. Review the open agent findings instead: call superflow_list_comments with {"project":"Acme Dental","author_type":["agent"],"status":["open"],"limit":100}',
+    );
+  });
+
+  it("agent_findings_review with a run id goes straight to the run", async () => {
+    const text = await promptText("agent_findings_review", { agent_run: "run_8f3k2" });
+    expect(text).toContain('1. Call superflow_get_run with {"run":"run_8f3k2"}');
+    expect(text).not.toContain("superflow_list_runs");
     expect(text).not.toContain("superflow_list_comments");
   });
 

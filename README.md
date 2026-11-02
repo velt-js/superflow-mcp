@@ -299,8 +299,8 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_estimate_run` | What a run would cost in AI credits, and whether the balance covers it. Charges nothing. |
 | `superflow_run_agents` | Start a run on a site, a page or a list of pages (spends credits; estimate first, then confirm). |
 | `superflow_get_run` | A run's live status per agent. |
-| `superflow_list_runs` | Past runs, newest first. |
-| `superflow_list_findings` | What a run found, with severity and confidence. |
+| `superflow_list_runs` | Past runs started through the API or MCP, by an API schedule or by an import, newest first. Runs started in the portal and Always-on Monitoring runs are not listed: their results are in the failing checks and the agent comments. |
+| `superflow_list_findings` | What one of those runs found, with severity and confidence. |
 | `superflow_set_schedule` | Create or change a scheduled run (cron, at most hourly; each run spends credits). Needs `confirm: true`, except to pause or move the time zone; without it the tool shows the price of one run. |
 | `superflow_list_schedules` | Scheduled runs, the next run and how the last one went. |
 | `superflow_delete_schedule` | Delete a schedule (needs confirm). |
@@ -343,7 +343,7 @@ Some agent and integration features are not available yet: a run cannot be cance
 | Tool | What it does |
 |---|---|
 | `superflow_list_api_keys` | Your own keys and app sign-ins in this workspace. Never the tokens. |
-| `superflow_create_api_key` | A new key for CI or another tool. Scopes must be ones the current key has, and it cannot outlive it. Needs `confirm: true`; the token is shown once, in the conversation. |
+| `superflow_create_api_key` | A new key for CI or another tool. Needs an API key with `workspace:write` (a sign-in cannot create keys); scopes must be ones the current key has, and it cannot outlive it. Needs `confirm: true`; the preview says first when the key cannot be created. The token is shown once, in the conversation. |
 | `superflow_revoke_api_key` | Revoke a key or sign-in. Needs `confirm: true`. |
 
 #### Analytics

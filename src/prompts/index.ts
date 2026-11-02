@@ -229,6 +229,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
       if (!run) {
         steps.push(
           `Call superflow_list_runs with ${json({ ...(scope ? { project: scope } : {}), limit: 5 })} and pick the newest run whose status is done or partial. Tell the user which run you picked (id, project, when).`,
+          `If none is done or partial, say so: portal and Always-on Monitoring runs are not in that list. Review the open agent findings instead: call superflow_list_comments with ${json({ ...(scope ? { project: scope } : {}), author_type: ["agent"], status: ["open"], limit: 100 })}, follow next_cursor, skip the next two steps and use those comments as the findings.`,
         );
       }
       steps.push(
@@ -344,7 +345,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
           "Steps:",
           estimate,
           "2. Explain that this server is read-only, so it cannot start the run. The user can start it in Superflow.",
-          `3. Look for a recent run instead: call superflow_list_runs with ${json({ project, limit: 1 })}. If it is done or partial, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor.`,
+          `3. Look for a recent run instead: call superflow_list_runs with ${json({ project, limit: 1 })}. If it is done or partial, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor. If there is none (portal and Always-on Monitoring runs are not in that list), call superflow_list_failing_checks with ${json({ project })} and use its open findings instead.`,
           `4. ${summarize}`,
           "5. Recommend which critical findings to push to Jira, as a list the user can act on in Superflow.",
         ];

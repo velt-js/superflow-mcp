@@ -137,6 +137,16 @@ when their engines ship.
   API keys > Connected AI apps.
 - `onboard_agency` stops before setting the time zone; `triage` lists its own project's
   human comments.
+- `superflow_create_api_key`'s preview reads the calling key (`GET /me`) first and returns
+  the API's refusal instead of a preview when the key cannot be created: a sign-in, no
+  `workspace:write`, a scope the key does not have, or an expiry past the key's own.
+- A 401 gives its advice once: the API's create-key hint is no longer added to the
+  package's own message, and a sign-in is never told to create a key.
+- `superflow_list_runs` and `superflow_list_findings` say they do not cover portal or
+  Always-on Monitoring runs, and point to the failing checks and agent comments instead.
+  The `agent_findings_review` and read-only `prelaunch_run` prompts fall back to those when
+  no listed run is finished.
+- A sign-in refused for creating a key is no longer told to sign in again with more scopes.
 
 ## [0.3.0] - Unreleased
 

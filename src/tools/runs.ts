@@ -228,8 +228,9 @@ export const listRuns = defineTool({
   name: "superflow_list_runs",
   title: "List runs",
   description: [
-    "List agent runs started through the API, this server or a schedule, newest first, with status, findings count and credits. Filter by project, status or start date.",
-    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live. Runs started in the Superflow portal are not in this list: their findings carry a run_ id that superflow_get_run reads.',
+    "List agent runs started through the API or this server, by a schedule from superflow_set_schedule, or by superflow_import_findings, newest first, with status, findings count and credits. Filter by project, status or start date.",
+    'Not listed: runs started in the Superflow portal and Always-on Monitoring (care mode) runs, so an empty list does not mean no agent ran. Their results are in superflow_list_failing_checks and superflow_get_check_details, and in superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows a site\'s monitoring cadence and last run.',
+    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live.',
     'Example: {"project": "Acme Dental", "status": ["done", "partial"], "limit": 5}',
   ].join("\n"),
   inputSchema: {
@@ -283,6 +284,7 @@ export const listFindings = defineTool({
   title: "List a run's findings",
   description: [
     "List what an agent run found: the comments its agents left, with each finding's severity and confidence, page and link. Filter by severity. Pages with cursor.",
+    'It covers the runs superflow_list_runs lists. For runs started in the Superflow portal and Always-on Monitoring (care mode) runs, read the results with superflow_list_failing_checks and superflow_get_check_details, or superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows the monitoring cadence and last run.',
     "Use it after superflow_get_run says the run is done or partial, to summarize, triage or push findings to a tracker. Findings are comments: resolve, reply or bulk update them with the comment tools.",
     'Example: {"run": "run_8f3k2", "severity": ["critical", "high"]}',
   ].join("\n"),

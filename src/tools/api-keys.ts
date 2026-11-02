@@ -1,16 +1,75 @@
 // API key tools: list, create and revoke the caller's own keys (GET/POST/DELETE /api-keys).
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
-import type { ApiKey, CreatedApiKey, ListEnvelope, RevokedApiKey } from "../client/types.ts";
+import type { ApiKey, CreatedApiKey, ListEnvelope, Me, RevokedApiKey } from "../client/types.ts";
 import { CONFIRM_CREATE_API_KEY_MESSAGE, CONFIRM_REVOKE_API_KEY_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, join } from "./helpers.ts";
 import { confirmSchema } from "./schemas.ts";
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const PORTAL_KEYS = "Superflow under Settings > Integrations > API keys";
+
 function describeKey(key: ApiKey): string {
   const name = key.kind === "oauth" ? `${key.client_name ?? "an app"} sign-in` : `"${key.label}"`;
   return `${key.id} ${name}${key.current ? " (this key)" : ""}${key.expires_at ? `, expires ${key.expires_at.slice(0, 10)}` : ""}`;
+}
+
+/**
+ * Why POST /api-keys would refuse this key, from GET /me, or null when it would go through.
+ * The same rules and codes as the API, so a preview never asks the user to confirm a key that
+ * cannot be made. A sign-in is checked first: no scope makes it able to create keys.
+ */
+function createRefusal(me: Me, scopes: readonly string[], expiresInDays: number | undefined, now: number): SuperflowApiError | null {
+  const held = me.scopes ?? [];
+  if (me.key?.kind === "oauth") {
+    return new SuperflowApiError({
+      status: 403,
+      code: "forbidden",
+      message: "This session uses a sign-in, not an API key, and a sign-in cannot create API keys: the key would outlive the sign-in.",
+      hint: `Create the key in ${PORTAL_KEYS}, or use a personal API key (sf_pat_) that has workspace:write.`,
+    });
+  }
+  if (!held.includes("workspace:write")) {
+    return new SuperflowApiError({
+      status: 403,
+      code: "forbidden",
+      message: "This key does not have the workspace:write scope, which creating an API key needs.",
+      hint: `Create the key in ${PORTAL_KEYS}, or use a key that has workspace:write. Scopes cannot be added to an existing key.`,
+    });
+  }
+  const extra = [...new Set(scopes.map((scope) => scope.trim()))].filter((scope) => !held.includes(scope));
+  if (extra.length > 0) {
+    return new SuperflowApiError({
+      status: 403,
+      code: "forbidden",
+      message: `This key cannot create a key with ${extra.join(", ")}: it does not have ${extra.length === 1 ? "that scope" : "those scopes"} itself.`,
+      hint: `A new key can only have scopes this key has: ${held.join(", ")}. Leave the others out, or create the key in ${PORTAL_KEYS}.`,
+    });
+  }
+  const expiresAt = me.key?.expires_at ? Date.parse(me.key.expires_at) : Number.NaN;
+  if (Number.isFinite(expiresAt)) {
+    const daysLeft = Math.floor((expiresAt - now) / MS_PER_DAY);
+    const date = new Date(expiresAt).toISOString().slice(0, 10);
+    if (daysLeft < 1) {
+      return new SuperflowApiError({
+        status: 400,
+        code: "invalid",
+        message: `This key expires on ${date}, in less than a day, and a new key cannot outlive the key that creates it.`,
+        hint: `Create the key in ${PORTAL_KEYS}, or use a key that does not expire so soon.`,
+      });
+    }
+    if (expiresInDays === undefined || expiresInDays > daysLeft) {
+      return new SuperflowApiError({
+        status: 400,
+        code: "invalid",
+        message: `A new key cannot outlive the key that creates it. This key expires on ${date} (${plural(daysLeft, "day")} left), so ${expiresInDays === undefined ? "the new key needs an expiry too" : `${plural(expiresInDays, "day")} is too long`}.`,
+        hint: `Pass expires_in_days of at most ${daysLeft}. For a key that lasts longer, create it in ${PORTAL_KEYS}.`,
+      });
+    }
+  }
+  return null;
 }
 
 export const listApiKeys = defineTool({
@@ -36,9 +95,9 @@ export const createApiKey = defineTool({
   name: "superflow_create_api_key",
   title: "Create an API key",
   description: [
-    "Create an API key (sf_pat_...) for this workspace, for CI or another tool. Its scopes must be ones this key already has, and it cannot outlive this key.",
+    "Create an API key (sf_pat_...) for this workspace, for CI or another tool. It needs an API key with workspace:write: a sign-in (superflow-mcp login, Claude, Cursor) cannot create keys. The new key's scopes must be ones this key already has, and it cannot outlive this key.",
     "The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.",
-    "Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.",
+    "Without confirm: true nothing is created: you get a preview, or an error saying why the key cannot be created. Call again with confirm: true only after the user says yes to a preview. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.",
     'Example: {"label": "GitHub Actions", "scopes": ["comments:read", "projects:read"], "expires_in_days": 90}',
   ].join("\n"),
   inputSchema: {
@@ -62,8 +121,17 @@ export const createApiKey = defineTool({
   async run(args, { api }) {
     const body = { label: args.label, scopes: args.scopes, ...(args.expires_in_days !== undefined ? { expires_in_days: args.expires_in_days } : {}) };
     if (!isConfirmed(args.confirm)) {
+      // Preview: one read. A key the API would refuse comes back as that refusal, not a preview.
+      const me = await api.call<Me>("getMe");
+      const now = Date.now();
+      const refusal = createRefusal(me, args.scopes, args.expires_in_days, now);
+      if (refusal) return errorResult(refusal);
+      const expiry =
+        args.expires_in_days !== undefined
+          ? `, expiring in ${plural(args.expires_in_days, "day")} (${new Date(now + args.expires_in_days * MS_PER_DAY).toISOString().slice(0, 10)})`
+          : ", with no expiry";
       return confirmationResult(
-        `A key "${args.label}" with ${args.scopes.join(", ")}${args.expires_in_days ? `, expiring in ${args.expires_in_days} days` : ", with no expiry"} would be created. Nothing was created. Ask the user to confirm.`,
+        `A key "${args.label}" with ${args.scopes.join(", ")}${expiry} would be created. Nothing was created. Ask the user to confirm.`,
         { preview: body, message: CONFIRM_CREATE_API_KEY_MESSAGE },
       );
     }

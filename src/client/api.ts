@@ -208,6 +208,18 @@ const FALLBACK_HINTS: Partial<Record<ErrorCode, string>> = {
   ambiguous: "Pick one of the candidates and call again with its id.",
 };
 
+/**
+ * True when a 401's message tells the user more than our own message does: not the API's
+ * generic "This connector token is not valid", and for a sign-in not "has expired" either
+ * (SESSION_ENDED_MESSAGE already says it expired).
+ */
+function saysMoreThanRejected(apiMessage: string, signedIn: boolean): boolean {
+  const text = apiMessage.trim();
+  if (!text || text === UNAUTHORIZED_MESSAGE || text === SESSION_ENDED_MESSAGE) return false;
+  if (/^this (connector )?token is not valid\.?$/i.test(text)) return false;
+  return !(signedIn && /^this (connector )?token has expired\.?$/i.test(text));
+}
+
 function parseRetryAfter(header: string | null): number | undefined {
   if (!header) return undefined;
   const seconds = Number(header);
@@ -468,7 +480,9 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
 
   let message = apiMessage || FALLBACK_MESSAGES[knownCode] || `The Superflow API returned HTTP ${status}.`;
   if (code === "unauthorized") {
-    if (!hint && apiMessage && apiMessage !== UNAUTHORIZED_MESSAGE && apiMessage !== SESSION_ENDED_MESSAGE) hint = `The API said: ${apiMessage}`;
+    // Our message says what to do, so the API's hint (create a new key) would say it twice, and
+    // is wrong for a signed-in session. The API's message stays only when it says more.
+    hint = saysMoreThanRejected(apiMessage, context.signedIn === true) ? `The API said: ${apiMessage}` : "";
     message = context.signedIn ? SESSION_ENDED_MESSAGE : UNAUTHORIZED_MESSAGE;
   }
   let resetAt: string | undefined;
@@ -477,7 +491,8 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
     resetAt = new Date(Date.now() + retryAfterMs).toISOString();
     hint = [hint, `The limit resets in about ${seconds} seconds (${resetAt}). Wait until then before trying again.`].filter(Boolean).join(" ");
   }
-  if (code === "forbidden" && context.signedIn) {
+  // A sign-in can never create keys, whatever its scopes, so a new sign-in is not the way out there.
+  if (code === "forbidden" && context.signedIn && !/cannot create API keys/i.test(apiMessage)) {
     // The fallback hint offers a new key or a new sign-in; a signed-in session needs the second.
     hint = [hint || "Check the scopes with superflow_get_me.", SESSION_SCOPE_HINT].join(" ");
   }

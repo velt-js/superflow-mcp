@@ -332,6 +332,49 @@ describe("error mapping", () => {
     expect(error.message).not.toContain("API key");
   });
 
+  describe("401 with the API's own generic body (a revoked or unknown token)", () => {
+    const revoked = JSON.stringify({
+      error: { code: "unauthorized", message: "This connector token is not valid", hint: "Create a new key in Superflow under Settings > Integrations > API keys.", candidates: [] },
+    });
+    const count = (text: string, part: string) => text.split(part).length - 1;
+
+    it("an API key gives the create-key advice exactly once, and no echo of the generic message", () => {
+      const error = toApiError(401, revoked);
+      expect(error.message).toBe(UNAUTHORIZED_MESSAGE);
+      expect(error.hint).toBe("");
+      const text = (errorResult(error).content[0] as { text: string }).text.split("\n")[0] ?? "";
+      expect(text).toBe(`Error (unauthorized): ${UNAUTHORIZED_MESSAGE}`);
+      expect(count(text, "Create a new key")).toBe(1);
+      expect(count(text, "Settings > Integrations > API keys")).toBe(1);
+    });
+
+    it("a signed-in session says to sign in again, once, and never to create a key", async () => {
+      const once = scriptedFetch(() => new Response(revoked, { status: 401, headers: { "content-type": "application/json" } }));
+      const ended = { token: vi.fn(async () => "sf_at_old"), refresh: vi.fn(async () => null) };
+      const error = await rejection(client({ fetch: once.fetch, tokenProvider: ended }).api.call("getMe"));
+      expect(error.message).toBe(SESSION_ENDED_MESSAGE);
+      expect(error.hint).toBe("");
+      const text = (errorResult(error).content[0] as { text: string }).text.split("\n")[0] ?? "";
+      expect(text).toBe(`Error (unauthorized): ${SESSION_ENDED_MESSAGE}`);
+      expect(count(text, "superflow-mcp login")).toBe(1);
+      expect(text).not.toContain("Create a new key");
+    });
+
+    it("keeps an expiry message for a key, and drops it for a sign-in (its message already says expired)", () => {
+      const expired = JSON.stringify({ error: { code: "unauthorized", message: "This connector token has expired", hint: "Create a new key in Superflow under Settings > Integrations > API keys." } });
+      const key = toApiError(401, expired);
+      expect(key.hint).toBe("The API said: This connector token has expired");
+      expect(count(`${key.message} ${key.hint}`, "Create a new key")).toBe(1);
+      expect(toApiError(401, expired, undefined, { signedIn: true }).hint).toBe("");
+    });
+
+    it("keeps a message that says something else, without the API's hint", () => {
+      const other = JSON.stringify({ error: { code: "unauthorized", message: "A Bearer token is required.", hint: "Create a new key in Superflow under Settings > Integrations > API keys." } });
+      expect(toApiError(401, other).hint).toBe("The API said: A Bearer token is required.");
+      expect(toApiError(401, other, undefined, { signedIn: true }).hint).toBe("The API said: A Bearer token is required.");
+    });
+  });
+
   it("403 without an API hint: scopes cannot be changed, so a new key or a new sign-in", () => {
     const error = toApiError(403, "");
     expect(error.hint).not.toMatch(/Change them/);
@@ -345,6 +388,19 @@ describe("error mapping", () => {
     const error = toApiError(403, body, undefined, { signedIn: true });
     expect(error.hint).toBe(`Create a key with the comments:write scope. ${SESSION_SCOPE_HINT}`);
     expect(toApiError(403, body).hint).toBe("Create a key with the comments:write scope.");
+  });
+
+  it("403 on a login session creating a key keeps only the API's advice: no new sign-in can create keys", () => {
+    const body = JSON.stringify({
+      error: {
+        code: "forbidden",
+        message: "An OAuth sign-in cannot create API keys: a key would outlive the sign-in and survive its revocation.",
+        hint: "Create keys from the portal (Settings > Integrations > API keys) or with a personal API key.",
+      },
+    });
+    const error = toApiError(403, body, undefined, { signedIn: true });
+    expect(error.hint).toBe("Create keys from the portal (Settings > Integrations > API keys) or with a personal API key.");
+    expect(error.hint).not.toContain("login --scope");
   });
 
   it("maps a non-JSON 2xx body to upstream", async () => {

@@ -216,7 +216,8 @@ export interface Me {
   member: { id: string; name: string; email: string | null; role: string };
   organization: { id: string; name: string; plan: string | null };
   scopes: string[];
-  key: { kind: string; label: string | null; created_at: string | null; expires_at: string | null };
+  /** kind: pat for an API key (sf_pat_), oauth for a sign-in (sf_at_: superflow-mcp login, Claude, Cursor). */
+  key: { kind: "pat" | "oauth"; label: string | null; created_at: string | null; expires_at: string | null };
 }
 
 export interface Scan {

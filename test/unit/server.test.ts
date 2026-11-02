@@ -297,6 +297,22 @@ describe("tool registration", () => {
     expect(describe("superflow_set_schedule")).toContain("spends AI credits");
   });
 
+  it("says which runs list_runs and list_findings cover, and where portal and monitoring results are", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    const describe = (name: string) => listed.find((t) => t.name === name)?.description ?? "";
+    expect(describe("superflow_list_runs")).toContain("superflow_set_schedule");
+    expect(describe("superflow_list_runs")).toContain("superflow_import_findings");
+    for (const name of ["superflow_list_runs", "superflow_list_findings"]) {
+      const text = describe(name);
+      expect(text, name).toContain("runs started in the Superflow portal and Always-on Monitoring (care mode) runs");
+      expect(text, name).toContain("superflow_list_failing_checks");
+      expect(text, name).toContain("superflow_get_check_details");
+      expect(text, name).toContain('superflow_list_comments with author_type: ["agent"]');
+      expect(text, name).toContain("superflow_get_site_monitoring");
+    }
+  });
+
   it("rejects a call to a write tool in read-only mode without any request", async () => {
     const h = await connect({ readOnly: true });
     const result = await h.call("superflow_delete_comment", { comment: "cmt_1", confirm: true });
