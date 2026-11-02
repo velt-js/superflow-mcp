@@ -96,6 +96,18 @@ export function fileStore(path: string): CredentialStore {
   };
 }
 
+/**
+ * `security -i` reads its commands from stdin, one per line, and stops reading a line at
+ * about 4 KB (a longer one is cut and its rest runs as a second command). Stay under it.
+ */
+export const KEYCHAIN_LINE_LIMIT = 4000;
+
+/** The line `security -i` runs to save a session: the value as hex (-X), so it needs no quoting. */
+export function keychainWriteCommand(session: StoredSession): string {
+  const hex = Buffer.from(JSON.stringify(session), "utf8").toString("hex");
+  return `add-generic-password -U -s ${SERVICE} -a ${ACCOUNT} -l "Superflow MCP" -X ${hex}\n`;
+}
+
 function keychainStore(run: Runner): CredentialStore {
   return {
     kind: "keychain",
@@ -105,9 +117,12 @@ function keychainStore(run: Runner): CredentialStore {
       return result.code === 0 ? parseSession(result.stdout.trim()) : null;
     },
     async write(session) {
-      // -U updates an existing item. The value is passed as an argument, as the
-      // `security` tool requires; it is visible to the user's own processes for a moment.
-      const result = await run("security", ["add-generic-password", "-U", "-s", SERVICE, "-a", ACCOUNT, "-l", "Superflow MCP", "-w", JSON.stringify(session)]);
+      // Never `-w <value>`: an argument is visible to every process that lists processes (ps,
+      // endpoint agents). `security -i` takes the whole command on stdin instead. -U updates
+      // an existing item. A session too long for one line goes to the file (withFileFallback).
+      const command = keychainWriteCommand(session);
+      if (command.length > KEYCHAIN_LINE_LIMIT) throw new Error("The sign-in is too long for one macOS Keychain command.");
+      const result = await run("security", ["-i"], command);
       if (result.code !== 0) throw new Error("Could not save the sign-in to the macOS Keychain.");
     },
     async clear() {

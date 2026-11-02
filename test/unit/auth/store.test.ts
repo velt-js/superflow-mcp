@@ -2,7 +2,15 @@ import { mkdtemp, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { chooseCredentialStore, defaultCredentialsFile, fileStore, type Runner, type StoredSession } from "../../../src/auth/store.ts";
+import {
+  KEYCHAIN_LINE_LIMIT,
+  chooseCredentialStore,
+  defaultCredentialsFile,
+  fileStore,
+  keychainWriteCommand,
+  type Runner,
+  type StoredSession,
+} from "../../../src/auth/store.ts";
 
 const SESSION: StoredSession = {
   version: 1,
@@ -55,6 +63,47 @@ describe("chooseCredentialStore", () => {
     const { store, warning } = await chooseCredentialStore({ env: {}, platform: "darwin", run: runner({ security: 0 }) });
     expect(store.kind).toBe("keychain");
     expect(warning).toBeUndefined();
+  });
+
+  it("writes the Keychain through stdin (security -i), so no argument carries a token", async () => {
+    const calls: Array<{ command: string; args: string[]; input: string | undefined }> = [];
+    const run: Runner = async (command, args, input) => {
+      calls.push({ command, args, input });
+      return { code: 0, stdout: "" };
+    };
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: join(dir, "c.json") }, platform: "darwin", run });
+    await store.write(SESSION);
+    const hex = (value: string) => Buffer.from(value, "utf8").toString("hex");
+    for (const call of calls) {
+      const argv = [call.command, ...call.args].join(" ");
+      for (const secret of [SESSION.accessToken, SESSION.refreshToken, hex(SESSION.accessToken), hex(SESSION.refreshToken)]) {
+        expect(argv, `${call.command} ${call.args[0]}`).not.toContain(secret);
+      }
+    }
+    const write = calls.find((call) => call.args[0] === "-i")!;
+    expect(write.command).toBe("security");
+    expect(write.args).toEqual(["-i"]);
+    expect(write.input).toBe(keychainWriteCommand(SESSION));
+    const value = /-X ([0-9a-f]+)\n$/.exec(write.input ?? "")?.[1] ?? "";
+    expect(JSON.parse(Buffer.from(value, "hex").toString("utf8"))).toEqual(SESSION);
+  });
+
+  it("saves a session too long for one Keychain command to the file instead of cutting it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const calls: string[][] = [];
+    const run: Runner = async (command, args) => {
+      calls.push([command, ...args]);
+      return { code: 0, stdout: "" };
+    };
+    const long = { ...SESSION, scope: "comments:read ".repeat(200).trim() };
+    expect(keychainWriteCommand(long).length).toBeGreaterThan(KEYCHAIN_LINE_LIMIT);
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run });
+    await store.write(long);
+    expect(calls.some((call) => call[1] === "-i")).toBe(false);
+    expect(await fileStore(path).read()).toEqual(long);
+    expect(store.location).toBe(path);
   });
 
   it("uses the Secret Service on Linux when secret-tool answers, and sends the secret on stdin", async () => {
