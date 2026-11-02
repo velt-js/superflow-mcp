@@ -9,8 +9,8 @@ clients: all
 # Push my review into Superflow
 
 Goal: the findings of the user's own review, as agent comments on the right pages under
-their agent's name, merged with what Superflow already found, with nothing lost and nothing
-duplicated. Their harness does not change: their agent finds, Superflow records, pins,
+their agent's name, grouped with what Superflow already found under the same checks, with
+nothing lost and nothing duplicated. Their harness does not change: their agent finds, Superflow records, pins,
 verifies and reports.
 
 ## 1. Find the site and check the install
@@ -33,8 +33,9 @@ each finding fill:
 - `severity`: critical, high, medium or low. Leave out anything that is only a note.
 - `rule_key`: Superflow's check key when the kind matches (for example `image-alt` for missing
   alt text, `link-broken`, `link-dead-button`, `mobile-small-tap-target`; the tool lists them,
-  and `superflow_list_failing_checks` shows the site's), so it merges
-  with Superflow's own finding at the same spot. For a kind Superflow has no key for, your own
+  and `superflow_list_failing_checks` shows the site's), so it is grouped
+  under the same check as Superflow's own findings. It sits beside them; it merges only with
+  your own earlier imports of the same finding. For a kind Superflow has no key for, your own
   key starting with `ext-`, for example `ext-cookie-banner`. Use the same key every review.
 - `fix_type`: content, design or code.
 - `anchor.selector` when you know the element; `suggestion` when the review has a fix;
