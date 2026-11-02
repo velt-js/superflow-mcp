@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAuthorizeUrl, login } from "../../../src/auth/login.ts";
+import { browserCommand, buildAuthorizeUrl, login } from "../../../src/auth/login.ts";
 import { challengeFor } from "../../../src/auth/pkce.ts";
 import { DEFAULT_LOGIN_SCOPES } from "../../../src/auth/scopes.ts";
 import type { CredentialStore, StoredSession } from "../../../src/auth/store.ts";
@@ -121,5 +121,15 @@ describe("superflow-mcp login", () => {
       clientId: "c", redirectUri: "http://127.0.0.1:1/callback", challenge: "ch", state: "st", scope: "comments:read",
     }));
     expect(Object.fromEntries(url.searchParams)).toEqual({ response_type: "code", client_id: "c", redirect_uri: "http://127.0.0.1:1/callback", code_challenge: "ch", code_challenge_method: "S256", state: "st", scope: "comments:read" });
+  });
+
+  it("opens the whole URL on every platform: on Windows without cmd, which cuts it at the first &", () => {
+    const url = "https://auth.example.test/oauth/authorize?response_type=code&client_id=c&state=s%26t";
+    const [command, args] = browserCommand(url, "win32");
+    expect(command).toBe("rundll32");
+    expect(args).toEqual(["url.dll,FileProtocolHandler", url]);
+    expect(command).not.toBe("cmd");
+    expect(browserCommand(url, "darwin")).toEqual(["open", [url]]);
+    expect(browserCommand(url, "linux")).toEqual(["xdg-open", [url]]);
   });
 });

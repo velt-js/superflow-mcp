@@ -18,12 +18,22 @@ const PAGE = (title: string, body: string) =>
   `<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;line-height:1.5">` +
   `<h1 style="font-size:1.25rem">${title}</h1><p>${body}</p></body></html>`;
 
+/**
+ * The program and arguments that open a URL in the default browser. Windows does not go
+ * through `cmd /c start`: cmd reads `&` as "run another command", which cut the sign-in URL
+ * at its first query parameter. rundll32 hands the URL to the default browser as it is.
+ */
+export function browserCommand(url: string, platform: NodeJS.Platform = process.platform): [string, string[]] {
+  if (platform === "darwin") return ["open", [url]];
+  if (platform === "win32") return ["rundll32", ["url.dll,FileProtocolHandler", url]];
+  return ["xdg-open", [url]];
+}
+
 /** Opens a URL in the default browser. Best effort: the URL is printed too. */
 export function openInBrowser(url: string, platform: NodeJS.Platform = process.platform): void {
   try {
-    const [command, args] =
-      platform === "darwin" ? ["open", [url]] : platform === "win32" ? ["cmd", ["/c", "start", "", url]] : ["xdg-open", [url]];
-    const child = spawn(command, args as string[], { stdio: "ignore", detached: true });
+    const [command, args] = browserCommand(url, platform);
+    const child = spawn(command, args, { stdio: "ignore", detached: true });
     child.on("error", () => undefined);
     child.unref();
   } catch {
