@@ -34,7 +34,7 @@ export const usePlaybook = defineTool({
     "Get the step-by-step playbook for a job that takes several Superflow tools in order, then follow it.",
     `Call it first, before any other tool, when the user wants to: ${PLAYBOOKS.map((playbook) => `${playbook.when} (${playbook.name})`).join("; ")}.`,
     "It only reads: it returns the playbook text. Without a name it lists the playbooks.",
-    "Not needed for a single lookup or a single change: call that tool directly.",
+    "Not needed for a single lookup or a single change: call that tool directly (for example superflow_list_comments or superflow_resolve_comment).",
     'Example: {"name": "triage"}',
   ].join("\n"),
   inputSchema: {

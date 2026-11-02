@@ -120,7 +120,7 @@ Every id parameter also takes a name, URL, email or number: the API resolves it.
 Get the step-by-step playbook for a job that takes several Superflow tools in order, then follow it.
 Call it first, before any other tool, when the user wants to: fix what is broken on a site and have a rescan verify it (fix); set up their first client site with scheduled checks (onboard_agency); push the findings of their own review into Superflow (push_my_review); see what is broken on a site, or get one ordered list of what to fix (triage).
 It only reads: it returns the playbook text. Without a name it lists the playbooks.
-Not needed for a single lookup or a single change: call that tool directly.
+Not needed for a single lookup or a single change: call that tool directly (for example superflow_list_comments or superflow_resolve_comment).
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1351,6 +1351,7 @@ Example:
 Delete a custom status. Its comments move to move_comments_to, which is required: another status those comments can have. The default and the resolved status cannot be deleted. Give project to delete a status that was added to that project.
 Comments are moved through Velt, which can only update the newest 1,000 comments of a project, so on bigger projects some older comments may keep the deleted status.
 Without confirm: true nothing is deleted: you get the status, where its comments go and how many there are. Call again with confirm: true only after the user says yes.
+To rename a status or change its color instead, use superflow_update_status.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1465,7 +1466,7 @@ Example:
 **Rename the workspace**
 
 Rename the workspace. Only the workspace owner can do this.
-Nothing else about the workspace changes here: plan, seats, billing and credits stay in the Superflow portal.
+Nothing else about the workspace changes here: plan, seats, billing and credits stay in the Superflow portal. To read the workspace use superflow_get_organization; for your own notification settings use superflow_update_notification_settings.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1501,7 +1502,7 @@ Example:
 **List API activity**
 
 List changes made through the Superflow API (by this server or any other API key), newest first: who changed what, and when. Filter by person, by any id (a comment, project, tag and so on), by action, or by dates.
-Use it to audit what an assistant or a teammate's script changed. Changes made in the Superflow app or toolbar are not in this log.
+Use it to audit what an assistant or a teammate's script changed. Changes made in the Superflow app or toolbar are not in this log. For the comments themselves use superflow_list_comments; for credit spend use superflow_get_credit_usage.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1576,7 +1577,8 @@ Example:
 **List review links**
 
 List the active review links: public links that let anyone open a project's site with the Superflow toolbar and comment as a guest.
-Use it to see which projects are shared this way, or to get a link id before revoking it.
+Use it to see which projects are shared this way, or to get a link id before revoking it with superflow_revoke_review_link.
+Not for the people invited to a project: use superflow_list_guests. To make a new link use superflow_create_review_link.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1631,7 +1633,7 @@ Example:
 **List API keys**
 
 List your own API keys and app sign-ins (Claude, Cursor, superflow-mcp login) in this workspace: label, scopes, last use, expiry. Tokens are never shown.
-Use it to find a key id before revoking it, or to check what has access. Other people's keys are not listed.
+Use it to find a key id before revoking it with superflow_revoke_api_key, or to check what has access. Other people's keys are not listed. For the scopes of the key in use now, use superflow_get_me.
 
 No parameters.
 
@@ -1647,7 +1649,7 @@ Example:
 
 Create an API key (sf_pat_...) for this workspace, for CI or another tool. Its scopes must be ones this key already has, and it cannot outlive this key.
 The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.
-Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key.
+Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1701,7 +1703,7 @@ Example:
 **Payment link**
 
 The link where a person picks a plan and pays, or changes seats on the plan they have. It never charges anything: the person pays in the Superflow portal.
-Use it when the user wants to upgrade, buy seats or start paying. Never ask for card details in the conversation. When the workspace already pays, the link manages that subscription instead of starting a second one.
+Use it when the user wants to upgrade, buy seats or start paying. Never ask for card details in the conversation. When the workspace already pays, the link manages that subscription instead of starting a second one. To see the plan and whether it is active, use superflow_get_billing.
 
 No parameters.
 

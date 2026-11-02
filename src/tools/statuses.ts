@@ -141,6 +141,7 @@ export const deleteStatus = defineTool({
     "Delete a custom status. Its comments move to move_comments_to, which is required: another status those comments can have. The default and the resolved status cannot be deleted. Give project to delete a status that was added to that project.",
     VELT_WINDOW_NOTE,
     "Without confirm: true nothing is deleted: you get the status, where its comments go and how many there are. Call again with confirm: true only after the user says yes.",
+    "To rename a status or change its color instead, use superflow_update_status.",
     'Example: {"status": "In review", "move_comments_to": "Open", "project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {

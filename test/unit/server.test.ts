@@ -196,6 +196,16 @@ describe("tool registration", () => {
     }
   });
 
+  it("names at least one sibling tool in every description, so the model knows what to use instead", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    for (const tool of listed) {
+      const others = (tool.description ?? "").match(/superflow_[a-z_]+/g)?.filter((name) => name !== tool.name) ?? [];
+      expect(others.length, `${tool.name} names no other tool`).toBeGreaterThan(0);
+      for (const name of others) expect(Object.keys(CONTRACT), `${tool.name} names ${name}`).toContain(name);
+    }
+  });
+
   it("explains the write limits: three priorities, and no unassigning yet", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
@@ -365,6 +375,20 @@ describe("tool registration", () => {
     const result = await h.call("superflow_use_playbook", { name: "fix" });
     expect(result.isError).toBeFalsy();
     expect(events).toEqual([expect.objectContaining({ tool: "superflow_use_playbook", ok: true })]);
+  });
+
+  it("names only registered tools in the instructions: no write tool in read-only mode", async () => {
+    for (const surface of ["stdio", "hosted"] as const) {
+      for (const readOnly of [false, true]) {
+        const h = await connect({ readOnly, surface });
+        const instructions = h.client.getInstructions() ?? "";
+        const registered = (await h.client.listTools()).tools.map((t) => t.name);
+        for (const name of instructions.match(/superflow_[a-z_]+/g) ?? []) {
+          expect(registered, `${surface}${readOnly ? " read-only" : ""} instructions name ${name}`).toContain(name);
+        }
+        if (readOnly) for (const name of WRITE_TOOL_NAMES) expect(instructions, name).not.toContain(name);
+      }
+    }
   });
 
   it("says so in the instructions when read-only", async () => {

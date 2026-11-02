@@ -17,7 +17,8 @@ export const listReviewLinks = defineTool({
   title: "List review links",
   description: [
     "List the active review links: public links that let anyone open a project's site with the Superflow toolbar and comment as a guest.",
-    "Use it to see which projects are shared this way, or to get a link id before revoking it.",
+    "Use it to see which projects are shared this way, or to get a link id before revoking it with superflow_revoke_review_link.",
+    "Not for the people invited to a project: use superflow_list_guests. To make a new link use superflow_create_review_link.",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {

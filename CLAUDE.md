@@ -37,9 +37,9 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
 ## Tool descriptions are for a language model
 
 Each description says what the tool is for, when to use it, when not to (and which
-sibling tool to use instead), and ends with one `Example:` line of JSON that must
-parse and match the input schema (`test/unit/server.test.ts` checks this). Short
-sentences, no jargon.
+sibling tool to use instead, by name: `test/unit/server.test.ts` checks every description
+names one), and ends with one `Example:` line of JSON that must parse and match the input
+schema (`test/unit/server.test.ts` checks this). Short sentences, no jargon.
 
 ## How to add a tool
 
@@ -104,6 +104,8 @@ playbook line in the server instructions.
   "nothing changed"; a real change still needs confirm.
 - Description Examples never carry `confirm: true` or `dry_run: false`: a model copies the
   Example, and the first call must be the preview (`test/unit/server.test.ts` checks).
+- Server instructions name only tools that are registered, so read-only mode never names a
+  write tool (`instructions` in `src/server.ts`).
 - Run polling: `superflow_get_run` asks for at most one call every 20 seconds
   (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
 - `superflow_estimate_run` and `superflow_connect_integration` are POSTs that only read,

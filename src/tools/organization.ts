@@ -54,7 +54,7 @@ export const updateOrganization = defineTool({
   title: "Rename the workspace",
   description: [
     "Rename the workspace. Only the workspace owner can do this.",
-    "Nothing else about the workspace changes here: plan, seats, billing and credits stay in the Superflow portal.",
+    "Nothing else about the workspace changes here: plan, seats, billing and credits stay in the Superflow portal. To read the workspace use superflow_get_organization; for your own notification settings use superflow_update_notification_settings.",
     'Example: {"name": "Wonderist Studio"}',
   ].join("\n"),
   inputSchema: {
@@ -110,7 +110,7 @@ export const listActivity = defineTool({
   title: "List API activity",
   description: [
     "List changes made through the Superflow API (by this server or any other API key), newest first: who changed what, and when. Filter by person, by any id (a comment, project, tag and so on), by action, or by dates.",
-    "Use it to audit what an assistant or a teammate's script changed. Changes made in the Superflow app or toolbar are not in this log.",
+    "Use it to audit what an assistant or a teammate's script changed. Changes made in the Superflow app or toolbar are not in this log. For the comments themselves use superflow_list_comments; for credit spend use superflow_get_credit_usage.",
     'Example: {"actor": "me", "since": "7d"}',
   ].join("\n"),
   inputSchema: {

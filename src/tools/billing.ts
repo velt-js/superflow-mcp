@@ -45,7 +45,7 @@ export const getPaymentLink = defineTool({
   title: "Payment link",
   description: [
     "The link where a person picks a plan and pays, or changes seats on the plan they have. It never charges anything: the person pays in the Superflow portal.",
-    "Use it when the user wants to upgrade, buy seats or start paying. Never ask for card details in the conversation. When the workspace already pays, the link manages that subscription instead of starting a second one.",
+    "Use it when the user wants to upgrade, buy seats or start paying. Never ask for card details in the conversation. When the workspace already pays, the link manages that subscription instead of starting a second one. To see the plan and whether it is active, use superflow_get_billing.",
     "Example: {}",
   ].join("\n"),
   inputSchema: {},

@@ -18,7 +18,7 @@ export const listApiKeys = defineTool({
   title: "List API keys",
   description: [
     "List your own API keys and app sign-ins (Claude, Cursor, superflow-mcp login) in this workspace: label, scopes, last use, expiry. Tokens are never shown.",
-    "Use it to find a key id before revoking it, or to check what has access. Other people's keys are not listed.",
+    "Use it to find a key id before revoking it with superflow_revoke_api_key, or to check what has access. Other people's keys are not listed. For the scopes of the key in use now, use superflow_get_me.",
     "Example: {}",
   ].join("\n"),
   inputSchema: {},
@@ -38,7 +38,7 @@ export const createApiKey = defineTool({
   description: [
     "Create an API key (sf_pat_...) for this workspace, for CI or another tool. Its scopes must be ones this key already has, and it cannot outlive this key.",
     "The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.",
-    "Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key.",
+    "Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.",
     'Example: {"label": "GitHub Actions", "scopes": ["comments:read", "projects:read"], "expires_in_days": 90}',
   ].join("\n"),
   inputSchema: {
