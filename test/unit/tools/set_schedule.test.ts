@@ -26,7 +26,14 @@ describe(TOOL, () => {
     );
   });
 
-  it("still previews, without a price, when the estimate cannot be read", async () => {
+  it("reports an upstream failure of the estimate as an error, and creates nothing", async () => {
+    on("post", "/runs/estimate", () => new Response("<html>down</html>", { status: 500 }));
+    const h = await connect();
+    expect(errorOf(await h.call(TOOL, { project: "Acme Dental", cron: "0 9 * * 1" })).code).toBe("upstream");
+    expect(recorded.map((r) => r.operationId)).not.toContain("createSchedule");
+  });
+
+  it("still previews, without a price, when the key may not read estimates", async () => {
     on("post", "/runs/estimate", fail(403, { code: "forbidden", message: "This key does not have the agents:read scope, which this request needs." }));
     const h = await connect();
     const result = await h.call(TOOL, { project: "Acme Dental", cron: "0 9 * * 1" });

@@ -64,16 +64,17 @@ function scheduleNotFound(ref: string) {
 }
 
 /**
- * The price of one run of a schedule, as one sentence. Never fails the preview: a price that
- * cannot be read (no agents:read scope, a pricing outage) says so instead.
+ * The price of one run of a schedule, as one sentence. A key that may not read estimates (no
+ * agents:read scope) still gets the preview, without the price; any other failure is the
+ * tool's error.
  */
 async function pricePerRun(api: ApiClient, target: { project: string; scope?: string | undefined; pages?: string[] | undefined; agents?: string[] | undefined; pack?: string | undefined }): Promise<{ line: string; estimate: RunEstimate | null }> {
   try {
     const estimate = await api.call<RunEstimate>("estimateRun", { body: compact({ ...target, pages: target.pages?.length ? target.pages : undefined }) });
     return { line: `One run now: ${estimateLine(estimate)}`, estimate };
   } catch (error) {
-    const why = error instanceof SuperflowApiError ? error.message : "the estimate failed";
-    return { line: `One run could not be priced (${why}); price it with superflow_estimate_run.`, estimate: null };
+    if (!(error instanceof SuperflowApiError) || error.code !== "forbidden") throw error;
+    return { line: `One run could not be priced (${error.message}); price it with superflow_estimate_run.`, estimate: null };
   }
 }
 
