@@ -81,7 +81,7 @@ export const removeMember = defineTool({
   description: [
     "Remove a member from the workspace: they lose access to every project, and their unused invite links stop working. Only the workspace owner can do this, and neither the owner nor you can be removed.",
     "Open comments assigned to them stay assigned unless you pass reassign_to (another member); up to 200 are moved.",
-    "Without confirm: true nothing is removed: you get the member and how many open comments are assigned to them as a preview. Call again with confirm: true only after the user says yes.",
+    "Without confirm: true nothing is removed: the request goes to the API without confirm, and the API answers with a preview instead of removing. The preview names the member and, when the API could count them, their open assigned comments (a lower bound when the count stopped early). Call again with confirm: true only after the user says yes.",
     "To take a guest off one project use superflow_remove_guest.",
     'Example: {"member": "jen@agency.com", "reassign_to": "rakesh@agency.com"}',
   ].join("\n"),

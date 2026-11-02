@@ -83,16 +83,27 @@ playbook line in the server instructions.
   is `superflow_remove_member`, which asks the API without confirm and shows its 409
   preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
-- Five tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
+  `superflow_reject_comment` is destructive (a rejection cannot be undone): without confirm
+  it reads the comment and returns it with the reason as the preview.
+- Seven tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
   (it spends AI credits; without confirm it calls the estimate and returns it as the
   preview), `superflow_mark_check_fixed` (it resolves every open finding of a check and
   spends 1 credit on the verify rescan; without confirm it reads the check and returns it as
   the preview), `superflow_post_to_slack` (people see the post), `superflow_set_site_mode`
-  with `mode: care` on a site not in care (it runs agents on a schedule and spends credits;
-  without confirm it reads the site's monitoring and returns it as the preview) and
-  `superflow_set_form_testing` turning a test on (each test lands in the client's inbox as a
-  lead; confirm also sends `accept_test_leads: true`). A credits refusal is explained with
-  Settings > Billing and never retried.
+  with `mode: care` (it runs agents on a schedule and spends credits; without confirm it
+  reads the site's monitoring and returns it as the preview), `superflow_set_form_testing`
+  turning a test on (each test lands in the client's inbox as a lead; confirm also sends
+  `accept_test_leads: true`), `superflow_create_api_key` (the token lands in the
+  conversation) and `superflow_set_schedule` creating a schedule or changing what or when
+  it runs (every run spends credits; without confirm it prices one run with the estimate and
+  returns it as the preview; pausing and moving the time zone need no confirm). A credits
+  refusal is explained with Settings > Billing and never retried.
+- A gate never adds `confirm` (or `accept_test_leads`) to an API call on the user's behalf.
+  When the call would change nothing (care on a site already in care with the same cadence
+  and time zone, a form test already on the same way), the tool sends no write and says
+  "nothing changed"; a real change still needs confirm.
+- Description Examples never carry `confirm: true` or `dry_run: false`: a model copies the
+  Example, and the first call must be the preview (`test/unit/server.test.ts` checks).
 - Run polling: `superflow_get_run` asks for at most one call every 20 seconds
   (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
 - `superflow_estimate_run` and `superflow_connect_integration` are POSTs that only read,

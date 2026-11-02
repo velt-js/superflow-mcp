@@ -38,7 +38,7 @@ Every id parameter also takes a name, URL, email or number: the API resolves it.
 | [`superflow_exclude_check`](#superflow_exclude_check) | Exclude a check for a site | no | yes | yes | no |
 | [`superflow_include_check`](#superflow_include_check) | Include an excluded check | no | no | yes | no |
 | [`superflow_assign_check_owner`](#superflow_assign_check_owner) | Assign a check's owner | no | no | yes | no |
-| [`superflow_reject_comment`](#superflow_reject_comment) | Reject an agent finding | no | no | yes | no |
+| [`superflow_reject_comment`](#superflow_reject_comment) | Reject an agent finding | no | yes | yes | no |
 | [`superflow_get_check_settings`](#superflow_get_check_settings) | Get a site's check settings | yes | no | yes | no |
 | [`superflow_set_default_owners`](#superflow_set_default_owners) | Set a site's default owners | no | no | yes | no |
 | [`superflow_get_site_monitoring`](#superflow_get_site_monitoring) | Get a site's monitoring mode | yes | no | yes | no |
@@ -756,7 +756,7 @@ Then wait a minute and check with superflow_get_check_details (verified_at, or t
 Example:
 
 ```json
-{"project":"dental-smiles.com","rule_key":"image-alt","confirm":true}
+{"project":"dental-smiles.com","rule_key":"image-alt"}
 ```
 
 ## superflow_exclude_check
@@ -777,7 +777,7 @@ Not for one wrong finding: use superflow_reject_comment. Not for a fixed problem
 Example:
 
 ```json
-{"project":"dental-smiles.com","rule_key":"link-unlinked-phone","reason":"not_applicable","confirm":true}
+{"project":"dental-smiles.com","rule_key":"link-unlinked-phone","reason":"not_applicable"}
 ```
 
 ## superflow_include_check
@@ -822,7 +822,8 @@ Example:
 
 **Reject an agent finding**
 
-Say an agent finding is wrong or does not matter, with one of four reasons. It leaves the open list and the score, no scan reopens it, and the reason teaches the agent. It cannot be undone, so ask the user first.
+Say an agent finding is wrong or does not matter, with one of four reasons. It leaves the open list and the score, no scan reopens it, and the reason teaches the agent. It cannot be undone.
+Without confirm: true nothing is rejected: you get the finding and the reason as a preview to show the user. Call again with confirm: true only after the user says yes.
 Use it when the user disagrees with a finding. If it was fixed, use superflow_resolve_comment instead (the scan verifies it). For a whole check that does not apply use superflow_exclude_check. A person's comment cannot be rejected; resolve it or leave it.
 
 | Parameter | Type | Required | Description |
@@ -831,6 +832,7 @@ Use it when the user disagrees with a finding. If it was fixed, use superflow_re
 | `project` | string | no | Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set. |
 | `reason` | `wrong`, `not_important`, `not_applicable`, `cannot_tell` | yes | wrong (the agent is mistaken), not_important, not_applicable (does not apply to this site) or cannot_tell. If it was fixed, resolve it instead. |
 | `note` | string | no | The user's own words, kept with the reason. |
+| `confirm` | boolean | no | Must be true to reject the finding, which cannot be undone. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 
 Example:
 
@@ -898,7 +900,7 @@ Example:
 **Set a site's monitoring mode**
 
 Move a site between care and watch. care: Superflow runs the agents on a schedule (daily unless cadence says otherwise), and each run spends AI credits; on a site never monitored it also starts a full check now. watch: no agent runs, Version history keeps capturing.
-Turning care on: Without confirm: true nothing changes and you get the current settings to show the user. Call again with confirm: true only after the user says yes. watch, and a site already in care, need no confirm. Turning care on needs a key with the agents:run scope.
+Without confirm: true nothing changes when mode is care: a site not in care shows its current settings as a preview, a site already in care shows a new cadence or time zone as a preview, and the same settings again change nothing and say so. Call again with confirm: true only after the user says yes. watch needs no confirm. Turning care on needs a key with the agents:run scope.
 To change only the cadence of a site in care, pass mode: care with cadence. For the time zone use superflow_set_site_timezone.
 
 | Parameter | Type | Required | Description |
@@ -912,7 +914,7 @@ To change only the cadence of a site in care, pass mode: care with cadence. For 
 Example:
 
 ```json
-{"project":"dental-smiles.com","mode":"care","cadence":"weekly","confirm":true}
+{"project":"dental-smiles.com","mode":"care","cadence":"weekly"}
 ```
 
 ## superflow_set_site_timezone
@@ -955,7 +957,7 @@ Example:
 **Turn a form's test on or off**
 
 Turn the Forms agent's test of one form on or off. A test submits the form for real, so each one lands in the client's inbox as a lead.
-Turning it on: Without confirm: true nothing changes and you get the form to show the user. Call again with confirm: true only after the user says yes to the test leads. Turning it off needs no confirm.
+Without confirm: true nothing changes while enabled is true: a form not tested yet, or a new daily_test, comes back as a preview to show the user, and a form already tested that way changes nothing and says so. Call again with confirm: true only after the user says yes to the test leads. Turning it off needs no confirm.
 Find the form with superflow_list_forms.
 
 | Parameter | Type | Required | Description |
@@ -969,7 +971,7 @@ Find the form with superflow_list_forms.
 Example:
 
 ```json
-{"project":"dental-smiles.com","form":"frm_contact","enabled":true,"confirm":true}
+{"project":"dental-smiles.com","form":"frm_contact","enabled":true}
 ```
 
 ## superflow_get_project
@@ -1211,7 +1213,7 @@ Example:
 
 Remove a member from the workspace: they lose access to every project, and their unused invite links stop working. Only the workspace owner can do this, and neither the owner nor you can be removed.
 Open comments assigned to them stay assigned unless you pass reassign_to (another member); up to 200 are moved.
-Without confirm: true nothing is removed: you get the member and how many open comments are assigned to them as a preview. Call again with confirm: true only after the user says yes.
+Without confirm: true nothing is removed: the request goes to the API without confirm, and the API answers with a preview instead of removing. The preview names the member and, when the API could count them, their open assigned comments (a lower bound when the count stopped early). Call again with confirm: true only after the user says yes.
 To take a guest off one project use superflow_remove_guest.
 
 | Parameter | Type | Required | Description |
@@ -1657,7 +1659,7 @@ Without confirm: true nothing is created: you get a preview. Call again with con
 Example:
 
 ```json
-{"label":"GitHub Actions","scopes":["comments:read","projects:read"],"expires_in_days":90,"confirm":true}
+{"label":"GitHub Actions","scopes":["comments:read","projects:read"],"expires_in_days":90}
 ```
 
 ## superflow_revoke_api_key
@@ -1676,7 +1678,7 @@ Get key ids from superflow_list_api_keys.
 Example:
 
 ```json
-{"key":"key_3f2a9c","confirm":true}
+{"key":"key_3f2a9c"}
 ```
 
 ## superflow_get_billing
@@ -2074,8 +2076,8 @@ Example:
 **Create or change a schedule**
 
 Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.
-Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).
-Runs at most once an hour: more frequent crons are refused. Pause with enabled: false; delete with superflow_delete_schedule. Ask the user before creating or changing a schedule.
+Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).
+Runs at most once an hour: more frequent crons are refused. Delete with superflow_delete_schedule. For one run now use superflow_run_agents.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -2088,6 +2090,7 @@ Runs at most once an hour: more frequent crons are refused. Pause with enabled: 
 | `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
 | `pages` | any or array of string or null | no | Page URLs to review, at most 500, for scope list. On a change, null clears them. |
 | `enabled` | boolean | no | false pauses the schedule, true turns it back on. New schedules start on. |
+| `confirm` | boolean | no | Must be true to create the schedule or change what or when it runs; every run spends AI credits. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 | `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned. |
 
 Example:

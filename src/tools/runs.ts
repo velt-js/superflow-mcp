@@ -67,7 +67,7 @@ function agentNames(agents: readonly Ref[] | undefined): string {
 }
 
 /** One line on the price and the balance of an estimate. */
-function estimateLine(estimate: RunEstimate): string {
+export function estimateLine(estimate: RunEstimate): string {
   if (estimate.pricing_mode === "token" || estimate.credits === null || estimate.credits === undefined) {
     return join(
       `A run with ${agentNames(estimate.agents)} on ${estimate.page_count === null || estimate.page_count === undefined ? "the site" : plural(estimate.page_count, "page")}.`,

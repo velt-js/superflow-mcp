@@ -4,7 +4,13 @@
 import { z } from "zod";
 import type { ApiClient } from "../client/api.ts";
 import type { FormList, SiteForm, SiteMonitoring, UpdatedForm } from "../client/types.ts";
-import { CONFIRM_FORM_TEST_MESSAGE, CONFIRM_SITE_CARE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
+import {
+  CONFIRM_FORM_TEST_CHANGE_MESSAGE,
+  CONFIRM_FORM_TEST_MESSAGE,
+  CONFIRM_SITE_CARE_CHANGE_MESSAGE,
+  CONFIRM_SITE_CARE_MESSAGE,
+  isConfirmed,
+} from "../lib/confirm.ts";
 import { confirmationResult, okResult, plural } from "../lib/format.ts";
 import { findOne } from "../lib/match.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
@@ -84,9 +90,9 @@ export const setSiteMode = defineTool({
   title: "Set a site's monitoring mode",
   description: [
     "Move a site between care and watch. care: Superflow runs the agents on a schedule (daily unless cadence says otherwise), and each run spends AI credits; on a site never monitored it also starts a full check now. watch: no agent runs, Version history keeps capturing.",
-    "Turning care on: Without confirm: true nothing changes and you get the current settings to show the user. Call again with confirm: true only after the user says yes. watch, and a site already in care, need no confirm. Turning care on needs a key with the agents:run scope.",
+    "Without confirm: true nothing changes when mode is care: a site not in care shows its current settings as a preview, a site already in care shows a new cadence or time zone as a preview, and the same settings again change nothing and say so. Call again with confirm: true only after the user says yes. watch needs no confirm. Turning care on needs a key with the agents:run scope.",
     "To change only the cadence of a site in care, pass mode: care with cadence. For the time zone use superflow_set_site_timezone.",
-    'Example: {"project": "dental-smiles.com", "mode": "care", "cadence": "weekly", "confirm": true}',
+    'Example: {"project": "dental-smiles.com", "mode": "care", "cadence": "weekly"}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
@@ -107,9 +113,22 @@ export const setSiteMode = defineTool({
           { preview: current, message: CONFIRM_SITE_CARE_MESSAGE },
         );
       }
+      // Already in care. The API's care write needs confirm: true, and only the user gives it:
+      // a new cadence or time zone is a preview, the same settings are a no-op.
+      const changes = [
+        args.cadence !== undefined && args.cadence !== current.cadence && `cadence (${current.cadence ?? "none"} to ${args.cadence})`,
+        args.timezone !== undefined && args.timezone !== current.timezone && `time zone (${current.timezone ?? "none"} to ${args.timezone})`,
+      ].filter((change): change is string => typeof change === "string");
+      if (changes.length === 0) {
+        return okResult(`${monitoringLine(current)} It is already in care, so nothing changed.`, { changed: false, site: current }, { untrusted: false });
+      }
+      return confirmationResult(
+        `${monitoringLine(current)} Changing the ${changes.join(" and the ")} changes when or how often the agents run and spend AI credits. Nothing was changed. Ask the user to confirm.`,
+        { preview: current, message: CONFIRM_SITE_CARE_CHANGE_MESSAGE },
+      );
     }
-    // The API gates care server-side too (409 needs_confirmation without it): by here the user has
-    // confirmed, or the site is already in care, so the call carries confirm: true for care.
+    // The API gates care server-side too (409 needs_confirmation without it): by here mode is
+    // watch, or the user confirmed care, so only a confirmed care call carries confirm: true.
     const site = await api.call<SiteMonitoring>("updateSiteMonitoring", {
       path: { project },
       body: compact({ mode, cadence: args.cadence, timezone: args.timezone, confirm: mode === "care" ? true : undefined }),
@@ -166,9 +185,9 @@ export const setFormTesting = defineTool({
   title: "Turn a form's test on or off",
   description: [
     "Turn the Forms agent's test of one form on or off. A test submits the form for real, so each one lands in the client's inbox as a lead.",
-    "Turning it on: Without confirm: true nothing changes and you get the form to show the user. Call again with confirm: true only after the user says yes to the test leads. Turning it off needs no confirm.",
+    "Without confirm: true nothing changes while enabled is true: a form not tested yet, or a new daily_test, comes back as a preview to show the user, and a form already tested that way changes nothing and says so. Call again with confirm: true only after the user says yes to the test leads. Turning it off needs no confirm.",
     "Find the form with superflow_list_forms.",
-    'Example: {"project": "dental-smiles.com", "form": "frm_contact", "enabled": true, "confirm": true}',
+    'Example: {"project": "dental-smiles.com", "form": "frm_contact", "enabled": true}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
@@ -182,12 +201,25 @@ export const setFormTesting = defineTool({
   async run(args, { api }) {
     const { project } = args;
     const { form } = await findForm(api, project, args.form);
-    if (args.enabled && !form.test_enabled && !isConfirmed(args.confirm)) {
+    if (args.enabled && !isConfirmed(args.confirm)) {
+      if (!form.test_enabled) {
+        return confirmationResult(
+          `${formLabel(form)} is not tested. Testing it submits the form ${args.daily_test ? "every day" : "on each scan"}, and each test lands in the client's inbox as a lead. Nothing was changed. Ask the user to confirm.`,
+          { preview: form, message: CONFIRM_FORM_TEST_MESSAGE },
+        );
+      }
+      // Already tested. Turning it on sends accept_test_leads, which only the user's confirm gives:
+      // a new daily_test is a preview, the same settings are a no-op.
+      const now = form.daily_test ? "daily" : "on each scan";
+      if (args.daily_test === undefined || args.daily_test === form.daily_test) {
+        return okResult(`${formLabel(form)} is already tested ${now}, so nothing changed.`, { changed: false, form }, { untrusted: false });
+      }
       return confirmationResult(
-        `${formLabel(form)} is not tested. Testing it submits the form ${args.daily_test ? "every day" : "on each scan"}, and each test lands in the client's inbox as a lead. Nothing was changed. Ask the user to confirm.`,
-        { preview: form, message: CONFIRM_FORM_TEST_MESSAGE },
+        `${formLabel(form)} is tested ${now}. Testing it ${args.daily_test ? "daily" : "on each scan"} instead changes how often a test lead lands in the client's inbox. Nothing was changed. Ask the user to confirm.`,
+        { preview: form, message: CONFIRM_FORM_TEST_CHANGE_MESSAGE },
       );
     }
+    // By here the test is being turned off, or the user confirmed turning it on.
     const body = compact({ test_enabled: args.enabled, daily_test: args.daily_test, accept_test_leads: args.enabled ? true : undefined });
     const result = await api.call<UpdatedForm>("updateFormTest", { path: { project, form: form.id }, body });
     return okResult(

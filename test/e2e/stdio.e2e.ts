@@ -28,6 +28,8 @@ const NON_DESTRUCTIVE_GATED = [
   "superflow_post_to_slack",
   "superflow_set_site_mode",
   "superflow_set_form_testing",
+  "superflow_create_api_key",
+  "superflow_set_schedule",
 ];
 /** Destructive tools with their own preview rule: remove_member asks the API (409 preview); bulk is a dry run. */
 const OWN_PREVIEW_RULE = new Set(["superflow_remove_member", "superflow_bulk_update_comments"]);
@@ -218,7 +220,7 @@ describe("confirmation gates over stdio", () => {
   const gated = () =>
     tools.filter((t) => (t.annotations?.destructiveHint && !OWN_PREVIEW_RULE.has(t.name)) || NON_DESTRUCTIVE_GATED.includes(t.name));
 
-  it("covers every destructive tool and the five gated ones", () => {
+  it("covers every destructive tool and the seven gated ones", () => {
     const names = gated().map((t) => t.name);
     for (const name of NON_DESTRUCTIVE_GATED) expect(names, name).toContain(name);
     expect(names.length).toBeGreaterThan(NON_DESTRUCTIVE_GATED.length);

@@ -2,8 +2,9 @@
 // problem on a site (broken links, images without alt text), with every finding of that kind
 // under it. Fixing is a claim: the scan verifies it, and a problem that is still there comes back as an open finding.
 import { z } from "zod";
-import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE, isConfirmed } from "../lib/confirm.ts";
-import { confirmationResult, okResult, plural } from "../lib/format.ts";
+import type { CommentFull } from "../client/types.ts";
+import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE, CONFIRM_REJECT_COMMENT_MESSAGE, isConfirmed } from "../lib/confirm.ts";
+import { commentLabel, confirmationResult, invalidInput, okResult, plural, toCompactComment } from "../lib/format.ts";
 import { normalizeCommentRef, projectForComment } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join } from "./helpers.ts";
@@ -237,7 +238,7 @@ export const markCheckFixed = defineTool({
     "Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.",
     "Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).",
     `Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every ${POLL_SECONDS} seconds. For one finding use superflow_resolve_comment, which verifies the same way.`,
-    'Example: {"project": "dental-smiles.com", "rule_key": "image-alt", "confirm": true}',
+    'Example: {"project": "dental-smiles.com", "rule_key": "image-alt"}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
@@ -277,7 +278,7 @@ export const excludeCheck = defineTool({
     "Turn off one check for a site because it does not apply (\"this site has no phone number\"): its open findings are rejected with the reason and new ones are kept out. superflow_include_check undoes it and brings exactly those findings back.",
     "Without confirm: true nothing changes: you get the check and its open count to show the user. Call again with confirm: true only after the user says yes.",
     "Not for one wrong finding: use superflow_reject_comment. Not for a fixed problem: use superflow_mark_check_fixed.",
-    'Example: {"project": "dental-smiles.com", "rule_key": "link-unlinked-phone", "reason": "not_applicable", "confirm": true}',
+    'Example: {"project": "dental-smiles.com", "rule_key": "link-unlinked-phone", "reason": "not_applicable"}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
@@ -345,7 +346,8 @@ export const rejectComment = defineTool({
   name: "superflow_reject_comment",
   title: "Reject an agent finding",
   description: [
-    "Say an agent finding is wrong or does not matter, with one of four reasons. It leaves the open list and the score, no scan reopens it, and the reason teaches the agent. It cannot be undone, so ask the user first.",
+    "Say an agent finding is wrong or does not matter, with one of four reasons. It leaves the open list and the score, no scan reopens it, and the reason teaches the agent. It cannot be undone.",
+    "Without confirm: true nothing is rejected: you get the finding and the reason as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "Use it when the user disagrees with a finding. If it was fixed, use superflow_resolve_comment instead (the scan verifies it). For a whole check that does not apply use superflow_exclude_check. A person's comment cannot be rejected; resolve it or leave it.",
     'Example: {"comment": "cmt_abc123", "reason": "wrong", "note": "The image is decorative."}',
   ].join("\n"),
@@ -354,15 +356,33 @@ export const rejectComment = defineTool({
     project: projectForNumberSchema,
     reason: reasonSchema,
     note: z.string().min(1).max(2000).optional().describe("The user's own words, kept with the reason."),
+    confirm: confirmSchema("reject the finding, which cannot be undone"),
   },
-  annotations: hints(false, false, true, false),
+  annotations: hints(false, true, true, false),
   write: true,
   async run(args, { api, config }) {
+    const project = projectForComment(args.comment, args.project, config.defaultProject);
+    const ref = normalizeCommentRef(args.comment);
+    if (!isConfirmed(args.confirm)) {
+      // Preview: one read. Nothing that could reject is sent without confirm.
+      const comment = await api.call<CommentFull>("getComment", { path: { comment: ref }, query: { project, include_replies: false } });
+      if (!comment.agent && comment.author?.type && comment.author.type !== "agent") {
+        return invalidInput(
+          `Comment ${commentLabel(comment)} was written by a person, and only an agent finding can be rejected.`,
+          "Resolve it with superflow_resolve_comment, or leave it open.",
+        );
+      }
+      const preview = toCompactComment(comment);
+      return confirmationResult(
+        `Finding ${commentLabel(comment)} in ${preview.project} would be rejected as ${args.reason}. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${comment.url}`,
+        { preview: { comment: preview, reason: args.reason, note: args.note ?? null }, message: CONFIRM_REJECT_COMMENT_MESSAGE },
+      );
+    }
     const result = await api.call<{ comment: { id: string; number?: number | null } }>("rejectComment", {
-      path: { comment: normalizeCommentRef(args.comment) },
-      body: compact({ project: projectForComment(args.comment, args.project, config.defaultProject), reason: args.reason, note: args.note }),
+      path: { comment: ref },
+      body: compact({ project, reason: args.reason, note: args.note }),
     });
-    const label = result.comment?.number ? `#${result.comment.number}` : result.comment?.id ?? args.comment;
+    const label = result.comment ? commentLabel(result.comment) : args.comment;
     return okResult(`Rejected ${label} as ${args.reason}.`, asData(result));
   },
 });

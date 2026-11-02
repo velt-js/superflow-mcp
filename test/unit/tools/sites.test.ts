@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CONFIRM_FORM_TEST_MESSAGE, CONFIRM_SITE_CARE_MESSAGE } from "../../../src/lib/confirm.ts";
+import {
+  CONFIRM_FORM_TEST_CHANGE_MESSAGE,
+  CONFIRM_FORM_TEST_MESSAGE,
+  CONFIRM_SITE_CARE_CHANGE_MESSAGE,
+  CONFIRM_SITE_CARE_MESSAGE,
+} from "../../../src/lib/confirm.ts";
 import { connect, data, errorOf, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
 
 useMsw();
@@ -61,12 +66,29 @@ describe("superflow_set_site_mode", () => {
     expect(summaryOf(result)).toContain("First full check started (version 1).");
   });
 
-  it("a site already in care changes its cadence without a confirm", async () => {
+  it("a site already in care: the same settings change nothing, say so, and send no write", async () => {
+    on("get", "/projects/:project/monitoring", ok(CARE));
+    on("patch", "/projects/:project/monitoring", ok(CARE));
+    const h = await connect();
+    for (const args of [{}, { cadence: "weekly" }, { timezone: "America/Chicago" }]) {
+      const result = await h.call(TOOL, { project: "Acme Dental", mode: "care", ...args });
+      expect(result.isError).toBeFalsy();
+      expect(summaryOf(result)).toContain("It is already in care, so nothing changed.");
+      expect(data(result)).toEqual({ changed: false, site: CARE });
+    }
+    expect(writes()).toEqual([]);
+  });
+
+  it("a site already in care: a new cadence without confirm is a preview, never a write with an added confirm", async () => {
     on("get", "/projects/:project/monitoring", ok(CARE));
     on("patch", "/projects/:project/monitoring", ok({ ...CARE, cadence: "daily" }));
     const h = await connect();
-    await h.call(TOOL, { project: "Acme Dental", mode: "care", cadence: "daily" });
-    expect(recorded.map((r) => [r.method, r.operationId])).toEqual([["GET", "getSiteMonitoring"], ["PATCH", "updateSiteMonitoring"]]);
+    const result = await h.call(TOOL, { project: "Acme Dental", mode: "care", cadence: "daily" });
+    expect(data(result)).toEqual({ needs_confirmation: true, preview: CARE, message: CONFIRM_SITE_CARE_CHANGE_MESSAGE });
+    expect(summaryOf(result)).toContain("Changing the cadence (weekly to daily) changes when or how often the agents run");
+    expect(writes()).toEqual([]);
+    await h.call(TOOL, { project: "Acme Dental", mode: "care", cadence: "daily", confirm: true });
+    expect(recorded.filter((r) => r.method === "PATCH").map((r) => r.body)).toEqual([{ mode: "care", cadence: "daily", confirm: true }]);
   });
 
   it("watch needs no confirm", async () => {
@@ -134,6 +156,30 @@ describe("superflow_set_form_testing", () => {
     expect(write?.path).toBe("/projects/Acme%20Dental/forms/f1");
     expect(write?.body).toEqual({ test_enabled: true, daily_test: true, accept_test_leads: true });
     expect(summaryOf(result)).toBe("Testing #contact on https://acme.test/contact daily.");
+  });
+
+  it("a form already tested the same way: no write without confirm, and the result says nothing changed", async () => {
+    on("get", "/projects/:project/forms", ok({ ...FORMS, data: [{ ...FORM, test_enabled: true }] }));
+    on("patch", "/projects/:project/forms/:form", ok({ project: PROJECT, form: { ...FORM, test_enabled: true } }));
+    const h = await connect();
+    for (const args of [{}, { daily_test: false }]) {
+      const result = await h.call(TOOL, { project: "Acme Dental", form: "f1", enabled: true, ...args });
+      expect(result.isError).toBeFalsy();
+      expect(summaryOf(result)).toBe("#contact on https://acme.test/contact is already tested on each scan, so nothing changed.");
+      expect(data(result)).toMatchObject({ changed: false, form: { id: "f1", test_enabled: true } });
+    }
+    expect(writes()).toEqual([]);
+  });
+
+  it("a form already tested: a new daily_test without confirm is a preview, and accept_test_leads only goes with confirm", async () => {
+    on("get", "/projects/:project/forms", ok({ ...FORMS, data: [{ ...FORM, test_enabled: true }] }));
+    on("patch", "/projects/:project/forms/:form", ok({ project: PROJECT, form: { ...FORM, test_enabled: true, daily_test: true } }));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental", form: "f1", enabled: true, daily_test: true });
+    expect(data(result)).toMatchObject({ needs_confirmation: true, message: CONFIRM_FORM_TEST_CHANGE_MESSAGE });
+    expect(writes()).toEqual([]);
+    await h.call(TOOL, { project: "Acme Dental", form: "f1", enabled: true, daily_test: true, confirm: true });
+    expect(recorded.find((r) => r.method === "PATCH")?.body).toEqual({ test_enabled: true, daily_test: true, accept_test_leads: true });
   });
 
   it("turning a test off needs no confirm and accepts nothing", async () => {

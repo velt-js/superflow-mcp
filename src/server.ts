@@ -47,7 +47,7 @@ function instructions(readOnly: boolean, surface: "stdio" | "hosted" = "stdio"):
       ? surface === "hosted"
         ? "This connection is read-only: write tools are not available. To make changes, the user reconnects Superflow and allows the write permissions."
         : "This server is read-only: write tools are not available."
-      : "Ask the user before any write. Invites send real email. Bulk updates are dry runs until called with dry_run false and confirm true. Deletes, removals, merges and revokes need confirm true: without it they only return a preview. Agent runs spend AI credits: show the estimate and get a yes before calling superflow_run_agents with confirm true. Marking a check fixed and excluding a check need confirm true too. Pushed issues and Slack posts land in the customer's own tools, where their team sees them: ask first.",
+      : "Ask the user before any write. Invites send real email. Bulk updates are dry runs until called with dry_run false and confirm true. Deletes, removals, merges and revokes need confirm true: without it they only return a preview. Agent runs spend AI credits: show the estimate and get a yes before calling superflow_run_agents with confirm true. Marking a check fixed, excluding a check, rejecting an agent finding, and creating or changing a schedule need confirm true too. Pushed issues and Slack posts land in the customer's own tools, where their team sees them: ask first.",
   );
   return lines.join("\n");
 }

@@ -39,7 +39,7 @@ export const createApiKey = defineTool({
     "Create an API key (sf_pat_...) for this workspace, for CI or another tool. Its scopes must be ones this key already has, and it cannot outlive this key.",
     "The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.",
     "Without confirm: true nothing is created: you get a preview. Call again with confirm: true only after the user says yes. Do not retry a create that succeeded: each call makes another key.",
-    'Example: {"label": "GitHub Actions", "scopes": ["comments:read", "projects:read"], "expires_in_days": 90, "confirm": true}',
+    'Example: {"label": "GitHub Actions", "scopes": ["comments:read", "projects:read"], "expires_in_days": 90}',
   ].join("\n"),
   inputSchema: {
     label: z.string().trim().min(1).max(100).describe("A name for the key, for example where it will be used."),
@@ -83,7 +83,7 @@ export const revokeApiKey = defineTool({
     "Revoke one of your API keys or app sign-ins. Anything using it stops working at once. Revoking the key this session uses ends the session.",
     "Without confirm: true nothing is revoked: you get the key as a preview. Call again with confirm: true only after the user says yes.",
     "Get key ids from superflow_list_api_keys.",
-    'Example: {"key": "key_3f2a9c", "confirm": true}',
+    'Example: {"key": "key_3f2a9c"}',
   ].join("\n"),
   inputSchema: {
     key: z.string().min(1).describe("Key id (key_...), from superflow_list_api_keys."),

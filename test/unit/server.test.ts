@@ -106,7 +106,7 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_exclude_check: [false, true, true, false],
   superflow_include_check: [false, false, true, false],
   superflow_assign_check_owner: [false, false, true, false],
-  superflow_reject_comment: [false, false, true, false],
+  superflow_reject_comment: [false, true, true, false],
   superflow_get_check_settings: [true, false, true, false],
   superflow_set_default_owners: [false, false, true, false],
   // Site settings and invoices.
@@ -119,18 +119,24 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
 };
 
 // Destructive tools gate on confirm (CONTRACT-P2 section 10, and CONTRACT section 8 for the
-// two comment deletes). Bulk gates on dry_run plus confirm. Two Phase 3 tools that are not
-// destructive gate on confirm too: a run spends credits, and a Slack post is seen by people.
-// So do care (agents on a schedule spend credits) and a form test (each lands as a lead).
-const CONFIRM_GATED = [
-  ...Object.entries(CONTRACT)
-    .filter(([name, [, destructive]]) => destructive && name !== "superflow_bulk_update_comments")
-    .map(([name]) => name),
+// two comment deletes). Bulk gates on dry_run plus confirm. Seven tools that are not
+// destructive gate on confirm too (CLAUDE.md, "Gates"): a run, a check marked fixed, care and
+// a schedule spend credits, a Slack post is seen by people, a form test lands as a lead, and a
+// new API key puts a credential into the conversation.
+const NON_DESTRUCTIVE_GATED = [
   "superflow_run_agents",
   "superflow_post_to_slack",
   "superflow_mark_check_fixed",
   "superflow_set_site_mode",
   "superflow_set_form_testing",
+  "superflow_create_api_key",
+  "superflow_set_schedule",
+];
+const CONFIRM_GATED = [
+  ...Object.entries(CONTRACT)
+    .filter(([name, [, destructive]]) => destructive && name !== "superflow_bulk_update_comments")
+    .map(([name]) => name),
+  ...NON_DESTRUCTIVE_GATED,
 ];
 const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly).length;
 
@@ -180,6 +186,16 @@ describe("tool registration", () => {
     }
   });
 
+  it("never puts confirm: true or dry_run: false in an Example, so a copied Example only previews", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    for (const tool of listed) {
+      const example = JSON.parse(/Example: (.+)$/m.exec(tool.description ?? "")?.[1] ?? "{}") as Record<string, unknown>;
+      expect(example.confirm, `${tool.name} example confirms`).not.toBe(true);
+      expect(example.dry_run, `${tool.name} example turns off the dry run`).not.toBe(false);
+    }
+  });
+
   it("explains the write limits: three priorities, and no unassigning yet", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
@@ -217,11 +233,11 @@ describe("tool registration", () => {
   });
 
   it("gives every destructive tool a confirm flag that defaults to false", async () => {
-    expect(CONFIRM_GATED).toHaveLength(19);
+    expect(NON_DESTRUCTIVE_GATED).toHaveLength(7);
+    expect(CONFIRM_GATED).toHaveLength(22);
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    // Not destructive, but it puts a credential into the conversation, so it gates too.
-    for (const name of [...CONFIRM_GATED, "superflow_create_api_key"]) {
+    for (const name of CONFIRM_GATED) {
       const confirm = (listed.find((t) => t.name === name)?.inputSchema.properties ?? {}) as Record<string, { type?: string; default?: unknown }>;
       expect(confirm.confirm, name).toMatchObject({ type: "boolean", default: false });
       expect(listed.find((t) => t.name === name)?.description, name).toContain("Without confirm: true nothing");

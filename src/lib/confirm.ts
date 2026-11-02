@@ -71,6 +71,9 @@ export const CONFIRM_DELETE_AGENT_MESSAGE =
 export const CONFIRM_RUN_AGENTS_MESSAGE =
   "Nothing was started. Show the user the estimate: the credits (credits_display), the pages, the agents and the balance. Ask whether to start the run. If the user says yes, call superflow_run_agents again with the same project, scope, pages and agents or pack, and confirm: true. Then check it with superflow_get_run no more often than every 20 seconds.";
 
+export const CONFIRM_SET_SCHEDULE_MESSAGE =
+  "Nothing was created or changed. Show the user when the schedule would run, which agents, and what one run costs (the estimate), and say that every run spends AI credits. Ask whether to go ahead. If the user says yes, call superflow_set_schedule again with the same arguments and confirm: true.";
+
 export const CONFIRM_DELETE_SCHEDULE_MESSAGE =
   "Nothing was deleted. Show the user the schedule (project, when it runs, which agents) and ask whether to delete it. No more runs start from it after that. To pause it instead, use superflow_set_schedule with enabled: false. If the user says yes, call superflow_delete_schedule again with confirm: true.";
 
@@ -83,6 +86,9 @@ export const ADD_CREDITS_HINT =
 
 // Checks (spec addendum "Checks tools").
 
+export const CONFIRM_REJECT_COMMENT_MESSAGE =
+  "Nothing was rejected. Show the user the finding and the reason, and ask whether to reject it. Rejecting cannot be undone: the finding leaves the open list and the score, and no scan reopens it. If it was fixed, use superflow_resolve_comment instead. If the user says yes, call superflow_reject_comment again with the same reason and confirm: true.";
+
 export const CONFIRM_MARK_CHECK_FIXED_MESSAGE =
   "Nothing was resolved. Show the user the check and how many open findings it has, and ask whether to mark it fixed. Every open finding of it is resolved and its pages are rescanned (1 credit); a problem that is still there comes back as an open finding. If the user says yes, call superflow_mark_check_fixed again with confirm: true.";
 
@@ -91,6 +97,12 @@ export const CONFIRM_EXCLUDE_CHECK_MESSAGE =
 
 export const CONFIRM_SITE_CARE_MESSAGE =
   "Nothing was changed. Show the user what care means for this site: Superflow runs the agents on a schedule and each run spends AI credits; on a site that was never monitored it also starts a full check now. Ask whether to turn it on. If the user says yes, call superflow_set_site_mode again with confirm: true.";
+
+export const CONFIRM_SITE_CARE_CHANGE_MESSAGE =
+  "Nothing was changed. The site is already in care. Show the user the new cadence or time zone: it changes when, or how often, the agents run and spend AI credits. Ask whether to change it. If the user says yes, call superflow_set_site_mode again with confirm: true.";
+
+export const CONFIRM_FORM_TEST_CHANGE_MESSAGE =
+  "Nothing was changed. The form is already tested. Show the user the new schedule (daily, or on each scan): every test lands in the client's inbox as a lead. Ask whether to change it. If the user says yes, call superflow_set_form_testing again with confirm: true.";
 
 export const CONFIRM_FORM_TEST_MESSAGE =
   "Nothing was changed. Show the user the form and explain that each test submits it for real, so every test lands in the client's inbox as a lead. Ask whether to turn testing on and accept those test leads. If the user says yes, call superflow_set_form_testing again with confirm: true.";

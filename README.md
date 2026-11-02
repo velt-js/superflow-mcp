@@ -203,7 +203,7 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 | `superflow_exclude_check` | Turns a check off for a site, with a reason. Needs `confirm: true`. |
 | `superflow_include_check` | Turns an excluded check back on. |
 | `superflow_assign_check_owner` | Sets who owns a check, or back to the default owner. |
-| `superflow_reject_comment` | Rejects an agent finding as wrong, not important, a duplicate or out of scope. |
+| `superflow_reject_comment` | Rejects an agent finding as wrong, not important, not applicable or cannot tell. It cannot be undone, so it needs `confirm: true`; without it the tool shows the finding. |
 | `superflow_get_check_settings` | The confidence floor and the default owners for content, design and dev checks. |
 | `superflow_set_default_owners` | Sets the default owners for content, design and dev checks. |
 
@@ -301,7 +301,7 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_get_run` | A run's live status per agent. |
 | `superflow_list_runs` | Past runs, newest first. |
 | `superflow_list_findings` | What a run found, with severity and confidence. |
-| `superflow_set_schedule` | Create or change a scheduled run (cron, at most hourly; each run spends credits). |
+| `superflow_set_schedule` | Create or change a scheduled run (cron, at most hourly; each run spends credits). Needs `confirm: true`, except to pause or move the time zone; without it the tool shows the price of one run. |
 | `superflow_list_schedules` | Scheduled runs, the next run and how the last one went. |
 | `superflow_delete_schedule` | Delete a schedule (needs confirm). |
 
@@ -398,7 +398,8 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - A review link makes a project visible to anyone who has the link.
 - Agent runs spend AI credits. The assistant prices the run with `superflow_estimate_run`, shows you the credits and asks; `superflow_run_agents` starts nothing without `confirm: true`. When the balance is too low it tells you how to add credits and does not retry.
 - Pushing a comment creates a real issue or task in your Jira, Asana, ClickUp or Monday, and a Slack post is seen by everyone in the channel. The assistant asks first, and a Slack post needs `confirm: true`.
-- Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, and excluding a check hides it for the whole site. Both need `confirm: true`; without it the tool only reads and shows what would happen.
+- Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, excluding a check hides it for the whole site, and rejecting an agent finding cannot be undone. All three need `confirm: true`; without it the tool only reads and shows what would happen.
+- A schedule runs agents, and spends credits, on every run. Creating one, or changing what or when it runs, needs `confirm: true`; without it the tool prices one run and shows it. Pausing needs no confirm.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
 - The key is only ever sent as the bearer token to the Superflow API, and it is never logged. See [SECURITY.md](SECURITY.md).

@@ -2,11 +2,13 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
-import type { DeleteScheduleResponse, ListEnvelope, Schedule } from "../client/types.ts";
-import { CONFIRM_DELETE_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
+import type { ApiClient } from "../client/api.ts";
+import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Schedule } from "../client/types.ts";
+import { CONFIRM_DELETE_SCHEDULE_MESSAGE, CONFIRM_SET_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join, nameList } from "./helpers.ts";
+import { estimateLine } from "./runs.ts";
 import {
   agentListSchema,
   confirmSchema,
@@ -43,13 +45,45 @@ export function scheduleLine(schedule: Schedule): string {
   );
 }
 
+/** Finds a schedule by id (sch_ prefix optional) in the list, or null. */
+async function findSchedule(api: ApiClient, ref: string): Promise<Schedule | null> {
+  const list = await api.call<ListEnvelope<Schedule>>("listSchedules");
+  const raw = ref.replace(/^sch_/, "");
+  return (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw) ?? null;
+}
+
+function scheduleNotFound(ref: string) {
+  return errorResult(
+    new SuperflowApiError({
+      status: 404,
+      code: "not_found",
+      message: `No schedule ${ref}.`,
+      hint: "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
+    }),
+  );
+}
+
+/**
+ * The price of one run of a schedule, as one sentence. Never fails the preview: a price that
+ * cannot be read (no agents:read scope, a pricing outage) says so instead.
+ */
+async function pricePerRun(api: ApiClient, target: { project: string; scope?: string | undefined; pages?: string[] | undefined; agents?: string[] | undefined; pack?: string | undefined }): Promise<{ line: string; estimate: RunEstimate | null }> {
+  try {
+    const estimate = await api.call<RunEstimate>("estimateRun", { body: compact({ ...target, pages: target.pages?.length ? target.pages : undefined }) });
+    return { line: `One run now: ${estimateLine(estimate)}`, estimate };
+  } catch (error) {
+    const why = error instanceof SuperflowApiError ? error.message : "the estimate failed";
+    return { line: `One run could not be priced (${why}); price it with superflow_estimate_run.`, estimate: null };
+  }
+}
+
 export const setSchedule = defineTool({
   name: "superflow_set_schedule",
   title: "Create or change a schedule",
   description: [
     "Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.",
-    "Every scheduled run spends AI credits, like superflow_run_agents. Price one run first with superflow_estimate_run (same project, scope and agents) and tell the user the cost per run before creating. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).",
-    "Runs at most once an hour: more frequent crons are refused. Pause with enabled: false; delete with superflow_delete_schedule. Ask the user before creating or changing a schedule.",
+    "Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).",
+    "Runs at most once an hour: more frequent crons are refused. Delete with superflow_delete_schedule. For one run now use superflow_run_agents.",
     'Example: {"project": "Acme Dental", "cron": "0 9 * * 1", "timezone": "Europe/Berlin", "pack": "Pre-Launch"}',
   ].join("\n"),
   inputSchema: {
@@ -77,6 +111,7 @@ export const setSchedule = defineTool({
     scope: runScopeSchema,
     pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, for scope list. On a change, null clears them."),
     enabled: z.boolean().optional().describe("false pauses the schedule, true turns it back on. New schedules start on."),
+    confirm: confirmSchema("create the schedule or change what or when it runs; every run spends AI credits"),
     idempotency_key: idempotencySchema.describe(
       "Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned.",
     ),
@@ -109,6 +144,25 @@ export const setSchedule = defineTool({
       if (args.scope === "list" && !args.pages) return invalidInput("scope list needs pages: the page URLs to review.");
       // A new schedule has nothing to clear, so null means "not given".
       const body = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null));
+      if (!isConfirmed(args.confirm)) {
+        // Preview: the estimate only. Nothing that could create a schedule is sent without confirm.
+        const price = await pricePerRun(api, {
+          project: args.project,
+          scope: args.scope,
+          pages: args.pages ?? undefined,
+          agents: args.agents ?? undefined,
+          pack: args.pack ?? undefined,
+        });
+        const what = args.pack ? `pack ${args.pack}` : args.agents ? plural(args.agents.length, "agent") : "the default agents";
+        return confirmationResult(
+          join(
+            `A schedule on ${args.project} would run ${what} at "${args.cron.trim()}" (${args.timezone ?? "UTC"}), ${args.scope ?? "site"} scope, and every run spends AI credits.`,
+            price.line,
+            "Nothing was created. Ask the user to confirm.",
+          ),
+          { preview: { schedule: body, estimate: price.estimate }, message: CONFIRM_SET_SCHEDULE_MESSAGE },
+        );
+      }
       const created = await api.call<Schedule>("createSchedule", {
         // Generated once per tool call, so the client's own retries cannot create two schedules.
         body: { ...body, idempotency_key: args.idempotency_key ?? randomUUID() },
@@ -117,6 +171,31 @@ export const setSchedule = defineTool({
     }
     if (Object.keys(fields).length === 0) {
       return invalidInput("Nothing to change. Give cron, timezone, agents, pack, scope, pages, enabled or project.");
+    }
+    // Pausing and moving the time zone cannot raise what the schedule spends: no confirm.
+    const spendsMore = Object.keys(fields).some((key) => key !== "timezone" && !(key === "enabled" && fields.enabled === false));
+    if (spendsMore && !isConfirmed(args.confirm)) {
+      const current = await findSchedule(api, args.schedule.trim());
+      if (!current) return scheduleNotFound(args.schedule.trim());
+      // The schedule as it would be after the change: given fields win, null clears.
+      const agents = args.agents === null ? undefined : (args.agents ?? (args.pack ? undefined : current.agents?.map((agent) => agent.id)));
+      const pack = args.pack === null ? undefined : (args.pack ?? (args.agents ? undefined : current.pack?.id));
+      const price = await pricePerRun(api, {
+        project: args.project ?? current.project.id,
+        scope: args.scope ?? current.scope,
+        pages: args.pages === null ? undefined : (args.pages ?? current.pages),
+        agents: agents?.length ? agents : undefined,
+        pack,
+      });
+      return confirmationResult(
+        join(
+          `Schedule ${scheduleLine(current)}`,
+          `The change (${Object.keys(fields).join(", ")}) changes what or when it runs, and every run spends AI credits.`,
+          price.line,
+          "Nothing was changed. Ask the user to confirm.",
+        ),
+        { preview: { schedule: current, changes: fields, estimate: price.estimate }, message: CONFIRM_SET_SCHEDULE_MESSAGE },
+      );
     }
     const updated = await api.call<Schedule>("updateSchedule", { path: { schedule: args.schedule }, body: fields });
     return okResult(`Updated schedule ${scheduleLine(updated)}`, asData(updated));
@@ -166,19 +245,8 @@ export const deleteSchedule = defineTool({
       return okResult(`Deleted schedule ${result.id ?? ref}. No more runs start from it.`, asData(result));
     }
     // Preview: one read. Nothing that could delete is sent without confirm.
-    const list = await api.call<ListEnvelope<Schedule>>("listSchedules");
-    const raw = ref.replace(/^sch_/, "");
-    const schedule = (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw);
-    if (!schedule) {
-      return errorResult(
-        new SuperflowApiError({
-          status: 404,
-          code: "not_found",
-          message: `No schedule ${ref}.`,
-          hint: "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
-        }),
-      );
-    }
+    const schedule = await findSchedule(api, ref);
+    if (!schedule) return scheduleNotFound(ref);
     return confirmationResult(
       `Schedule ${scheduleLine(schedule)} It would be deleted. Nothing was deleted. Ask the user to confirm.`,
       { preview: schedule, message: CONFIRM_DELETE_SCHEDULE_MESSAGE },

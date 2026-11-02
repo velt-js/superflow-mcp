@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE } from "../../../src/lib/confirm.ts";
+import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE, CONFIRM_REJECT_COMMENT_MESSAGE } from "../../../src/lib/confirm.ts";
+import { fullComment } from "../../helpers/fixtures.ts";
 import { connect, data, errorOf, fail, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
 
 useMsw();
@@ -209,24 +210,66 @@ describe("superflow_assign_check_owner", () => {
 
 describe("superflow_reject_comment", () => {
   const TOOL = "superflow_reject_comment";
+  const agentFinding = {
+    ...fullComment,
+    id: "cmt_a1",
+    author: { id: "agt_alt", name: "Alt text", type: "agent" as const },
+    rule_key: "image-alt",
+    agent: { id: "agt_alt", name: "Alt text", run_id: "run_1", severity: "high", confidence: 90, issue_type: null, problem: null, suggested_fix: null },
+  };
 
-  it("sends the reason and the note", async () => {
+  it("without confirm only reads the finding and returns a preview: nothing is rejected", async () => {
+    on("get", "/comments/:comment", ok(agentFinding));
     on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "wrong" }));
     const h = await connect();
     const result = await h.call(TOOL, { comment: "cmt_a1", reason: "wrong", note: "Decorative image." });
+    expect(result.isError).toBeFalsy();
+    expect(data(result)).toMatchObject({
+      needs_confirmation: true,
+      preview: { comment: { id: "cmt_a1", number: 4821 }, reason: "wrong", note: "Decorative image." },
+      message: CONFIRM_REJECT_COMMENT_MESSAGE,
+    });
+    expect(summaryOf(result)).toBe(
+      `Finding #4821 in Acme Dental would be rejected as wrong. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${agentFinding.url}`,
+    );
+    expect(recorded.map((r) => r.operationId)).toEqual(["getComment"]);
+    expect(writes()).toEqual([]);
+  });
+
+  it("refuses a person's comment in the preview, before asking anyone to confirm", async () => {
+    on("get", "/comments/:comment", ok(fullComment));
+    const h = await connect();
+    const error = errorOf(await h.call(TOOL, { comment: "cmt_8f3k2", reason: "wrong" }));
+    expect(error.code).toBe("invalid");
+    expect(error.message).toContain("only an agent finding can be rejected");
+    expect(writes()).toEqual([]);
+  });
+
+  it("with confirm sends the reason and the note", async () => {
+    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "wrong" }));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_a1", reason: "wrong", note: "Decorative image.", confirm: true });
+    expect(recorded.map((r) => r.operationId)).toEqual(["rejectComment"]);
     expect(recorded[0]?.body).toEqual({ reason: "wrong", note: "Decorative image." });
     expect(summaryOf(result)).toBe("Rejected #4821 as wrong.");
   });
 
   it("a number needs its project", async () => {
+    on("get", "/comments/:comment", ok(agentFinding));
     on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "not_important" }));
     const h = await connect();
     await h.call(TOOL, { comment: "#4821", project: "Acme Dental", reason: "not_important" });
-    expect(recorded[0]?.path).toBe("/comments/4821/reject");
-    expect(recorded[0]?.body).toEqual({ project: "Acme Dental", reason: "not_important" });
+    expect(recorded[0]?.path).toBe("/comments/4821");
+    expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "false" });
+    await h.call(TOOL, { comment: "#4821", project: "Acme Dental", reason: "not_important", confirm: true });
+    expect(recorded[1]?.path).toBe("/comments/4821/reject");
+    expect(recorded[1]?.body).toEqual({ project: "Acme Dental", reason: "not_important" });
   });
 
-  standardErrorCases({ tool: TOOL, args: { comment: "cmt_a1", reason: "wrong" }, method: "post", path: "/comments/:comment/reject", success: ok({ comment: { id: "cmt_a1" }, reason: "wrong" }) });
+  standardErrorCases({ tool: TOOL, args: { comment: "cmt_a1", reason: "wrong", confirm: true }, method: "post", path: "/comments/:comment/reject", success: ok({ comment: { id: "cmt_a1" }, reason: "wrong" }) });
+  describe("errors on the preview read", () => {
+    standardErrorCases({ tool: TOOL, args: { comment: "cmt_a1", reason: "wrong" }, method: "get", path: "/comments/:comment", success: ok(agentFinding) });
+  });
 });
 
 describe("superflow_get_finding_source", () => {
