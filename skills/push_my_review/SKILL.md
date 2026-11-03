@@ -10,8 +10,8 @@ clients: all
 
 Goal: the findings of the user's own review, as agent comments on the right pages under
 their agent's name, grouped with what Superflow already found under the same checks, with
-nothing lost and nothing duplicated. Their harness does not change: their agent finds, Superflow records, pins,
-verifies and reports.
+nothing lost and nothing duplicated. Their harness does not change: their agent finds, Superflow records, pins
+and reports, and Superflow's own agents verify a fix to a finding that uses one of Superflow's check keys.
 
 ## 1. Find the site and check the install
 
@@ -37,6 +37,8 @@ each finding fill:
   under the same check as Superflow's own findings. It sits beside them; it merges only with
   your own earlier imports of the same finding. For a kind Superflow has no key for, your own
   key starting with `ext-`, for example `ext-cookie-banner`. Use the same key every review.
+  Superflow's agents recheck a fix only for its own keys: resolving an `ext-` finding closes it,
+  with no rescan.
 - `fix_type`: content, design or code.
 - `anchor.selector` when you know the element; `suggestion` when the review has a fix;
   `confidence` when the review scored it.

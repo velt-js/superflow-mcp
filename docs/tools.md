@@ -2056,7 +2056,7 @@ Example:
 **Import findings from your own agent**
 
 Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments, the fix list and reports like Superflow's own findings.
-Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it is grouped under the same check as Superflow's own findings. It sits beside them and merges only with your own earlier imports of the same finding. Up to 500 findings per call, 5,000 per project per day.
+Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it is grouped under the same check as Superflow's own findings. It sits beside them and merges only with your own earlier imports of the same finding. Superflow's agents verify a fix to a finding with one of Superflow's keys; resolving an ext- finding closes it, with no rescan. Up to 500 findings per call, 5,000 per project per day.
 It only creates or merges, never deletes. The same finding sent again merges into its comment. If one finding is invalid nothing is imported and the error lists every problem by index (findings[3].page_url): fix them all and send the whole batch again.
 Not for one comment a person writes: use superflow_create_comment. Not for running Superflow's agents: use superflow_run_agents.
 
