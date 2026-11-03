@@ -48,7 +48,16 @@ export interface CommentCompact {
   rule_key: string | null;
   /** An agent finding's suggested fix, cut to 300 characters. */
   suggested_fix: string | null;
+  /** A person rejected this agent finding: it keeps its status but is not open. */
+  rejected?: boolean;
   url: string;
+}
+
+/** A rejected agent finding's reject: the reason (or the person's words), who and when. */
+export interface Rejection {
+  reason: string | null;
+  by: Person | null;
+  at: string | null;
 }
 
 export interface Person {
@@ -114,6 +123,8 @@ export interface CommentFull {
     problem: string | null;
     suggested_fix: string | null;
   } | null;
+  /** Set when a person rejected this agent finding (it keeps its status but is not open), else null. */
+  rejected?: Rejection | null;
   external_links: ExternalLink[];
   attachments: Attachment[];
   replies?: Reply[];
@@ -291,8 +302,17 @@ export interface ResolveResponse {
   comment: CommentFull;
   changed: boolean;
   note_reply_id: string | null;
-  /** An agent finding's resolve queues a verify rescan of its page. */
-  verify?: { queued: boolean; already_pending: boolean; run_id: string | null };
+  /** An agent finding's resolve queues a verify rescan of its page (not an imported finding's: see no_rescan_reason). */
+  verify?: VerifyInfo;
+}
+
+/** The verify rescan an agent finding's resolve queued, or why none was. */
+export interface VerifyInfo {
+  queued: boolean;
+  already_pending: boolean;
+  run_id: string | null;
+  /** imported_finding: Superflow cannot rerun the outside agent that found it, so nothing was queued or charged. */
+  no_rescan_reason?: "imported_finding" | null;
 }
 
 export interface CreateReplyResponse {

@@ -254,6 +254,14 @@ describe("superflow_reject_comment", () => {
     expect(summaryOf(result)).toBe("Rejected cmt_a1 as wrong.");
   });
 
+  it("says the finding left the open list when the API answers it rejected (B5)", async () => {
+    const rejected = { reason: "wrong", by: { id: "usr_m1", name: "Rakesh", type: "member" }, at: "2026-11-03T10:00:00Z" };
+    on("post", "/comments/:comment/reject", ok({ comment: { ...agentFinding, rejected }, reason: "wrong" }));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_a1", reason: "wrong", confirm: true });
+    expect(summaryOf(result)).toBe('Rejected cmt_a1 as wrong. It is no longer open: list rejected findings with status "rejected".');
+  });
+
   it("passes the project through when given, on the preview and the reject", async () => {
     on("get", "/comments/:comment", ok(agentFinding));
     on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1" }, reason: "not_important" }));

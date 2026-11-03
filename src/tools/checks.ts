@@ -378,12 +378,14 @@ export const rejectComment = defineTool({
         { preview: { comment: preview, reason: args.reason, note: args.note ?? null }, message: CONFIRM_REJECT_COMMENT_MESSAGE },
       );
     }
-    const result = await api.call<{ comment: { id: string } }>("rejectComment", {
+    const result = await api.call<{ comment: { id: string; rejected?: unknown } }>("rejectComment", {
       path: { comment: ref },
       body: compact({ project, reason: args.reason, note: args.note }),
     });
     const label = result.comment?.id ?? args.comment;
-    return okResult(`Rejected ${label} as ${args.reason}.`, asData(result));
+    // The API answers the comment as it reads after the reject; say it left the open list only when it shows that.
+    const state = result.comment?.rejected ? ' It is no longer open: list rejected findings with status "rejected".' : "";
+    return okResult(`Rejected ${label} as ${args.reason}.${state}`, asData(result));
   },
 });
 
