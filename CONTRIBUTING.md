@@ -1,7 +1,8 @@
 # Contributing
 
 Thanks for helping. This repo holds the `superflow-mcp` npm package (a local stdio
-MCP server for Superflow comments) and the docs for the hosted server.
+bridge to the hosted Superflow MCP server, whose tool code also lives here) and the
+docs for the hosted server.
 
 ## Setup
 
@@ -20,7 +21,14 @@ Run the built server locally:
 SUPERFLOW_API_KEY=sf_pat_... node dist/index.js
 ```
 
-Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
+It forwards to the hosted server. Point it at staging with
+`SUPERFLOW_MCP_URL=https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp` (the run.app
+origin: the cloudfunctions.net one fails the OAuth resource check). To run the tools of
+this checkout in the process instead (direct mode, for development), set
+`SUPERFLOW_API_BASE_URL` to a REST API: staging's is
+`https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1` (the MCP function serves `/mcp`,
+OAuth and `/v1`), or a local one. Set `SUPERFLOW_MCP_URL` to the same origin (`.../mcp`):
+direct mode refuses an API on another origin than the MCP server the key is for.
 
 ## Scripts
 
@@ -33,8 +41,8 @@ Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
 | `pnpm generate:client` | Regenerates `src/client/generated/operations.ts` from `openapi/openapi.json`. |
 | `pnpm check:drift` | Fails if the generated client is stale; with `SUPERFLOW_DRIFT_BASE_URL`, also compares the snapshot with the live API document. |
 | `pnpm docs:tools` | Regenerates `docs/tools.md` from the server's tools/list. |
-| `pnpm smoke:stdio` | Starts `dist/index.js` and lists tools over real stdio. |
-| `pnpm test:e2e` | After a build: the built package over real stdio against a local fake API. Every tool, every confirmation gate, read-only mode, error mapping, log hygiene and the OpenAPI contract. CI runs it on every pull request and push to staging and main. |
+| `pnpm smoke:stdio` | Starts `dist/index.js` in direct mode and lists tools over real stdio. |
+| `pnpm test:e2e` | After a build: the built package over real stdio, in bridge mode against a local fake of the hosted server, and in direct mode against a local fake API. Every tool, every confirmation gate, read-only mode, error mapping, log hygiene and the OpenAPI contract. CI runs it on every pull request and push to staging and main. |
 | `pnpm test:live` | After a build: the built package against a real API, plus the integration tests (needs `SUPERFLOW_TEST_API_KEY`, `SUPERFLOW_TEST_PROJECT`, `SUPERFLOW_API_BASE_URL`). CI runs it on every push to staging and main (`.github/workflows/live.yml`). |
 | `pnpm evals:tools` | First-tool-choice eval (needs `ANTHROPIC_API_KEY`). |
 | `pnpm evals` | End-to-end eval against staging (needs `ANTHROPIC_API_KEY`, `SUPERFLOW_TEST_API_KEY`, `SUPERFLOW_API_BASE_URL`). |
@@ -42,7 +50,9 @@ Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
 
 ## How the code is laid out
 
-- `src/index.ts`: the CLI. Reads env, builds the server, connects stdio.
+- `src/index.ts`: the CLI. Reads env, starts the bridge (or, with `SUPERFLOW_API_BASE_URL`,
+  the tools in process), connects stdio.
+- `src/bridge.ts`: the stdio bridge to the hosted MCP server. Not in the library entry.
 - `src/server.ts`: `createServer({ config, client })`.
 - `src/client/api.ts`: the only place that calls `fetch`.
 - `src/client/generated/operations.ts`: generated from the OpenAPI snapshot. Do not edit.
@@ -76,7 +86,7 @@ Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
 
 - `expect_first_tool` is a tool name, a list of acceptable names, or `null` for "no tool call".
 - `{project}` and `{page_url}` are filled from `SUPERFLOW_TEST_PROJECT` and `SUPERFLOW_TEST_PAGE_URL`.
-- Optional: `read_only`, `default_project`, `expect_tools_any_order`.
+- Optional: `read_only`, `expect_tools_any_order`.
 - Checks: `{ "tool", "arg_includes" }`, `{ "result_path_nonempty": "items" }`,
   `{ "tool_not_called": "..." }`, `{ "no_confirmed_writes": true }`.
 

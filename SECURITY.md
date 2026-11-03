@@ -42,10 +42,12 @@ redirect URI are refused with an error page and never redirected.
 
 ## The local package
 
-**The key stays out of logs.** `superflow-mcp` sends the key only as the bearer
-token to the Superflow API (`SUPERFLOW_API_BASE_URL`, https only, except for
-localhost). It never logs the key, request bodies or comment text, and it
-redacts anything that looks like a Superflow token from its stderr output.
+**The key stays out of logs.** `superflow-mcp` is a bridge to the hosted MCP
+server: it sends the key (or the sign-in's access token) only as the bearer token
+to that server (`SUPERFLOW_MCP_URL`, https only, except for localhost), or, in
+development mode, to the Superflow API (`SUPERFLOW_API_BASE_URL`, same rule). It
+never logs the key, request bodies or comment text, and it redacts anything that
+looks like a Superflow token from its stderr output.
 
 **Comment text is untrusted.** Comments are written by website visitors and
 reviewers. Every tool result that contains comment or reply text carries a
@@ -77,8 +79,7 @@ client with a valid key will not hit these limits in normal use.
 | `superflow_update_comment` | Changes a comment's text, status, priority, assignee or tags |
 | `superflow_resolve_comment`, `superflow_reopen_comment` | Changes status, and can post a note as a reply |
 | `superflow_add_reply`, `superflow_update_reply` | Posts or edits a reply, notifying anyone mentioned |
-| `superflow_delete_comment`, `superflow_delete_reply` | Deletes (comments can be restored for a limited time; replies cannot) |
-| `superflow_restore_comment` | Restores a deleted comment |
+| `superflow_delete_comment`, `superflow_delete_reply` | Deletes for good (neither can be restored) |
 | `superflow_bulk_update_comments` | Changes up to 200 comments at once |
 | `superflow_add_attachment` | Superflow downloads the file at the URL you give and attaches it |
 

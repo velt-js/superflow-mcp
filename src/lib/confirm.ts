@@ -21,13 +21,13 @@ export function isConfirmed(confirm: boolean | undefined): boolean {
 }
 
 export const CONFIRM_DELETE_COMMENT_MESSAGE =
-  "Nothing was deleted. Show this comment to the user and ask whether to delete it. If they say yes, call superflow_delete_comment again with confirm: true. A deleted comment can be restored with superflow_restore_comment until its restore_until time.";
+  "Nothing was deleted. Show this comment to the user and ask whether to delete it. Deleting is permanent: the comment and its replies are gone for good and cannot be restored. To close it without losing it, use superflow_resolve_comment. If they say yes, call superflow_delete_comment again with confirm: true.";
 
 export const CONFIRM_DELETE_REPLY_MESSAGE =
   "Nothing was deleted. Show this reply to the user and ask whether to delete it. If they say yes, call superflow_delete_reply again with confirm: true. Deleted replies cannot be restored.";
 
 export const CONFIRM_BULK_MESSAGE =
-  "Nothing was changed. This was a dry run. Show the user how many comments would change and the sample, and ask whether to apply it. If they say yes, call superflow_bulk_update_comments again with the same selection and patch, dry_run: false and confirm: true.";
+  "Nothing was changed. This was a dry run. Show the user how many comments would change, the sample, and any it would not write (failed), and ask whether to apply it. If they say yes, call superflow_bulk_update_comments again with the same selection and patch, dry_run: false and confirm: true.";
 
 // Phase 2 destructive tools. Each message tells the model what was NOT done, what to show
 // the user, what the real call does, and how to make it.
@@ -36,7 +36,7 @@ export const CONFIRM_DELETE_PROJECT_MESSAGE =
   "Nothing was deleted. Show the user the project with its comment and page counts, and ask whether to delete it. Deleting is permanent: the project, its pages and every comment on it are gone and cannot be restored. To hide a project without losing anything, use superflow_archive_project. If the user says yes, call superflow_delete_project again with confirm: true.";
 
 export const CONFIRM_REMOVE_PAGE_MESSAGE =
-  "Nothing was removed. Show the user the page and how many comments it has, and ask whether to remove it. Removing a page also deletes its comments (at most 200); they can be restored one by one with superflow_restore_comment for 30 days. If the user says yes, call superflow_remove_page again with confirm: true.";
+  "Nothing was removed. Show the user the page and how many comments it has, and ask whether to remove it. Removing a page also deletes its comments (at most 200) for good: they cannot be restored. To keep them, resolve them with superflow_bulk_update_comments instead. If the user says yes, call superflow_remove_page again with confirm: true.";
 
 export const CONFIRM_REMOVE_MEMBER_MESSAGE =
   "Nothing was removed. Show the user the member and how many open comments are assigned to them, and ask whether to remove them from the workspace. Pass reassign_to (another member) to move those comments; otherwise they stay assigned to the removed person. If the user says yes, call superflow_remove_member again with confirm: true.";
@@ -47,11 +47,23 @@ export const CONFIRM_REMOVE_GUEST_MESSAGE =
 export const CONFIRM_DELETE_STATUS_MESSAGE =
   "Nothing was deleted. Show the user the status, where its comments will move, and how many comments that is, and ask whether to delete it. If the user says yes, call superflow_delete_status again with the same move_comments_to and confirm: true.";
 
-export const CONFIRM_DELETE_TAG_MESSAGE =
-  "Nothing was deleted. Show the user the tag and how many comments use it, and ask whether to delete it. Deleting removes the tag from every comment that has it. If the user says yes, call superflow_delete_tag again with confirm: true.";
+/** A tag rewrite sets lastUpdated on every comment it changes. */
+export const TAG_REWRITE_UPDATED_NOTE =
+  "Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match.";
 
-export const CONFIRM_MERGE_TAGS_MESSAGE =
-  "Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one, and the first tag is deleted. If the user says yes, call superflow_merge_tags again with confirm: true.";
+/** Why a tag rewrite reports failed comments, and why calling again cannot change them. */
+export const TAG_REWRITE_WINDOW_REASON = "on a project with more than 1,000 comments, only the newest 1,000 can be changed";
+
+/**
+ * How a tag rewrite job goes on and ends (the descriptions of update_tag, delete_tag and
+ * merge_tags, and the delete and merge confirm messages): a pass follows next_cursor to the end,
+ * and at most ONE retry pass follows it, so a job can never loop.
+ */
+export const TAG_REWRITE_STEPS = `One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same arguments and cursor set to next_cursor, even when a call changed nothing. When next_cursor is null the pass is done, and the answer says so. If a call could not rewrite some comments while it changed others, the finished pass offers one retry pass: the same call without a cursor and with retry: true. A retry pass never offers another: when it ends, tell the user what could not change and stop. Comments outside Velt's update window never change (${TAG_REWRITE_WINDOW_REASON}).`;
+
+export const CONFIRM_DELETE_TAG_MESSAGE = `Nothing was deleted. Show the user the tag and how many comments carry it, and ask whether to delete it. Deleting takes the tag off every comment that carries it, in every project; the comments stay. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_delete_tag again with confirm: true and no cursor, so the job starts at the first comment (a cursor with confirm deletes only from that point on: use it only when the user wants just the rest). ${TAG_REWRITE_STEPS} Keep confirm: true on every call of the job.`;
+
+export const CONFIRM_MERGE_TAGS_MESSAGE = `Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one instead, in every project, and the first tag is gone. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_merge_tags again with confirm: true and no cursor, so the job starts at the first comment (a cursor with confirm merges only from that point on: use it only when the user wants just the rest). ${TAG_REWRITE_STEPS} Keep confirm: true on every call of the job.`;
 
 export const CONFIRM_CREATE_API_KEY_MESSAGE =
   "Nothing was created. Show the user the label, scopes and expiry, and ask whether to create the key. Its token will appear once, in this conversation. If the user says yes, call superflow_create_api_key again with confirm: true.";
@@ -72,7 +84,7 @@ export const CONFIRM_RUN_AGENTS_MESSAGE =
   "Nothing was started. Show the user the estimate: the credits (credits_display), the pages, the agents and the balance. Ask whether to start the run. If the user says yes, call superflow_run_agents again with the same project, scope, pages and agents or pack, and confirm: true. Then check it with superflow_get_run no more often than every 20 seconds.";
 
 export const CONFIRM_SET_SCHEDULE_MESSAGE =
-  "Nothing was created or changed. Show the user when the schedule would run, which agents, and what one run costs (the estimate), and say that every run spends AI credits. Ask whether to go ahead. If the user says yes, call superflow_set_schedule again with the same arguments and confirm: true.";
+  "Nothing was created or changed. Show the user when the schedule would run, which agents (they are fixed when the schedule is saved), and what one run costs (the estimate), and say that every run spends AI credits. Ask whether to go ahead. If the user says yes, call superflow_set_schedule again with the same arguments and confirm: true.";
 
 export const CONFIRM_DELETE_SCHEDULE_MESSAGE =
   "Nothing was deleted. Show the user the schedule (project, when it runs, which agents) and ask whether to delete it. No more runs start from it after that. To pause it instead, use superflow_set_schedule with enabled: false. If the user says yes, call superflow_delete_schedule again with confirm: true.";

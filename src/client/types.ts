@@ -30,7 +30,6 @@ export interface ApiErrorBody {
 /** Section 5.1. */
 export interface CommentCompact {
   id: string;
-  number: number | null;
   project: string;
   project_id: string;
   page_url: string | null;
@@ -92,7 +91,6 @@ export interface Reply {
 /** Section 5.2. */
 export interface CommentFull {
   id: string;
-  number: number | null;
   project: { id: string; name: string };
   page: { id: string; url: string; title: string | null } | null;
   text: string;
@@ -203,12 +201,36 @@ export interface Status {
 }
 
 /** Section 5.9. */
+/** A tag is workspace-wide; its id is derived from its name. */
 export interface Tag {
   id: string;
-  project_id: string | null;
   name: string;
   color: string | null;
+  /** Scanned comments that carry it. */
   usage_count: number | null;
+}
+
+/**
+ * What a rewrite of a tag on its comments did (rename, recolor, delete, merge): one call
+ * rewrites at most 500 comments that need it, starting at `cursor` (or the start).
+ */
+export interface TagRewrite {
+  /**
+   * Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused
+   * batch). A call without a cursor retries them; those outside the window never change.
+   */
+  failed: number;
+  /** True only when next_cursor is null and failed is 0. */
+  complete: boolean;
+  /** Where the next call starts (just after the last comment this one read), or null at the end. */
+  next_cursor: string | null;
+  /** How many comments this call read, and whether it read to the end. */
+  scan: Scan;
+}
+
+/** PATCH /tags/{tag}: the tag as it is now, and the comments rewritten. */
+export interface TagWrite extends Tag, TagRewrite {
+  comments_updated: number;
 }
 
 /** Section 5.10. */
@@ -260,13 +282,6 @@ export interface ExportResponse {
   scan?: Scan;
 }
 
-export interface DeleteCommentResponse {
-  deleted: true;
-  id: string;
-  number: number | null;
-  restore_until: string | null;
-}
-
 export interface DeleteResponse {
   deleted: true;
   id: string;
@@ -294,6 +309,8 @@ export interface BulkDryRunResponse extends BulkPreview {
   dry_run: true;
   /** Selected comments already in the target state (skipped). */
   already_in_state: number;
+  /** Comments the run would not write, with why (a tag change on a comment whose tags could not be read). Not in would_update. */
+  failed?: Array<{ id: string; error: string }>;
   applied_filters?: Record<string, unknown>;
   scan?: Scan;
 }
@@ -349,8 +366,8 @@ export interface AddedPage extends Page {
 export interface RemovePageResponse {
   removed: true;
   id: string;
+  /** Deleted for good. */
   comments_deleted: number;
-  restore_until: string | null;
 }
 
 export interface SeatCount {
@@ -406,13 +423,13 @@ export interface DeleteStatusResponse extends CustomStatusFlag {
   comments_moved: number;
 }
 
-export interface DeleteTagResponse {
+export interface DeleteTagResponse extends TagRewrite {
   deleted: true;
   id: string;
   removed_from: number;
 }
 
-export interface MergeTagsResponse {
+export interface MergeTagsResponse extends TagRewrite {
   merged: true;
   from: string;
   into: string;
@@ -657,7 +674,6 @@ export interface AgentPack {
   agent_ids: string[];
   agent_count: number;
   system: boolean;
-  is_default_for_runs: boolean;
 }
 
 export type PricingMode = "scan" | "flat" | "token";
@@ -680,11 +696,35 @@ export interface RunEstimate {
 
 export type RunStatus = "queued" | "running" | "done" | "failed" | "partial";
 
+export type RunTrigger =
+  | "manual"
+  | "schedule"
+  | "deploy"
+  | "change"
+  | "resolve"
+  | "approval"
+  | "mcp"
+  | "api"
+  | "uptime"
+  | "standalone"
+  | "workflow";
+
+/** How the newest run of a schedule went. */
+export type ScheduleRunStatus =
+  | "started"
+  | "skipped_insufficient_credits"
+  | "skipped_no_changes"
+  | "skipped_creator_removed"
+  | "skipped_no_agents"
+  | "in_progress"
+  | "failed_to_start";
+
 export interface RunExecution {
   /** run_<executionId>: readable on its own with GET /runs/{run}. */
   id: string;
+  /** Null when the execution's record is gone (status missing). */
   agent: Ref | null;
-  /** running, passed, failed, partial, error or skipped. */
+  /** running, passed, failed, partial, error or skipped; missing (final) when its record is gone. */
   status: string;
   findings: number | null;
 }
@@ -696,11 +736,16 @@ export interface Run {
   scope: RunScope;
   pages_requested: string[];
   status: RunStatus;
+  /** The scan's charge; 0 once it was refunded or its debit failed. */
   credits_charged: number | null;
   findings_count: number | null;
   started_at: string | null;
   finished_at: string | null;
-  trigger: "manual" | "schedule" | "api";
+  /**
+   * What started the run: api or mcp (this API), workflow (a schedule), manual (the portal),
+   * schedule, deploy, change, resolve or uptime (Always-on Monitoring), approval, standalone.
+   */
+  trigger: RunTrigger;
   created_by: { id: string | null; email: string | null };
   executions: RunExecution[];
 }
@@ -716,14 +761,15 @@ export interface Schedule {
   project: Ref;
   cron: string;
   timezone: string;
-  agents: Ref[] | null;
+  /** The agents every run uses, fixed when the schedule was saved (named, a pack's members or the default agents). */
+  agents: Ref[];
+  /** Set when the agents came from a pack. */
   pack: Ref | null;
   scope: RunScope;
   pages: string[];
   enabled: boolean;
   next_run_at: string | null;
-  /** status is a run status, skipped_insufficient_credits or failed_to_start. */
-  last_run: { run_id: string | null; at: string | null; status: string } | null;
+  last_run: { run_id: string | null; at: string | null; status: ScheduleRunStatus } | null;
   created_by: { id: string | null; email: string | null };
 }
 
@@ -742,7 +788,6 @@ export interface Integration {
   detail: string | null;
   status: "connected" | "needs_reauth";
   connected_at: string | null;
-  settings: { default_project: string | null };
 }
 
 export interface ConnectLink {
@@ -754,6 +799,8 @@ export interface ConnectLink {
 export interface PushCommentResponse {
   comment: CommentFull;
   link: ExternalLink;
+  /** True when the comment already had an item in this tool: that link, and nothing created. */
+  already_linked: boolean;
 }
 
 /** A refused post is a 502 upstream error, so a 200 always has ok: true. */

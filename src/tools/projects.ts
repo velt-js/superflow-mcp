@@ -240,7 +240,7 @@ export const deleteProject = defineTool({
   name: "superflow_delete_project",
   title: "Delete a project",
   description: [
-    "Permanently delete a project with all its pages and comments. This cannot be undone: unlike a deleted comment, nothing here can be restored.",
+    "Permanently delete a project with all its pages and comments. This cannot be undone: nothing here can be restored.",
     "Without confirm: true nothing is deleted: you get the project with its comment and page counts as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To hide a project without losing anything use superflow_archive_project instead.",
     'Example: {"project": "Acme Dental"}',

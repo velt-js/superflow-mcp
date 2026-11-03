@@ -4,12 +4,12 @@
 import { z } from "zod";
 import type { CommentFull } from "../client/types.ts";
 import { CONFIRM_EXCLUDE_CHECK_MESSAGE, CONFIRM_MARK_CHECK_FIXED_MESSAGE, CONFIRM_REJECT_COMMENT_MESSAGE, isConfirmed } from "../lib/confirm.ts";
-import { commentLabel, confirmationResult, invalidInput, okResult, plural, toCompactComment } from "../lib/format.ts";
-import { normalizeCommentRef, projectForComment } from "../lib/resolve.ts";
+import { confirmationResult, invalidInput, okResult, plural, toCompactComment } from "../lib/format.ts";
+import { normalizeCommentRef } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join } from "./helpers.ts";
 import { POLL_SECONDS } from "./runs.ts";
-import { commentRefSchema, confirmSchema, cursorSchema, projectForNumberSchema, projectRefSchema } from "./schemas.ts";
+import { commentProjectSchema, commentRefSchema, confirmSchema, cursorSchema, projectRefSchema } from "./schemas.ts";
 
 export const CHECK_STATES = ["failing", "passing", "excluded"] as const;
 export const CHECK_SEVERITIES = ["critical", "high", "medium", "low"] as const;
@@ -353,36 +353,36 @@ export const rejectComment = defineTool({
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     reason: reasonSchema,
     note: z.string().min(1).max(2000).optional().describe("The user's own words, kept with the reason."),
     confirm: confirmSchema("reject the finding, which cannot be undone"),
   },
   annotations: hints(false, true, true, false),
   write: true,
-  async run(args, { api, config }) {
-    const project = projectForComment(args.comment, args.project, config.defaultProject);
+  async run(args, { api }) {
+    const project = args.project;
     const ref = normalizeCommentRef(args.comment);
     if (!isConfirmed(args.confirm)) {
       // Preview: one read. Nothing that could reject is sent without confirm.
       const comment = await api.call<CommentFull>("getComment", { path: { comment: ref }, query: { project, include_replies: false } });
       if (!comment.agent && comment.author?.type && comment.author.type !== "agent") {
         return invalidInput(
-          `Comment ${commentLabel(comment)} was written by a person, and only an agent finding can be rejected.`,
+          `Comment ${comment.id} was written by a person, and only an agent finding can be rejected.`,
           "Resolve it with superflow_resolve_comment, or leave it open.",
         );
       }
       const preview = toCompactComment(comment);
       return confirmationResult(
-        `Finding ${commentLabel(comment)} in ${preview.project} would be rejected as ${args.reason}. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${comment.url}`,
+        `Finding ${comment.id} in ${preview.project} would be rejected as ${args.reason}. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${comment.url}`,
         { preview: { comment: preview, reason: args.reason, note: args.note ?? null }, message: CONFIRM_REJECT_COMMENT_MESSAGE },
       );
     }
-    const result = await api.call<{ comment: { id: string; number?: number | null } }>("rejectComment", {
+    const result = await api.call<{ comment: { id: string } }>("rejectComment", {
       path: { comment: ref },
       body: compact({ project, reason: args.reason, note: args.note }),
     });
-    const label = result.comment ? commentLabel(result.comment) : args.comment;
+    const label = result.comment?.id ?? args.comment;
     return okResult(`Rejected ${label} as ${args.reason}.`, asData(result));
   },
 });
@@ -398,15 +398,15 @@ export const getFindingSource = defineTool({
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     page_url: z.string().url().optional().describe("Another page of a site-wide finding."),
   },
   annotations: READ_HINTS,
   write: false,
-  async run(args, { api, config }) {
+  async run(args, { api }) {
     const result = await api.call<{ page_url: string | null; line_number: number | null; line: string }>("getCommentSource", {
       path: { comment: normalizeCommentRef(args.comment) },
-      query: compact({ project: projectForComment(args.comment, args.project, config.defaultProject), page_url: args.page_url }),
+      query: compact({ project: args.project, page_url: args.page_url }),
     });
     return okResult(
       typeof result.line_number === "number" ? `Line ${result.line_number} of ${result.page_url ?? "the stored page"}.` : "The evidence was not found in the stored HTML; the line shows the evidence itself.",

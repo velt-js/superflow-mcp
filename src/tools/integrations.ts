@@ -1,5 +1,5 @@
 // Integration tools: connected tools (Slack, Jira, Asana, ClickUp, Monday), connecting one,
-// its settings, pushing a comment to a tracker, and posting to Slack.
+// pushing a comment to a tracker, and posting to Slack.
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type {
@@ -13,20 +13,20 @@ import type {
 } from "../client/types.ts";
 import { CONFIRM_POST_TO_SLACK_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { findInvalidDate } from "../lib/dates.ts";
-import { commentLabel, confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
-import { isCommentNumber, normalizeCommentRef, projectForComment } from "../lib/resolve.ts";
+import { confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
+import { normalizeCommentRef } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join } from "./helpers.ts";
 import {
   INTEGRATION_TYPES,
   SLACK_TEMPLATES,
+  commentProjectSchema,
   commentRefSchema,
   confirmSchema,
   filterShape,
   idempotencySchema,
   integrationRefSchema,
   pickFilters,
-  projectForNumberSchema,
 } from "./schemas.ts";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -51,7 +51,7 @@ export const listIntegrations = defineTool({
   name: "superflow_list_integrations",
   title: "List integrations",
   description: [
-    "List the tools connected to the workspace (Slack, Jira, Asana, ClickUp, Monday): each connection's id, the Slack channel or the tool's site, whether it still works or needs reconnecting, and its default project.",
+    "List the tools connected to the workspace (Slack, Jira, Asana, ClickUp, Monday): each connection's id, the Slack channel or the tool's site, and whether it still works or needs reconnecting.",
     "Use it to find the integration id for superflow_push_comment or superflow_post_to_slack. To connect a new tool use superflow_connect_integration.",
     "Example: {}",
   ].join("\n"),
@@ -80,8 +80,8 @@ export const getIntegration = defineTool({
   name: "superflow_get_integration",
   title: "Get an integration",
   description: [
-    "Get one connected tool: its type, name, Slack channel or site, whether it still works, and its settings (the default Jira project key, or Asana, ClickUp or Monday project or list).",
-    "To list them all use superflow_list_integrations. To change the default project use superflow_update_integration.",
+    "Get one connected tool: its type, name, Slack channel or site, and whether it still works or needs reconnecting. A connection has no default project: superflow_push_comment always takes project_key.",
+    "To list them all use superflow_list_integrations. To get a link that connects or reconnects a tool use superflow_connect_integration.",
     'Example: {"integration": "int_7g8h9i"}',
   ].join("\n"),
   inputSchema: { integration: integrationRefSchema },
@@ -89,9 +89,11 @@ export const getIntegration = defineTool({
   write: false,
   async run(args, { api }) {
     const integration = await api.call<Integration>("getIntegration", { path: { integration: args.integration } });
-    const project = integration.settings?.default_project;
     return okResult(
-      join(`${integrationLine(integration)}.`, project ? `Default project: ${project}.` : "No default project set."),
+      join(
+        `${integrationLine(integration)}.`,
+        integration.status === "needs_reauth" && "It needs reconnecting: get a link with superflow_connect_integration.",
+      ),
       asData(integration),
     );
   },
@@ -124,7 +126,7 @@ export const connectIntegration = defineTool({
   },
 });
 
-/** Where a push goes, per tool, as the API expects it in project_key and default_project. */
+/** Where a push goes, per tool, as the API expects it in project_key. */
 const TARGET_FORMATS =
   "Jira: KEY:12345, the project key plus its numeric project id (for example WEB:10001). Asana: <workspace gid>:<project gid>. ClickUp: <team id>:<space id>:<list id>. Monday: <board id>.";
 
@@ -134,80 +136,54 @@ const targetSchema = z
   .max(200)
   .regex(/^[^\s]+$/, "must have no spaces, for example WEB:10001");
 
-export const updateIntegration = defineTool({
-  name: "superflow_update_integration",
-  title: "Update an integration",
-  description: [
-    "Set or clear a connected tool's default project: where superflow_push_comment creates issues or tasks when it gets no project_key.",
-    `The value uses ids, not names. ${TARGET_FORMATS} Ask the user for the ids if you do not have them; null clears the default.`,
-    "Disconnecting a tool is not offered here: the user does it in the Superflow portal.",
-    'Example: {"integration": "int_7g8h9i", "default_project": "WEB:10001"}',
-  ].join("\n"),
-  inputSchema: {
-    integration: integrationRefSchema,
-    default_project: targetSchema
-      .nullable()
-      .describe(`Where pushes go by default. ${TARGET_FORMATS} null clears it.`),
-  },
-  annotations: hints(false, false, true, false),
-  write: true,
-  async run(args, { api }) {
-    const integration = await api.call<Integration>("updateIntegration", {
-      path: { integration: args.integration },
-      body: { default_project: args.default_project },
-    });
-    const target = integration.settings?.default_project;
-    return okResult(
-      `Updated ${integrationLine(integration)}. ${target ? `Default project: ${target}.` : "No default project now."}`,
-      asData(integration),
-    );
-  },
-});
-
 export const pushComment = defineTool({
   name: "superflow_push_comment",
   title: "Push a comment to a tracker",
   description: [
     "Create an issue or task from a comment in a connected tool (Jira, Asana, ClickUp or Monday), with the comment's text, page and link. This creates a real item in the customer's own tool that their team will see. The new item's link is saved on the comment (external_links). Needs the integrations:write and comments:read scopes.",
-    `project_key says where it goes, with ids, not names. ${TARGET_FORMATS} Leave it out to use the integration's default project (superflow_update_integration).`,
+    `project_key says where it goes, with ids, not names, and is required: a connection has no default project, so ask the user for the ids when you do not have them. ${TARGET_FORMATS}`,
+    "A comment holds one item per tool: when it already has one in this tool, the push creates nothing and returns that item's link with already_linked: true.",
     "Asana, ClickUp and Monday connections must also be set up to create items from Superflow (in Superflow under Settings > Integrations). When one is not, the API answers invalid with a hint: pass it on, with the link from superflow_connect_integration. If the push times out, call again with the same idempotency_key to pick up the result instead of creating a second item.",
     "Ask the user before pushing. Find the integration id with superflow_list_integrations. To tell a Slack channel instead use superflow_post_to_slack.",
-    'Example: {"comment": "4821", "project": "Acme Dental", "integration": "int_7g8h9i", "project_key": "WEB:10001"}',
+    'Example: {"comment": "cmt_8f3k2", "integration": "int_7g8h9i", "project_key": "WEB:10001"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     integration: integrationRefSchema.describe("The tracker connection (int_... or its name), from superflow_list_integrations."),
-    project_key: targetSchema
-      .optional()
-      .describe(`Where to create it. ${TARGET_FORMATS} Defaults to the integration's default project.`),
+    project_key: targetSchema.describe(`Where to create it, with ids. ${TARGET_FORMATS}`),
     title: z.string().min(1).max(255).optional().describe("Issue title. Defaults to the start of the comment text."),
     idempotency_key: idempotencySchema,
   },
   annotations: hints(false, false, false, true),
   write: true,
-  async run(args, { api, config }) {
-    // The push body has no project, so a comment number with a project is resolved to its id first.
-    let comment = normalizeCommentRef(args.comment);
-    const project = projectForComment(args.comment, args.project, config.defaultProject);
-    if (isCommentNumber(args.comment) && project) {
-      const found = await api.call<CommentFull>("getComment", {
-        path: { comment },
-        query: { project, include_replies: false },
-      });
-      comment = found.id;
-    }
+  async run(args, { api }) {
+    const comment = normalizeCommentRef(args.comment);
     // Generated once per tool call, so the client's own retries cannot create two issues. When
     // the push times out or fails upstream, the error hands this key back (ApiClient), so a
     // retry with it picks up the result instead of creating a second item.
     const result = await api.call<PushCommentResponse>("pushComment", {
       path: { comment },
-      body: compact({ integration: args.integration, project_key: args.project_key, title: args.title, idempotency_key: args.idempotency_key ?? randomUUID() }),
+      body: compact({
+        integration: args.integration,
+        project: args.project,
+        project_key: args.project_key,
+        title: args.title,
+        idempotency_key: args.idempotency_key ?? randomUUID(),
+      }),
     });
     const link = result.link;
+    const item = `${typeLabel(link?.type)} ${link?.key ?? "item"}`;
+    const from = result.comment?.id ?? comment;
+    if (result.already_linked) {
+      return okResult(
+        `Comment ${from} is already linked to ${item}${link?.url ? `: ${link.url}` : ""}. Nothing was created: a comment holds one item per tool.`,
+        asData(result),
+      );
+    }
     return okResult(
       join(
-        `Created ${typeLabel(link?.type)} ${link?.key ?? "item"} from comment ${result.comment ? commentLabel(result.comment) : args.comment}${link?.url ? `: ${link.url}` : ""}.`,
+        `Created ${item} from comment ${from}${link?.url ? `: ${link.url}` : ""}.`,
         "The customer's team can see it in their tool. The link is saved on the comment.",
       ),
       asData(result),
@@ -237,7 +213,7 @@ export const postToSlack = defineTool({
       .min(1)
       .max(25)
       .optional()
-      .describe("Comments to include: ids (cmt_...) from a list call, or numbers. Give comments or filter, not both."),
+      .describe("Comments to include: ids (cmt_...) or links, from a list call. Give comments or filter, not both."),
     filter: slackFilterSchema,
     template: z
       .enum(SLACK_TEMPLATES)
@@ -326,7 +302,6 @@ export const integrationTools = [
   listIntegrations,
   getIntegration,
   connectIntegration,
-  updateIntegration,
   pushComment,
   postToSlack,
 ];

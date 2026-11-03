@@ -38,7 +38,7 @@ describe(TOOL, () => {
     expect(recorded[0]?.path).toBe("/projects/Dental%20Smiles/findings/import");
     expect(recorded[0]?.body).toMatchObject({ source: "stache-review", source_name: "Stache review", findings: [finding], idempotency_key: expect.any(String) });
     expect(recorded[0]?.body).not.toHaveProperty("project");
-    expect(summaryOf(result)).toBe("Imported into Dental Smiles as Stache review: 12 created, 28 merged, 0 dropped, 0 failed. Run run_r1.");
+    expect(summaryOf(result)).toBe("Imported into Dental Smiles as Stache review: 12 created, 28 merged, 0 dropped, 0 failed. Read them with superflow_list_findings and run run_r1 (an import is not a run, so superflow_list_runs does not show it).");
     expect(data(result)).toEqual(answer);
   });
 

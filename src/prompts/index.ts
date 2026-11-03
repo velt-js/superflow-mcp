@@ -22,7 +22,7 @@ const SAFETY_RULES = [
 ];
 
 const WRITE_RULE =
-  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, restore, bulk update, attachment, invite, verify install, run agents, schedule, push to a tracker, post to Slack) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
+  "- Do not call any write tool (create, update, resolve, reopen, reply, delete, bulk update, attachment, invite, verify install, run agents, schedule, push to a tracker, post to Slack) until the user explicitly says yes in this conversation. For bulk changes, run a dry run first and show it.";
 
 const READ_ONLY_RULE =
   "- Writes are disabled on this server (SUPERFLOW_READ_ONLY=true), so the write tools are not available. Present every change as a recommendation the user can apply in Superflow. Do not try to apply it.";
@@ -35,6 +35,23 @@ function message(lines: string[], options: PromptOptions, writes: boolean): GetP
 }
 
 const json = (value: unknown) => JSON.stringify(value);
+
+/** How many pages of superflow_list_runs a prompt reads looking for the run to review. */
+const RUN_PAGES = 5;
+
+/**
+ * How a prompt picks "the latest finished run": a status filter can leave a page empty with a
+ * next_cursor, and a resolve, uptime or change rescan covers a few pages only, so the newest
+ * finished run is often not the one to review.
+ */
+function pickRunStep(listArgs: Record<string, unknown>): string {
+  return [
+    `Call superflow_list_runs with ${json(listArgs)}: it lists every run, the portal's and Always-on Monitoring's too, newest first.`,
+    `While no run on the page qualifies and next_cursor is set, call again with cursor set to next_cursor (at most ${RUN_PAGES} pages in all).`,
+    "Prefer the newest run with scope site whose trigger is not resolve, uptime or change: those are small rescans of a few pages. If none you read qualifies, take the newest finished run.",
+    "Tell the user which run you picked (id, project, when) and its trigger. When the newest finished run is a small rescan, say so, and offer the other choice: that rescan, or an older full run.",
+  ].join(" ");
+}
 
 function checkDate(name: string, value: string | undefined): void {
   if (value === undefined) return;
@@ -171,7 +188,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         "Steps:",
         `1. Call superflow_list_comments with ${json({ project, unanswered: true, stale_days: stale, sort: "updated_desc", limit: 100 })}. Follow next_cursor if there are more.`,
         "2. Group the threads by assignee. Put threads with no assignee in their own group.",
-        "3. For each assignee, draft one short nudge that lists their threads: comment number and link, how many days it has waited, and one line on what the person is waiting for.",
+        "3. For each assignee, draft one short nudge that lists their threads: the comment's link, how many days it has waited, and one line on what the person is waiting for.",
         "4. Show the drafts to the user.",
       ];
       if (!options.readOnly) {
@@ -228,8 +245,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
       const steps: string[] = [];
       if (!run) {
         steps.push(
-          `Call superflow_list_runs with ${json({ ...(scope ? { project: scope } : {}), limit: 5 })} and pick the newest run whose status is done or partial. Tell the user which run you picked (id, project, when).`,
-          `If none is done or partial, say so: portal and Always-on Monitoring runs are not in that list. Review the open agent findings instead: call superflow_list_comments with ${json({ ...(scope ? { project: scope } : {}), author_type: ["agent"], status: ["open"], limit: 100 })}, follow next_cursor, skip the next two steps and use those comments as the findings.`,
+          `${pickRunStep({ ...(scope ? { project: scope } : {}), status: ["done", "partial"], limit: 10 })} If there is none, say no run has finished yet and stop.`,
         );
       }
       steps.push(
@@ -237,7 +253,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         `Call superflow_list_findings with ${json({ run: theRun, limit: 100 })}. Follow next_cursor until you have every finding (stop at 300 and say so).`,
         "When a finding needs more context (the element, the page, replies), call superflow_get_comment with its id.",
         "For each finding decide: real issue, or likely false positive. Give a one-line reason (for example: intentional copy, the element is fine, duplicate of another finding, out of scope).",
-        "Start with counts by severity, then show a table: finding (number and link), page, agent, severity, confidence, verdict, reason.",
+        "Start with counts by severity, then show a table: finding (its link), page, agent, severity, confidence, verdict, reason.",
         "Propose which findings to resolve as noise, each with a short note explaining why.",
       );
       if (!options.readOnly) {
@@ -283,11 +299,11 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
         `1. Call superflow_list_comments with ${json(listArgs)}. Follow next_cursor (stop at 300 and say so).`,
         "2. Group comments that say nearly the same thing, or that are pinned to the same element (same anchor selector or xpath) on the same page.",
         "3. For each group pick a keeper: the most detailed one, or the oldest. List the others as duplicates.",
-        "4. Show the groups: keeper (number and link), duplicates (numbers and links), why they match.",
+        "4. Show the groups: keeper (its link), duplicates (their links), why they match.",
       ];
       if (!options.readOnly) {
         lines.push(
-          `5. Ask the user. After a clear yes, resolve each group's duplicates with superflow_bulk_update_comments ${json({ comment_ids: ["4822", "4830"], project, patch: { resolve: true, note: "Duplicate of <keeper url>" } })} as a dry run first, then with "dry_run": false and "confirm": true.`,
+          `5. Ask the user. After a clear yes, resolve each group's duplicates with superflow_bulk_update_comments ${json({ comment_ids: ["cmt_...", "cmt_..."], project, patch: { resolve: true, note: "Duplicate of <keeper url>" } })} as a dry run first, then with "dry_run": false and "confirm": true.`,
         );
       }
       return message(lines, options, true);
@@ -345,7 +361,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
           "Steps:",
           estimate,
           "2. Explain that this server is read-only, so it cannot start the run. The user can start it in Superflow.",
-          `3. Look for a recent run instead: call superflow_list_runs with ${json({ project, limit: 1 })}. If it is done or partial, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor. If there is none (portal and Always-on Monitoring runs are not in that list), call superflow_list_failing_checks with ${json({ project })} and use its open findings instead.`,
+          `3. Look for the latest finished run instead. ${pickRunStep({ project, status: ["done", "partial"], limit: 10 })} If there is one, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor. If there is none, say no run on this site has finished yet.`,
           `4. ${summarize}`,
           "5. Recommend which critical findings to push to Jira, as a list the user can act on in Superflow.",
         ];
@@ -360,7 +376,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
           `4. Call superflow_get_run with ${json({ run: "<the run id>" })} no more often than every ${POLL_SECONDS} seconds until the status is done, failed or partial. A site run can take several minutes: tell the user it is running and offer to check back later.`,
           `5. Call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })}. Follow next_cursor until you have every finding (stop at 300 and say so).`,
           `6. ${summarize}`,
-          `7. Offer to push the critical findings to Jira. Call superflow_list_integrations to find the Jira connection. If there is none, call superflow_connect_integration with ${json({ type: "jira" })} and give the user the link to open. Pushing creates real issues the team will see: list the findings you would push, and after a clear yes call superflow_push_comment with ${json({ comment: "<finding id>", integration: "<the Jira integration id>" })} for each.`,
+          `7. Offer to push the critical findings to Jira. Call superflow_list_integrations to find the Jira connection. If there is none, call superflow_connect_integration with ${json({ type: "jira" })} and give the user the link to open. Ask the user for the Jira project: its key and numeric id (project_key, for example WEB:10001). Pushing creates real issues the team will see: list the findings you would push, and after a clear yes call superflow_push_comment with ${json({ comment: "<finding id>", integration: "<the Jira integration id>", project_key: "<KEY:12345>" })} for each. A finding already in Jira comes back with already_linked: true and creates nothing.`,
         ];
       }
       return message(lines, options, true);

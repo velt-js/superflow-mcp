@@ -9,16 +9,16 @@ call).
 
 | BugHerd | Superflow | Notes |
 |---|---|---|
-| task | comment | A comment is a thread: the first message plus replies. It has a per-project number, like `#4821`. |
+| task | comment | A comment is a thread: the first message plus replies. Refer to one by its id (`cmt_...`) or its link (`url`). |
 | column | status | Statuses are ordered and can be customized for the workspace or per project. Some count as resolved. See `superflow_list_statuses`; add, rename, reorder or delete them with the status tools. |
 | requester | guest | Clients and reviewers invited to a single project. Your team are members. Invite with `superflow_invite_guest`. |
 | project | project | One website. Find it by name, site URL or id. One project per domain; the site URL cannot change, but you can add extra domains. |
-| tag | tag | Unknown tag names are created when you write them. |
+| tag | tag | Tags are workspace-wide. A new tag name is created when you put it on a comment, optionally with a color. |
 | assigned_to | assignee | A comment has one assignee. Removing it is not supported yet: unassign in the Superflow toolbar. |
 | priority | priority | Superflow has three priorities you can set: `critical` (P0), `high` (P1), `medium` (P2). BugHerd `critical`, `important` and `normal` map to them. `minor` reads as `low` and `not_set` as `none`; you can filter by both, but `low` cannot be written and a priority cannot be cleared yet. |
 | task comment | reply | Replies support @mentions of members and guests. |
 | attachment | attachment | Added by URL. Superflow downloads and stores the file. |
-| local_task_id | comment number | `#4821`, scoped to a project. |
+| local_task_id | comment id or link | Superflow comments have no per-project number: use the comment's id (`cmt_...`) or its link. |
 | external_id | external link | Push a comment to Jira, Asana, ClickUp or Monday with `superflow_push_comment`. The new issue's link is saved on the comment (`external_links`), and `has_external_link` finds linked comments. |
 | admin / member | member | Superflow members are workspace owners or admins of every project. There are no per-project member roles. |
 
@@ -41,7 +41,7 @@ planned are not in this release.
 | `GET /projects/{id}/tasks.json` (and its filters) | `superflow_list_comments` | available |
 | Counting tasks by column, assignee or tag | `superflow_comment_stats` | available |
 | `GET /projects/{id}/tasks/{id}.json` | `superflow_get_comment` | available |
-| `GET /projects/{id}/tasks/local_task/{local_task_id}.json` | `superflow_get_comment` with the number and project | available |
+| `GET /projects/{id}/tasks/local_task/{local_task_id}.json` | find the comment with `superflow_list_comments`, then `superflow_get_comment` with its id or link | available |
 | `POST /projects/{id}/tasks.json` | `superflow_create_comment` | available |
 | `PUT /projects/{id}/tasks/{id}.json` | `superflow_update_comment`, `superflow_resolve_comment`, `superflow_reopen_comment` | available |
 | Updating many tasks | `superflow_bulk_update_comments` | available |
@@ -49,7 +49,7 @@ planned are not in this release.
 | `POST /projects/{id}/tasks/{id}/comments.json` | `superflow_add_reply` | available |
 | `GET /projects/{id}/tasks/{id}/attachments.json` | `superflow_get_comment` (attachments included) | available |
 | `POST /projects/{id}/tasks/{id}/attachments.json` | `superflow_add_attachment` | available |
-| `DELETE /projects/{id}/tasks/{id}.json` | `superflow_delete_comment` (with `confirm: true`; restorable) | available |
+| `DELETE /projects/{id}/tasks/{id}.json` | `superflow_delete_comment` (with `confirm: true`; permanent) | available |
 | Exporting tasks | `superflow_export_comments` (csv, json, markdown) | available |
 | `POST /projects.json` | `superflow_create_project` (optionally inviting guests) | available |
 | `PUT /projects/{id}.json` | `superflow_update_project` (name, settings, extra domains), `superflow_archive_project`, `superflow_unarchive_project` | available |
@@ -60,11 +60,11 @@ planned are not in this release.
 | `POST /projects/{id}/columns.json` | `superflow_create_status` | available |
 | `PUT /projects/{id}/columns/{id}.json` | `superflow_update_status`, `superflow_reorder_statuses` | available |
 | Deleting a column | `superflow_delete_status` (moves its comments; with `confirm: true`) | available |
-| Managing tags | `superflow_create_tag`, `superflow_update_tag`, `superflow_delete_tag`, `superflow_merge_tags` | available |
+| Managing tags | a tag is created by putting it on a comment; `superflow_update_tag`, `superflow_delete_tag`, `superflow_merge_tags` rename, remove or fold it on every comment that carries it | available |
 | Install code for a project | `superflow_get_install_snippet`, `superflow_verify_install` | available |
 | `DELETE /projects/{id}/tasks/{id}/attachments/{id}.json` | removing an attachment (not offered by the API yet) | planned |
 | BugHerd webhooks (`/webhooks.json`) | not in this release; planned on Superflow's platform webhooks | planned |
-| `external_id` on tasks | `superflow_push_comment` (creates the Jira issue, Asana, ClickUp or Monday task and stores its link on the comment) | available |
+| `external_id` on tasks | `superflow_push_comment` (creates the Jira issue, Asana, ClickUp or Monday task in the `project_key` you give and stores its link on the comment; one item per tool per comment) | available |
 | Sending a task to Jira or another tracker (BugHerd integrations) | `superflow_push_comment`; connect the tool with `superflow_connect_integration` | available |
 | Slack notifications | `superflow_post_to_slack` (with `confirm: true`) | available |
 

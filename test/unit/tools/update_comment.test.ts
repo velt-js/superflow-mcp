@@ -9,12 +9,27 @@ const TOOL = "superflow_update_comment";
 describe(TOOL, () => {
   it("patches the comment and summarizes the new state", async () => {
     on("patch", "/comments/:comment", ok(fullComment));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    const result = await h.call(TOOL, { comment: "#4821", priority: "high", assignees: ["Jen"], add_tags: ["mobile"] });
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental", priority: "high", assignees: ["Jen"], add_tags: ["mobile"] });
     expect(data(result)).toEqual(fullComment);
-    expect(summaryOf(result)).toMatch(/^Updated\. Comment #4821 in Acme Dental/);
-    expect(recorded[0]?.path).toBe("/comments/4821");
+    expect(summaryOf(result)).toMatch(/^Updated\. Comment cmt_8f3k2 in Acme Dental/);
+    expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2");
     expect(recorded[0]?.body).toEqual({ project: "Acme Dental", priority: "high", assignees: ["Jen"], add_tags: ["mobile"] });
+  });
+
+  it("creates a tag by assigning it, with a color when given", async () => {
+    on("patch", "/comments/:comment", ok(fullComment));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", add_tags: ["mobile", { name: "launch blocker", color: "#b3261e" }] });
+    expect(result.isError).toBeFalsy();
+    expect(recorded[0]?.body).toEqual({ add_tags: ["mobile", { name: "launch blocker", color: "#b3261e" }] });
+  });
+
+  it("refuses a tag color that is not a hex color without a request", async () => {
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", tags: [{ name: "copy", color: "red" }] });
+    expect(errorOf(result).code).toBe("invalid");
+    expect(recorded).toHaveLength(0);
   });
 
   it("attaches a rule key, and null detaches it", async () => {
@@ -75,7 +90,7 @@ describe(TOOL, () => {
 
   it("refuses an update with nothing to change", async () => {
     const h = await connect();
-    const result = await h.call(TOOL, { comment: "4821", project: "Acme" });
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme" });
     expect(errorOf(result).code).toBe("invalid");
     expect(recorded).toHaveLength(0);
   });
@@ -99,8 +114,8 @@ describe(TOOL, () => {
     expect(errorOf(result).message).toContain("three priorities");
   });
 
-  it("labels a comment without a number by its id", async () => {
-    on("patch", "/comments/:comment", ok({ ...fullComment, number: null }));
+  it("labels the comment by its id", async () => {
+    on("patch", "/comments/:comment", ok(fullComment));
     const h = await connect();
     const result = await h.call(TOOL, { comment: "cmt_8f3k2", priority: "critical" });
     expect(summaryOf(result)).toMatch(/^Updated\. Comment cmt_8f3k2 in Acme Dental/);
@@ -117,7 +132,7 @@ describe(TOOL, () => {
 
   standardErrorCases({
     tool: TOOL,
-    args: { comment: "4821", project: "Acme", status: "In progress" },
+    args: { comment: "cmt_8f3k2", project: "Acme", status: "In progress" },
     method: "patch",
     path: "/comments/:comment",
     success: ok(fullComment),

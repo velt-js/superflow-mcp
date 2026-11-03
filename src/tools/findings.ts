@@ -47,7 +47,7 @@ const findingSchema = z
       .string()
       .min(1)
       .max(120)
-      .describe(`The kind of problem. Use Superflow's key when it matches (${COMMON_RULE_KEYS.join(", ")}), so it is grouped under the same check as Superflow's own findings (beside them: it merges only with your own earlier imports); otherwise your own key starting with ext-, for example ext-cookie-banner.`),
+      .describe(`The kind of problem. Use Superflow's key when it matches (${COMMON_RULE_KEYS.join(", ")}), so it carries the same rule_key as Superflow's own findings of that kind (superflow_list_comments with rule_key finds both) and grouped under the same check in superflow_list_failing_checks. It merges only with your own earlier imports. Otherwise your own key starting with ext-, for example ext-cookie-banner.`),
     fix_type: z.enum(["content", "design", "code"]).describe("content (copy, alt text, a link in the CMS), design, or code (theme or repository)."),
     confidence: z.number().int().min(0).max(100).optional().describe("0 to 100. Below 50 the finding is dropped."),
     suggestion: z.string().min(1).max(4000).optional().describe("The suggested fix."),
@@ -83,8 +83,8 @@ export const importFindings = defineTool({
   name: "superflow_import_findings",
   title: "Import findings from your own agent",
   description: [
-    "Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments, the fix list and reports like Superflow's own findings.",
-    "Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it is grouped under the same check as Superflow's own findings. It sits beside them and merges only with your own earlier imports of the same finding. Superflow's agents verify a fix to a finding with one of Superflow's keys; resolving an ext- finding closes it, with no rescan. Up to 500 findings per call, 5,000 per project per day.",
+    "Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments and in superflow_list_findings with the run_id the import returns. Each one counts under its check: superflow_list_failing_checks and the fix list (the triage playbook) include it, beside Superflow's own findings.",
+    "Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it carries the same key as Superflow's own findings of that kind. It merges only with your own earlier imports of the same finding, never with Superflow's. Superflow's agents verify a fix to a finding with one of Superflow's keys; resolving an ext- finding closes it, with no rescan. Up to 500 findings per call, 5,000 per project per day.",
     "It only creates or merges, never deletes. The same finding sent again merges into its comment. If one finding is invalid nothing is imported and the error lists every problem by index (findings[3].page_url): fix them all and send the whole batch again.",
     "Not for one comment a person writes: use superflow_create_comment. Not for running Superflow's agents: use superflow_run_agents.",
     'Example: {"project": "Dental Smiles", "source": "stache-review", "source_name": "Stache review", "findings": [{"page_url": "https://dental-smiles.com/about", "title": "Missing alt text", "description": "The hero image has no alt text.", "severity": "high", "rule_key": "image-alt", "fix_type": "content", "confidence": 90, "suggestion": "Set alt to Dr. Patel smiling.", "anchor": {"selector": "img.hero"}}]}',
@@ -115,7 +115,7 @@ export const importFindings = defineTool({
         `Imported into ${result.project?.name ?? project} as ${result.source?.name ?? args.source}: ${counts}.`,
         result.failed > 0 && "Send the same batch again to retry the failed ones; the rest merge.",
         result.install && !result.install.installed && "The Superflow script is not on the site yet, so the findings show in the portal, not as pins on the live page. Offer superflow_get_install_snippet.",
-        `Run ${result.run_id}.`,
+        `Read them with superflow_list_findings and run ${result.run_id} (an import is not a run, so superflow_list_runs does not show it).`,
       ),
       asData(result),
       { untrusted: false },

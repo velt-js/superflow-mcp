@@ -10,11 +10,11 @@ describe(TOOL, () => {
   it("reopens a resolved comment", async () => {
     const body = { comment: fullComment, changed: true, note_reply_id: null };
     on("post", "/comments/:comment/reopen", ok(body));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    const result = await h.call(TOOL, { comment: "#4821" });
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental" });
     expect(data(result)).toEqual(body);
-    expect(summaryOf(result)).toBe("Reopened comment #4821. Link: https://acme.com/pricing?scommentId=8f3k2");
-    expect(recorded[0]?.path).toBe("/comments/4821/reopen");
+    expect(summaryOf(result)).toBe("Reopened comment cmt_8f3k2. Link: https://acme.com/pricing?scommentId=8f3k2");
+    expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2/reopen");
     expect(recorded[0]?.body).toEqual({ project: "Acme Dental" });
   });
 
@@ -27,7 +27,7 @@ describe(TOOL, () => {
 
   standardErrorCases({
     tool: TOOL,
-    args: { comment: "4821", project: "Acme" },
+    args: { comment: "cmt_8f3k2", project: "Acme" },
     method: "post",
     path: "/comments/:comment/reopen",
     success: ok({ comment: fullComment, changed: true, note_reply_id: null }),

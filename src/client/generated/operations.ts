@@ -98,12 +98,6 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
-  createTag: {
-    method: "POST",
-    path: "/tags",
-    pathParams: [],
-    queryParams: [],
-  },
   deleteAgent: {
     method: "DELETE",
     path: "/agents/{agent}",
@@ -144,7 +138,7 @@ export const operations = {
     method: "DELETE",
     path: "/tags/{tag}",
     pathParams: ["tag"],
-    queryParams: ["confirm"],
+    queryParams: ["confirm", "cursor"],
   },
   duplicateAgent: {
     method: "POST",
@@ -414,7 +408,7 @@ export const operations = {
     method: "GET",
     path: "/projects/{project}/tags",
     pathParams: ["project"],
-    queryParams: [],
+    queryParams: ["cursor"],
   },
   listProjects: {
     method: "GET",
@@ -462,7 +456,7 @@ export const operations = {
     method: "GET",
     path: "/tags",
     pathParams: [],
-    queryParams: ["project"],
+    queryParams: ["cursor", "project"],
   },
   mergeTags: {
     method: "POST",
@@ -530,12 +524,6 @@ export const operations = {
     pathParams: ["comment"],
     queryParams: [],
   },
-  restoreComment: {
-    method: "POST",
-    path: "/comments/{comment}/restore",
-    pathParams: ["comment"],
-    queryParams: [],
-  },
   revokeApiKey: {
     method: "DELETE",
     path: "/api-keys/{key}",
@@ -594,12 +582,6 @@ export const operations = {
     method: "PATCH",
     path: "/projects/{project}/forms/{form}",
     pathParams: ["project", "form"],
-    queryParams: [],
-  },
-  updateIntegration: {
-    method: "PATCH",
-    path: "/integrations/{integration}",
-    pathParams: ["integration"],
     queryParams: [],
   },
   updateNotificationSettings: {
@@ -662,7 +644,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "ea38ebd30ef7621480e1b9f9bdf5e119e55adf4ec88958960d5842ee03904f57";
+export const OPENAPI_SHA256 = "2e12380f263e1cf61fa8c132c05b353af3e52e696d2f4ac524fbfc63ddf2fcea";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

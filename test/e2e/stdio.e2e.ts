@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ApiClient } from "../../src/client/api.ts";
 import { silentLogger } from "../../src/lib/logger.ts";
 import { createServer } from "../../src/server.ts";
+import { FAKE_ME, startFakeHosted } from "../helpers/fake-hosted.ts";
 import { FakeSuperflowApi, apiError, echoLookups } from "./fake-api.ts";
 import { ENTRY, assertBuilt, exampleOf, isolatedEnv, launch, textOf } from "./launch.ts";
 import type { Launched } from "./launch.ts";
@@ -31,15 +32,21 @@ const NON_DESTRUCTIVE_GATED = [
   "superflow_create_api_key",
   "superflow_set_schedule",
 ];
-/** Destructive tools with their own preview rule: remove_member asks the API (409 preview); bulk is a dry run. */
-const OWN_PREVIEW_RULE = new Set(["superflow_remove_member", "superflow_bulk_update_comments"]);
+/**
+ * Destructive tools with their own preview rule: remove_member, delete_tag and merge_tags ask the
+ * API without confirm (its 409 is the preview); bulk is a dry run.
+ */
+const OWN_PREVIEW_RULE = new Set(["superflow_remove_member", "superflow_delete_tag", "superflow_merge_tags", "superflow_bulk_update_comments"]);
+/** The tools whose preview is the API's own answer to the unconfirmed call. */
+const API_PREVIEWS = ["superflow_remove_member", "superflow_delete_tag", "superflow_merge_tags"];
 
 const api = new FakeSuperflowApi(KEY);
 let server: Launched;
 let tools: Tool[] = [];
 
 function baseEnv(extra: Record<string, string> = {}): Record<string, string> {
-  return { SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: api.baseUrl, SUPERFLOW_LOG_LEVEL: "debug", ...extra };
+  // Direct mode: the MCP URL shares the fake API's origin, as the CLI requires.
+  return { SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: api.baseUrl, SUPERFLOW_MCP_URL: `${new URL(api.baseUrl).origin}/mcp`, SUPERFLOW_LOG_LEVEL: "debug", ...extra };
 }
 
 function withoutConfirm(args: Record<string, unknown>): Record<string, unknown> {
@@ -65,7 +72,7 @@ function expectWellFormed(name: string, result: CallToolResult): void {
 
 /** The tools the source registers, listed in process, to prove the bundle matches the source. */
 async function sourceTools(readOnly: boolean): Promise<string[]> {
-  const config = { apiKey: KEY, baseUrl: "https://api.superflow.test/v1", defaultProject: undefined, readOnly, logLevel: "silent" as const };
+  const config = { apiKey: KEY, baseUrl: "https://api.superflow.test/v1", readOnly, logLevel: "silent" as const };
   const mcp = createServer({ config, client: new ApiClient({ apiKey: KEY, baseUrl: config.baseUrl, logger: silentLogger }), logger: silentLogger });
   const client = new Client({ name: "source", version: "0.0.0" });
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -115,6 +122,11 @@ describe("handshake", () => {
 describe("tools/list", () => {
   it("the built bundle registers exactly the tools the source does", async () => {
     expect(tools.map((t) => t.name).sort()).toEqual((await sourceTools(false)).sort());
+  });
+
+  it("does not serve the tools whose API routes were dropped (restore, create tag, integration default project)", () => {
+    const names = tools.map((t) => t.name);
+    for (const gone of ["superflow_restore_comment", "superflow_create_tag", "superflow_update_integration"]) expect(names).not.toContain(gone);
   });
 
   it("has one entry per name, all prefixed superflow_", () => {
@@ -262,6 +274,19 @@ describe("confirmation gates over stdio", () => {
     expect(wrote.length, `wrote with confirm: ${wrote.join(", ")}`).toBeGreaterThanOrEqual(Math.ceil(gated().length * 0.6));
   }, 120_000);
 
+  it("the tools whose preview is the API's never send confirm without confirm: true", async () => {
+    for (const name of API_PREVIEWS) {
+      const tool = tools.find((t) => t.name === name)!;
+      api.reset();
+      await server.call(name, withoutConfirm(exampleOf(tool.description)));
+      expect(api.requests.length, name).toBeGreaterThan(0);
+      for (const request of api.requests) {
+        expect(request.query.confirm, `${name} sent confirm in the query`).toBeUndefined();
+        expect((request.body as { confirm?: unknown } | undefined)?.confirm, `${name} sent confirm in the body`).toBeUndefined();
+      }
+    }
+  });
+
   it("bulk update is a dry run unless dry_run is false and confirm is true", async () => {
     const bulk = tools.find((t) => t.name === "superflow_bulk_update_comments")!;
     await server.call(bulk.name, withoutConfirm(exampleOf(bulk.description)));
@@ -369,7 +394,7 @@ describe("hygiene", () => {
 
   it("debug logs on stderr never carry the key, a request body or comment text", async () => {
     const secretText = "E2E-PRIVATE-COMMENT-TEXT-7f3a";
-    api.answer("createComment", { status: 201, body: { id: "cmt_1", text: secretText, number: 1 } });
+    api.answer("createComment", { status: 201, body: { id: "cmt_1", text: secretText } });
     await server.call("superflow_create_comment", { project: "prj_1", page_url: "https://example.com/", text: secretText });
     await server.call("superflow_get_me");
     const logs = server.stderr();
@@ -424,6 +449,34 @@ describe("startup", () => {
     expect(out.stderr).toContain("https");
   });
 
+  it("in direct mode, refuses an API on another origin than the MCP server the key is for", async () => {
+    const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: "http://127.0.0.1:9/v1" });
+    expect(out.code).not.toBe(0);
+    expect(out.stdout).toBe("");
+    expect(out.stderr).toContain("SUPERFLOW_API_BASE_URL (http://127.0.0.1:9) and the MCP server the key or sign-in is for (https://mcp.usesuperflow.ai, the default) are different servers");
+    expect(out.stderr).not.toContain(KEY);
+  });
+
+  it("refuses a plain-http MCP URL outside localhost before going over the network", async () => {
+    const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: "http://mcp.example.com/mcp" });
+    expect(out.code).not.toBe(0);
+    expect(out.stdout).toBe("");
+    expect(out.stderr).toContain("SUPERFLOW_MCP_URL must use https");
+  });
+
+  it("in bridge mode, a key the hosted server refuses exits non-zero with the reason on stderr only", async () => {
+    const hosted = await startFakeHosted(["sf_pat_someone_else"]);
+    try {
+      const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: hosted.url });
+      expect(out.code).not.toBe(0);
+      expect(out.stdout).toBe("");
+      expect(out.stderr).toContain("The Superflow API key was rejected.");
+      expect(out.stderr).not.toContain(KEY);
+    } finally {
+      await hosted.close();
+    }
+  });
+
   it("refuses an unknown log level and a malformed read-only flag", async () => {
     const bad: Array<Record<string, string>> = [{ SUPERFLOW_LOG_LEVEL: "loud" }, { SUPERFLOW_READ_ONLY: "maybe" }];
     for (const env of bad) {
@@ -431,5 +484,31 @@ describe("startup", () => {
       expect(out.code, JSON.stringify(env)).not.toBe(0);
       expect(out.stdout).toBe("");
     }
+  });
+});
+
+describe("bridge mode (the default: no SUPERFLOW_API_BASE_URL)", () => {
+  it("forwards to the hosted server with the key, and never calls the REST API itself", async () => {
+    const hosted = await startFakeHosted([KEY]);
+    const bridged = await launch({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: hosted.url, SUPERFLOW_LOG_LEVEL: "debug" });
+    try {
+      expect(bridged.client.getServerVersion()).toMatchObject({ name: "superflow-mcp", version: "9.9.9" });
+      expect((await bridged.client.listTools()).tools.map((tool) => tool.name)).toContain("superflow_list_projects");
+      const me = await bridged.call("superflow_get_me");
+      expect(me.structuredContent).toEqual(FAKE_ME);
+      expect(hosted.requests.filter((r) => r.method === "POST").every((r) => r.headers.authorization === `Bearer ${KEY}`)).toBe(true);
+      expect(bridged.stderr()).toContain(`forwarding to ${new URL(hosted.url).host}`);
+      expect(bridged.stderr()).not.toContain("development mode");
+      expect(bridged.stderr()).not.toContain(KEY);
+      expect(api.requests).toEqual([]);
+    } finally {
+      await bridged.close();
+      await hosted.close();
+    }
+  });
+
+  it("with SUPERFLOW_API_BASE_URL set, runs the tools here and says it is development mode", () => {
+    expect(server.stderr()).toContain("SUPERFLOW_API_BASE_URL is set, so the tools run here");
+    expect(server.stderr()).toContain("(development mode)");
   });
 });

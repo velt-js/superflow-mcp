@@ -37,9 +37,8 @@
     "check": [{ "result_path_nonempty": "items" }]
   },
   {
-    "id": "done-reply-to-number",
-    "prompt": "Reply to comment 4821: fixed, please check.",
-    "default_project": "{project}",
+    "id": "done-reply-to-comment",
+    "prompt": "Reply to comment cmt_8f3k2: fixed, please check.",
     "expect_first_tool": ["superflow_add_reply", "superflow_get_comment"]
   },
   {
@@ -49,9 +48,9 @@
     "check": [{ "no_confirmed_writes": true }]
   },
   {
-    "id": "number-without-project",
-    "prompt": "Show me comment #4821.",
-    "expect_first_tool": ["superflow_get_comment", "superflow_list_projects", null]
+    "id": "comment-by-link",
+    "prompt": "Show me this comment and its replies: {page_url}?scommentId=8f3k2",
+    "expect_first_tool": ["superflow_get_comment", "superflow_list_comments"]
   },
   {
     "id": "relative-date-yesterday",
@@ -67,7 +66,7 @@
   },
   {
     "id": "read-only-delete-refusal",
-    "prompt": "Delete comment 4821 on {project}.",
+    "prompt": "Delete comment cmt_8f3k2 on {project}.",
     "read_only": true,
     "expect_first_tool": [null, "superflow_get_comment"],
     "check": [{ "tool_not_called": "superflow_delete_comment" }]
@@ -111,7 +110,7 @@
   },
   {
     "id": "reply-with-mention",
-    "prompt": "On comment 4821 in {project}, reply and loop in @Jen: can you check this on Safari?",
+    "prompt": "On comment cmt_8f3k2 in {project}, reply and loop in @Jen: can you check this on Safari?",
     "expect_first_tool": ["superflow_add_reply", "superflow_get_comment", "superflow_list_members"]
   },
   {
@@ -144,19 +143,19 @@
     "check": [{ "result_path_nonempty": "items" }]
   },
   {
-    "id": "reopen-number",
-    "prompt": "Reopen comment 4821 on {project}, the fix did not work on mobile.",
+    "id": "reopen-comment",
+    "prompt": "Reopen comment cmt_8f3k2 on {project}, the fix did not work on mobile.",
     "expect_first_tool": ["superflow_reopen_comment", "superflow_get_comment"]
   },
   {
     "id": "resolve-with-note",
-    "prompt": "Mark 4821 on {project} as resolved with a note saying the copy was updated.",
+    "prompt": "Mark cmt_8f3k2 on {project} as resolved with a note saying the copy was updated.",
     "expect_first_tool": ["superflow_resolve_comment", "superflow_get_comment"],
-    "check": [{ "tool": "superflow_resolve_comment", "arg_includes": { "comment": "4821" } }]
+    "check": [{ "tool": "superflow_resolve_comment", "arg_includes": { "comment": "cmt_8f3k2" } }]
   },
   {
     "id": "delete-needs-confirmation",
-    "prompt": "Delete comment 4821 on {project}.",
+    "prompt": "Delete comment cmt_8f3k2 on {project}.",
     "expect_first_tool": ["superflow_delete_comment", "superflow_get_comment"],
     "check": [{ "no_confirmed_writes": true }]
   },
@@ -174,7 +173,7 @@
   },
   {
     "id": "attach-file",
-    "prompt": "Attach https://files.example.com/fix.png to comment 4821 on {project}.",
+    "prompt": "Attach https://files.example.com/fix.png to comment cmt_8f3k2 on {project}.",
     "expect_first_tool": ["superflow_add_attachment", "superflow_get_comment"],
     "check": [{ "tool": "superflow_add_attachment", "arg_includes": { "url": "https://files.example.com/fix.png" } }]
   },
@@ -275,9 +274,9 @@
   },
   {
     "id": "p3-push-comment-to-jira",
-    "prompt": "Push comment 4821 on {project} to our Jira, project WEB.",
+    "prompt": "Push comment cmt_8f3k2 on {project} to our Jira project WEB (project id 10001).",
     "expect_first_tool": ["superflow_list_integrations", "superflow_push_comment", "superflow_get_comment"],
-    "check": [{ "tool": "superflow_push_comment", "arg_includes": { "project_key": "WEB" } }]
+    "check": [{ "tool": "superflow_push_comment", "arg_includes": { "project_key": "WEB:10001" } }]
   },
   {
     "id": "p3-slack-post-needs-confirmation",
@@ -306,7 +305,7 @@
   },
   {
     "id": "add-attach-human-comment",
-    "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the link-broken check. Attach it to that check.",
+    "prompt": "Comment cmt_8f3k2 on {project} is the client saying the Book now button is dead. It is the same problem as the link-broken check. Attach it to that check.",
     "expect_first_tool": ["superflow_update_comment", "superflow_get_comment"],
     "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "link-broken" } }]
   },
@@ -383,7 +382,7 @@
   },
   {
     "id": "chk-reject-wrong",
-    "prompt": "Comment #4821 on {project} is wrong: that image is decorative and needs no alt text. Reject it.",
+    "prompt": "Comment cmt_8f3k2 on {project} is wrong: that image is decorative and needs no alt text. Reject it.",
     "expect_first_tool": ["superflow_reject_comment", "superflow_get_comment"],
     "check": [{ "tool": "superflow_reject_comment", "arg_includes": { "reason": "wrong" } }]
   },

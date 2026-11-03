@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.usesuperflow.ai/v1"
+      "url": "https://mcp.usesuperflow.ai/v1"
     }
   ],
   "security": [
@@ -1383,7 +1383,7 @@
     "/projects/{project}/tags": {
       "get": {
         "operationId": "listProjectTags",
-        "summary": "List the tags of a project",
+        "summary": "List the tags on a project's comments, with counts; next_cursor reads past the 10,000-comment scan",
         "tags": [
           "lookups"
         ],
@@ -1401,6 +1401,15 @@
             "in": "path",
             "required": true,
             "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The next_cursor of the previous page of the same list (same project): the scan resumes after the comments that page read. A page lists the tags of its own comments, so a tag can show on several pages, each with that page's count.",
             "schema": {
               "type": "string"
             }
@@ -1456,7 +1465,7 @@
     "/tags": {
       "get": {
         "operationId": "listTags",
-        "summary": "List tags",
+        "summary": "List the tags on the workspace's comments (or one project's), with counts; next_cursor reads past the 10,000-comment scan",
         "tags": [
           "lookups"
         ],
@@ -1473,6 +1482,15 @@
             "name": "project",
             "in": "query",
             "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The next_cursor of the previous page of the same list (same project): the scan resumes after the comments that page read. A page lists the tags of its own comments, so a tag can show on several pages, each with that page's count.",
             "schema": {
               "type": "string"
             }
@@ -1497,94 +1515,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TagList"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      },
-      "post": {
-        "operationId": "createTag",
-        "summary": "Create a tag",
-        "tags": [
-          "tags"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "projects:write"
-            ]
-          }
-        ],
-        "x-required-scope": "projects:write",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "color": {
-                    "type": "string",
-                    "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
-                  },
-                  "project": {
-                    "type": "string",
-                    "description": "Scope it to a project. Omit for a workspace tag."
-                  }
-                },
-                "required": [
-                  "name"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Tag"
                 }
               }
             }
@@ -1722,8 +1652,7 @@
                 "created_desc",
                 "created_asc",
                 "priority_desc",
-                "page",
-                "number"
+                "page"
               ]
             }
           },
@@ -1911,8 +1840,30 @@
                   },
                   "tags": {
                     "type": "array",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
-                      "type": "string"
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "Tag name or tag_ id"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "attachments": {
@@ -2309,8 +2260,7 @@
                 "created_desc",
                 "created_asc",
                 "priority_desc",
-                "page",
-                "number"
+                "page"
               ]
             }
           }
@@ -2445,8 +2395,30 @@
                       },
                       "add_tags": {
                         "type": "array",
+                        "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                         "items": {
-                          "type": "string"
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "description": "Tag name or tag_ id"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "color": {
+                                  "type": "string",
+                                  "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                                }
+                              },
+                              "required": [
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         }
                       },
                       "remove_tags": {
@@ -2555,7 +2527,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -2564,7 +2536,7 @@
             "name": "project",
             "in": "query",
             "required": false,
-            "description": "Project reference (needed to resolve a comment number).",
+            "description": "Project reference (optional: narrows the comment lookup).",
             "schema": {
               "type": "string"
             }
@@ -2644,7 +2616,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -2700,14 +2672,58 @@
                   },
                   "tags": {
                     "type": "array",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
-                      "type": "string"
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "Tag name or tag_ id"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "add_tags": {
                     "type": "array",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
-                      "type": "string"
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "Tag name or tag_ id"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "remove_tags": {
@@ -2836,7 +2852,7 @@
       },
       "delete": {
         "operationId": "deleteComment",
-        "summary": "Delete a comment (restorable for 30 days)",
+        "summary": "Delete a comment for good (it cannot be restored)",
         "tags": [
           "comments"
         ],
@@ -2853,7 +2869,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -2862,7 +2878,7 @@
             "name": "project",
             "in": "query",
             "required": false,
-            "description": "Project reference (needed to resolve a comment number).",
+            "description": "Project reference (optional: narrows the comment lookup).",
             "schema": {
               "type": "string"
             }
@@ -2886,97 +2902,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeletedComment"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
-      }
-    },
-    "/comments/{comment}/restore": {
-      "post": {
-        "operationId": "restoreComment",
-        "summary": "Restore a deleted comment",
-        "tags": [
-          "comments"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "comments:write"
-            ]
-          }
-        ],
-        "x-required-scope": "comments:write",
-        "parameters": [
-          {
-            "name": "comment",
-            "in": "path",
-            "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "project": {
-                    "type": "string"
-                  }
-                },
-                "required": [],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommentFull"
+                  "$ref": "#/components/schemas/Deleted"
                 }
               }
             }
@@ -3025,7 +2951,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -3118,7 +3044,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -3211,7 +3137,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -3220,7 +3146,7 @@
             "name": "project",
             "in": "query",
             "required": false,
-            "description": "Project reference (needed to resolve a comment number).",
+            "description": "Project reference (optional: narrows the comment lookup).",
             "schema": {
               "type": "string"
             }
@@ -3291,7 +3217,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -3408,7 +3334,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -4139,7 +4065,7 @@
       },
       "delete": {
         "operationId": "removePage",
-        "summary": "Remove a page and soft-delete its comments",
+        "summary": "Remove a page and delete its comments for good",
         "tags": [
           "pages"
         ],
@@ -4880,7 +4806,7 @@
     "/tags/{tag}": {
       "patch": {
         "operationId": "updateTag",
-        "summary": "Rename or recolor a tag (the id is kept)",
+        "summary": "Rename or recolor a tag on the comments that carry it (a rename gives the new name's id); resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -4897,7 +4823,7 @@
             "name": "tag",
             "in": "path",
             "required": true,
-            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "description": "Tag: tag_ id, raw id, or name (among the tags the workspace's comments carry). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -4916,6 +4842,10 @@
                   "color": {
                     "type": "string",
                     "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                  },
+                  "cursor": {
+                    "type": "string",
+                    "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused."
                   }
                 },
                 "required": [],
@@ -4942,7 +4872,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Tag"
+                  "$ref": "#/components/schemas/TagWrite"
                 }
               }
             }
@@ -4972,7 +4902,7 @@
       },
       "delete": {
         "operationId": "deleteTag",
-        "summary": "Delete a tag from every comment",
+        "summary": "Take a tag off the comments that carry it; resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -4989,7 +4919,7 @@
             "name": "tag",
             "in": "path",
             "required": true,
-            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "description": "Tag: tag_ id, raw id, or name (among the tags the workspace's comments carry). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -5001,6 +4931,15 @@
             "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -5054,7 +4993,7 @@
     "/tags/{tag}/merge": {
       "post": {
         "operationId": "mergeTags",
-        "summary": "Merge a tag into another",
+        "summary": "Merge a tag into another (or into a new name) on the comments that carry it; resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -5071,7 +5010,7 @@
             "name": "tag",
             "in": "path",
             "required": true,
-            "description": "Tag: tag_ id, raw id, or name. URL-encoded.",
+            "description": "Tag: tag_ id, raw id, or name (among the tags the workspace's comments carry). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -5089,6 +5028,10 @@
                   },
                   "confirm": {
                     "type": "boolean"
+                  },
+                  "cursor": {
+                    "type": "string",
+                    "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused."
                   }
                 },
                 "required": [
@@ -6672,7 +6615,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -6687,7 +6630,7 @@
                 "properties": {
                   "project": {
                     "type": "string",
-                    "description": "Needed when the comment path parameter is a number."
+                    "description": "The project the comment is in (optional: narrows the lookup)."
                   },
                   "reason": {
                     "type": "string",
@@ -6779,7 +6722,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -6788,7 +6731,7 @@
             "name": "project",
             "in": "query",
             "required": false,
-            "description": "Project reference (needed to resolve a comment number).",
+            "description": "Project reference (optional: narrows the comment lookup).",
             "schema": {
               "type": "string"
             }
@@ -8482,9 +8425,6 @@
                     "items": {
                       "type": "string"
                     }
-                  },
-                  "is_default_for_runs": {
-                    "type": "boolean"
                   }
                 },
                 "required": [],
@@ -8654,7 +8594,7 @@
     "/runs": {
       "post": {
         "operationId": "runAgents",
-        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per rolling hour; past that 429 with Retry-After.",
+        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per UTC hour; past that 429 with Retry-After until the next hour.",
         "tags": [
           "runs"
         ],
@@ -8772,7 +8712,7 @@
       },
       "get": {
         "operationId": "listRuns",
-        "summary": "List runs",
+        "summary": "List runs (never those of a deleted earlier project with the same id)",
         "tags": [
           "runs"
         ],
@@ -8894,7 +8834,7 @@
     "/runs/{run}": {
       "get": {
         "operationId": "getRun",
-        "summary": "Get a run (live)",
+        "summary": "Get a run (live). A run of a deleted earlier project with the same id (the same site) is not_found.",
         "tags": [
           "runs"
         ],
@@ -10041,102 +9981,6 @@
             "$ref": "#/components/responses/Upstream"
           }
         }
-      },
-      "patch": {
-        "operationId": "updateIntegration",
-        "summary": "Set the default project of an integration",
-        "tags": [
-          "integrations"
-        ],
-        "security": [
-          {
-            "bearer": [
-              "integrations:write"
-            ]
-          }
-        ],
-        "x-required-scope": "integrations:write",
-        "parameters": [
-          {
-            "name": "integration",
-            "in": "path",
-            "required": true,
-            "description": "Integration: int_ id, raw connection id, name, or the type when the workspace has one of it. URL-encoded.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "default_project": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "description": "Jira KEY:12345, Asana <workspace gid>:<project gid>, ClickUp <team>:<space>:<list>, Monday <board id>. null clears it."
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "required": [],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Integration"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "502": {
-            "$ref": "#/components/responses/Upstream"
-          }
-        }
       }
     },
     "/integrations/connect": {
@@ -10252,7 +10096,7 @@
             "name": "comment",
             "in": "path",
             "required": true,
-            "description": "Comment: cmt_ id, raw id, or a number (4821 or #4821; a number needs the project parameter). URL-encoded.",
+            "description": "Comment: cmt_ id, raw id, or the comment's link (its url, which carries scommentId). URL-encoded.",
             "schema": {
               "type": "string"
             }
@@ -10270,11 +10114,11 @@
                   },
                   "project": {
                     "type": "string",
-                    "description": "The project, required when the comment path parameter is a comment number."
+                    "description": "The project the comment is in (optional: narrows the lookup)."
                   },
                   "project_key": {
                     "type": "string",
-                    "description": "The target; see updateIntegration for the format. Default: the integration default_project."
+                    "description": "The target: Jira KEY:12345, Asana <workspace gid>:<project gid>, ClickUp <team>:<space>:<list>, Monday <board id>. Needed to push: an integration has no default project."
                   },
                   "title": {
                     "type": "string"
@@ -10697,26 +10541,14 @@
             "type": "string"
           },
           "comments_deleted": {
-            "type": "integer"
-          },
-          "restore_until": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "description": "UTC ISO 8601 with Z"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "description": "Comments deleted for good."
           }
         },
         "required": [
           "removed",
           "id",
-          "comments_deleted",
-          "restore_until"
+          "comments_deleted"
         ],
         "additionalProperties": false
       },
@@ -11037,12 +10869,38 @@
           "removed_from": {
             "type": "integer",
             "description": "Comments the tag was removed from."
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
+          },
+          "complete": {
+            "type": "boolean",
+            "description": "True only when next_cursor is null and failed is 0."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
           }
         },
         "required": [
           "deleted",
           "id",
-          "removed_from"
+          "removed_from",
+          "failed",
+          "complete",
+          "next_cursor",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -11061,15 +10919,87 @@
           },
           "comments_updated": {
             "type": "integer"
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
+          },
+          "complete": {
+            "type": "boolean",
+            "description": "True only when next_cursor is null and failed is 0."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
           }
         },
         "required": [
           "merged",
           "from",
           "into",
-          "comments_updated"
+          "comments_updated",
+          "failed",
+          "complete",
+          "next_cursor",
+          "scan"
         ],
         "additionalProperties": false
+      },
+      "TagWrite": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Tag"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "comments_updated": {
+                "type": "integer",
+                "description": "Comments rewritten with the new name or color."
+              },
+              "failed": {
+                "type": "integer",
+                "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
+              },
+              "complete": {
+                "type": "boolean",
+                "description": "True only when next_cursor is null and failed is 0."
+              },
+              "next_cursor": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scan": {
+                "$ref": "#/components/schemas/Scan"
+              }
+            },
+            "required": [
+              "comments_updated",
+              "failed",
+              "complete",
+              "next_cursor",
+              "scan"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "Organization": {
         "type": "object",
@@ -12195,10 +12125,6 @@
           },
           "system": {
             "type": "boolean"
-          },
-          "is_default_for_runs": {
-            "type": "boolean",
-            "description": "Runs and estimates with no agents and no pack use this pack."
           }
         },
         "required": [
@@ -12207,8 +12133,7 @@
           "description",
           "agent_ids",
           "agent_count",
-          "system",
-          "is_default_for_runs"
+          "system"
         ],
         "additionalProperties": false
       },
@@ -12402,7 +12327,8 @@
               "page",
               "list",
               "site"
-            ]
+            ],
+            "description": "From the scan's census and pages (the scan stores no scope): list, page (one requested page), else site."
           },
           "pages_requested": {
             "type": "array",
@@ -12423,7 +12349,8 @@
           "credits_charged": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "description": "The scan's charge; 0 once it was refunded or its debit failed (status error)."
               },
               {
                 "type": "null"
@@ -12470,8 +12397,17 @@
             "enum": [
               "manual",
               "schedule",
-              "api"
-            ]
+              "deploy",
+              "change",
+              "resolve",
+              "approval",
+              "mcp",
+              "api",
+              "uptime",
+              "standalone",
+              "workflow"
+            ],
+            "description": "What started the scan: api or mcp (this API), workflow (a schedule), manual (the portal), schedule, deploy, change, resolve or uptime (Always-on Monitoring)."
           },
           "created_by": {
             "type": "object",
@@ -12544,7 +12480,7 @@
                 },
                 "status": {
                   "type": "string",
-                  "description": "running, passed, failed, partial, error or skipped"
+                  "description": "running, passed, failed, partial, error or skipped; missing when the execution's record is gone (final, agent null)"
                 },
                 "findings": {
                   "anyOf": [
@@ -12663,7 +12599,7 @@
           },
           "run_id": {
             "type": "string",
-            "description": "run_ id of the import (list_runs shows it; agent_run filters its comments)"
+            "description": "run_ id of the import: agent_run and listRunFindings filter its comments (an import is not a scan, so listRuns and getRun do not show it)"
           },
           "received": {
             "type": "integer"
@@ -12898,37 +12834,31 @@
             "type": "string"
           },
           "agents": {
-            "anyOf": [
-              {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "anyOf": [
+                    {
                       "type": "string"
                     },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
+                    {
+                      "type": "null"
                     }
-                  },
-                  "required": [
-                    "id",
-                    "name"
-                  ],
-                  "additionalProperties": false
+                  ]
                 }
               },
-              {
-                "type": "null"
-              }
-            ]
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "The agents every run uses, fixed when the schedule was saved (the named agents, the pack's members or the default run set)."
           },
           "pack": {
             "anyOf": [
@@ -13018,7 +12948,16 @@
                   },
                   "status": {
                     "type": "string",
-                    "description": "A run status, skipped_insufficient_credits or failed_to_start"
+                    "enum": [
+                      "started",
+                      "skipped_insufficient_credits",
+                      "skipped_no_changes",
+                      "skipped_creator_removed",
+                      "skipped_no_agents",
+                      "in_progress",
+                      "failed_to_start"
+                    ],
+                    "description": "What the newest run did: started, skipped (credits, no changes, creator removed, no agents), in_progress or failed_to_start."
                   }
                 },
                 "required": [
@@ -13101,12 +13040,17 @@
           },
           "applied_filters": {
             "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan",
+            "description": "Workflow definitions read (at most 10,000). complete false: the schedules on the definitions not read are not in items."
           }
         },
         "required": [
           "items",
           "next_cursor",
-          "applied_filters"
+          "applied_filters",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -13176,25 +13120,6 @@
                 "type": "null"
               }
             ]
-          },
-          "settings": {
-            "type": "object",
-            "properties": {
-              "default_project": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "default_project"
-            ],
-            "additionalProperties": false
           }
         },
         "required": [
@@ -13203,8 +13128,7 @@
           "name",
           "detail",
           "status",
-          "connected_at",
-          "settings"
+          "connected_at"
         ],
         "additionalProperties": false
       },
@@ -13270,11 +13194,16 @@
           },
           "link": {
             "$ref": "#/components/schemas/ExternalLink"
+          },
+          "already_linked": {
+            "type": "boolean",
+            "description": "True (HTTP 200) when the comment already had an item in this tracker: that link is returned and nothing is created (one item per tracker per comment)."
           }
         },
         "required": [
           "comment",
-          "link"
+          "link",
+          "already_linked"
         ],
         "additionalProperties": false
       },
@@ -15121,6 +15050,21 @@
                 "type": "object",
                 "description": "needs_confirmation only: what the request would do. Bulk: { would_update, sample }. Deletes and removals: the entity and the counts it affects."
               },
+              "scan": {
+                "$ref": "#/components/schemas/Scan",
+                "description": "A tag route's not_found, and the needs_confirmation preview of a tag delete or merge: what its scan read; complete false means a tag may be on a comment past the ones read."
+              },
+              "next_cursor": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "With scan: send it back as cursor (same tag and body) to look past the comments already read. A preview's cursor also works with confirm, which then rewrites from there: to rewrite from the start, confirm without a cursor."
+              },
               "issues": {
                 "type": "array",
                 "description": "invalid only, when a request has more than one problem: up to 20 { field, reason } pairs, field written like findings[37].fix_type.",
@@ -15323,17 +15267,6 @@
             "type": "string",
             "description": "cmt_ id"
           },
-          "number": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "description": "Per-project comment number. Null on the first calls for a project the API never numbered (numbering is best effort on reads)."
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "project": {
             "type": "string",
             "description": "Project name"
@@ -15391,7 +15324,8 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "description": "Tag name"
             }
           },
           "reply_count": {
@@ -15460,7 +15394,6 @@
         },
         "required": [
           "id",
-          "number",
           "project",
           "project_id",
           "page_url",
@@ -15486,16 +15419,6 @@
         "properties": {
           "id": {
             "type": "string"
-          },
-          "number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "project": {
             "type": "object",
@@ -16049,7 +15972,6 @@
         },
         "required": [
           "id",
-          "number",
           "project",
           "page",
           "text",
@@ -16133,17 +16055,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "tag_ id"
-          },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "tag_ id (derived from the name: one id per name; a tag made outside the API keeps its own id)"
           },
           "name": {
             "type": "string"
@@ -16159,17 +16071,18 @@
             ]
           },
           "usage_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Scanned comments that carry it."
           }
         },
         "required": [
           "id",
-          "project_id",
           "name",
           "color",
           "usage_count"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "A Velt category on the comment. Anyone who can read the comment (members, guests, review link viewers, any SDK client of the project) can read its tags: keep private notes out of them."
       },
       "Project": {
         "type": "object",
@@ -16277,9 +16190,6 @@
                   }
                 ]
               },
-              "default_agent_pack": {
-                "type": "null"
-              },
               "statuses": {
                 "type": "array",
                 "items": {
@@ -16297,7 +16207,6 @@
               "member_count",
               "guest_count",
               "total_comment_count",
-              "default_agent_pack",
               "statuses",
               "settings",
               "install"
@@ -16839,12 +16748,16 @@
           },
           "applied_filters": {
             "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
           }
         },
         "required": [
           "items",
           "next_cursor",
-          "applied_filters"
+          "applied_filters",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -17104,47 +17017,6 @@
         ],
         "additionalProperties": false
       },
-      "DeletedComment": {
-        "type": "object",
-        "properties": {
-          "deleted": {
-            "type": "boolean",
-            "const": true
-          },
-          "id": {
-            "type": "string"
-          },
-          "number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "restore_until": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "description": "UTC ISO 8601 with Z"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "deleted",
-          "id",
-          "number",
-          "restore_until"
-        ],
-        "additionalProperties": false
-      },
       "BulkResult": {
         "oneOf": [
           {
@@ -17168,6 +17040,26 @@
                   "$ref": "#/components/schemas/Comment"
                 }
               },
+              "failed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Comments the run would not write, with why (a tag change on a comment whose tags could not be read)."
+              },
               "applied_filters": {
                 "type": "object"
               },
@@ -17180,6 +17072,7 @@
               "would_update",
               "already_in_state",
               "sample",
+              "failed",
               "applied_filters",
               "scan"
             ],
@@ -17355,7 +17248,7 @@
         "name": "tags",
         "in": "query",
         "required": false,
-        "description": "Tag names or tag_ ids. Comma separated, or repeated.",
+        "description": "Tag names (case-insensitive) or tag_ ids. A tag no comment carries matches nothing. Comma separated, or repeated.",
         "schema": {
           "type": "array",
           "items": {
@@ -17463,7 +17356,7 @@
         "name": "has_external_link",
         "in": "query",
         "required": false,
-        "description": "true: comments pushed to an issue tracker (pushComment stored a link). false: comments without one.",
+        "description": "true: comments linked to an issue tracker item (a pushComment, or a workflow's two-way sync). false: comments without one.",
         "schema": {
           "type": "boolean"
         }

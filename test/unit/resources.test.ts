@@ -53,11 +53,12 @@ describe("resources", () => {
     expect(recorded[1]?.query).toEqual({ project: "prj_1a2b", limit: "25", fields: "compact" });
   });
 
-  it("superflow://comments/{comment} returns the full comment and uses the default project", async () => {
+  it("superflow://comments/{comment} returns the full comment by its id", async () => {
     on("get", "/comments/:comment", ok(fullComment));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    expect(json(await h.client.readResource({ uri: "superflow://comments/4821" }))).toEqual(fullComment);
-    expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "true" });
+    const h = await connect();
+    expect(json(await h.client.readResource({ uri: "superflow://comments/cmt_8f3k2" }))).toEqual(fullComment);
+    expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2");
+    expect(recorded[0]?.query).toEqual({ include_replies: "true" });
   });
 
   it("superflow://runs/{run} returns the same JSON as superflow_get_run", async () => {
@@ -71,11 +72,11 @@ describe("resources", () => {
   it("fails the read with the API message on an error", async () => {
     on("get", "/comments/:comment", () =>
       Response.json(
-        { error: { code: "not_found", message: "No comment #4821.", hint: "", candidates: [] } },
+        { error: { code: "not_found", message: 'No comment matches "cmt_nope".', hint: "", candidates: [] } },
         { status: 404 },
       ),
     );
     const h = await connect();
-    await expect(h.client.readResource({ uri: "superflow://comments/4821" })).rejects.toThrow(/No comment #4821/);
+    await expect(h.client.readResource({ uri: "superflow://comments/cmt_nope" })).rejects.toThrow(/No comment matches "cmt_nope"/);
   });
 });

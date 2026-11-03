@@ -159,7 +159,7 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
     new ResourceTemplate("superflow://comments/{comment}", { list: undefined }),
     {
       title: "Superflow comment",
-      description: "One comment with replies, same JSON as superflow_get_comment. Numbers use SUPERFLOW_DEFAULT_PROJECT.",
+      description: "One comment with replies, same JSON as superflow_get_comment. Give the comment's id (cmt_...).",
       mimeType: JSON_MIME,
     },
     async (uri, variables) => {

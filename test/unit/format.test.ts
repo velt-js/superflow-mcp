@@ -44,7 +44,7 @@ describe("okResult", () => {
   });
 
   it("truncates items from the end to stay under the cap and says how to page", () => {
-    const items = Array.from({ length: 100 }, (_, i) => ({ ...compactComment, number: i, text: "x".repeat(400) }));
+    const items = Array.from({ length: 100 }, (_, i) => ({ ...compactComment, id: `cmt_${i}`, text: "x".repeat(400) }));
     const result = okResult("Found 100 comments.", { items, next_cursor: "c2", total: 900 });
     const body = text(result);
     expect(body.length).toBeLessThanOrEqual(MAX_TEXT_CHARS);
@@ -56,7 +56,7 @@ describe("okResult", () => {
     const summary = body.split("\n")[0] ?? "";
     expect(summary).toContain(`Truncated: dropped the last ${100 - data.items.length} of 100 items`);
     expect(summary).toContain(`limit=${data.items.length}`);
-    expect((data.items.at(-1) as { number: number }).number).toBe(data.items.length - 1);
+    expect((data.items.at(-1) as { id: string }).id).toBe(`cmt_${data.items.length - 1}`);
   });
 
   it("truncates large export content", () => {

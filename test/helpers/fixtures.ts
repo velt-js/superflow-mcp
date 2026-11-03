@@ -92,8 +92,8 @@ export const statuses: Status[] = [
 ];
 
 export const tags: Tag[] = [
-  { id: "tag_copy", project_id: null, name: "copy", color: null, usage_count: 12 },
-  { id: "tag_mobile", project_id: "prj_1a2b", name: "mobile", color: "#b3261e", usage_count: 5 },
+  { id: "tag_copy", name: "copy", color: null, usage_count: 12 },
+  { id: "tag_mobile", name: "mobile", color: "#b3261e", usage_count: 5 },
 ];
 
 export const me: Me = {
@@ -105,7 +105,6 @@ export const me: Me = {
 
 export const compactComment: CommentCompact = {
   id: "cmt_8f3k2",
-  number: 4821,
   project: "Acme Dental",
   project_id: "prj_1a2b",
   page_url: "https://acme.com/pricing",
@@ -138,7 +137,6 @@ export const reply: Reply = {
 
 export const fullComment: CommentFull = {
   id: "cmt_8f3k2",
-  number: 4821,
   project: { id: "prj_1a2b", name: "Acme Dental" },
   page: { id: "pg_9z", url: "https://acme.com/pricing", title: "Pricing" },
   text: "Button overlaps the nav on mobile",
@@ -197,13 +195,10 @@ export const ambiguousProject = {
 
 export const notFound = {
   code: "not_found",
-  message: "No comment #4821 in project Acme Dental.",
-  hint: "List comments with superflow_list_comments to find the number.",
+  message: 'No comment matches "cmt_nope".',
+  hint: "List comments with superflow_list_comments to find its id.",
   candidates: [],
 };
-
-/** A comment in a project the API has not numbered yet (number is null). */
-export const unnumberedComment: CommentFull = { ...fullComment, number: null };
 
 // ---------------------------------------------------------------------------------------------
 // Phase 2 (CONTRACT-P2).
@@ -326,7 +321,6 @@ export const agentPack: AgentPack = {
   agent_ids: ["agt_proof", "agt_legal1"],
   agent_count: 2,
   system: false,
-  is_default_for_runs: true,
 };
 
 export const systemPack: AgentPack = {
@@ -336,7 +330,6 @@ export const systemPack: AgentPack = {
   agent_ids: ["agt_proof"],
   agent_count: 1,
   system: true,
-  is_default_for_runs: false,
 };
 
 export const estimate: RunEstimate = {
@@ -391,7 +384,6 @@ export const doneRun: Run = {
 export const finding: Finding = {
   ...compactComment,
   id: "cmt_f1",
-  number: 4900,
   text: "Typo: \"recieve\" should be \"receive\".",
   author: "Proofreader (agent)",
   severity: "high",
@@ -403,13 +395,16 @@ export const schedule: Schedule = {
   project: { id: "prj_1a2b", name: "Acme Dental" },
   cron: "0 9 * * 1",
   timezone: "Europe/Berlin",
-  agents: null,
+  agents: [
+    { id: "agt_proof", name: "Proofreader" },
+    { id: "agt_legal1", name: "Legal footer" },
+  ],
   pack: { id: "pck_pre", name: "Pre-Launch" },
   scope: "site",
   pages: [],
   enabled: true,
   next_run_at: "2026-10-12T07:00:00Z",
-  last_run: { run_id: "run_8f3k2", at: "2026-10-05T07:00:00Z", status: "done" },
+  last_run: { run_id: "run_8f3k2", at: "2026-10-05T07:00:00Z", status: "started" },
   created_by: { id: "usr_7", email: "owner@example.com" },
 };
 
@@ -427,7 +422,6 @@ export const slackIntegration: Integration = {
   detail: "#design-feedback",
   status: "connected",
   connected_at: "2026-09-01T10:00:00Z",
-  settings: { default_project: null },
 };
 
 export const jiraIntegration: Integration = {
@@ -437,6 +431,5 @@ export const jiraIntegration: Integration = {
   detail: "example.atlassian.net",
   status: "connected",
   connected_at: "2026-09-02T10:00:00Z",
-  settings: { default_project: "WEB:10001" },
 };
 

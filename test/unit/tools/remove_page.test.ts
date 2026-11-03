@@ -6,7 +6,7 @@ import { connect, data, errorOf, ok, on, recorded, standardErrorCases, summaryOf
 useMsw();
 
 const TOOL = "superflow_remove_page";
-const removed = { removed: true, id: "pg_9z", comments_deleted: 9, restore_until: "2026-11-07T00:00:00Z" };
+const removed = { removed: true, id: "pg_9z", comments_deleted: 9 };
 
 describe(TOOL, () => {
   it("without confirm, only reads the page and returns a preview", async () => {
@@ -20,8 +20,9 @@ describe(TOOL, () => {
       message: CONFIRM_REMOVE_PAGE_MESSAGE,
     });
     expect(summaryOf(result)).toBe(
-      "Page https://acme.com/pricing in Acme Dental would be removed and its 9 comments deleted (restorable for 30 days). Nothing was removed. Ask the user to confirm.",
+      "Page https://acme.com/pricing in Acme Dental would be removed and its 9 comments deleted for good: they cannot be restored. Nothing was removed. Ask the user to confirm.",
     );
+    expect(CONFIRM_REMOVE_PAGE_MESSAGE).toContain("cannot be restored");
     expect(recorded.map((r) => r.operationId)).toEqual(["getPage"]);
     expect(writes()).toEqual([]);
   });
@@ -36,13 +37,13 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
-  it("removes with confirm: true and says until when comments can be restored", async () => {
+  it("removes with confirm: true and says the comments are gone for good", async () => {
     on("delete", "/projects/:project/pages/:page", ok(removed));
     const h = await connect();
     const result = await h.call(TOOL, { project: "Acme Dental", page: "/pricing", confirm: true });
     expect(data(result)).toEqual(removed);
     expect(summaryOf(result)).toBe(
-      "Removed page pg_9z from Acme Dental and deleted 9 comments. They can be restored with superflow_restore_comment until 2026-11-07T00:00:00Z.",
+      "Removed page pg_9z from Acme Dental and deleted 9 comments for good.",
     );
     expect(recorded.map((r) => [r.method, r.query])).toEqual([["DELETE", { confirm: "true" }]]);
   });

@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiClient, SESSION_ENDED_MESSAGE, SESSION_SCOPE_HINT, SuperflowApiError, UNAUTHORIZED_MESSAGE, toApiError } from "../../src/client/api.ts";
+import {
+  ApiClient,
+  SESSION_ENDED_MESSAGE,
+  SESSION_SCOPE_HINT,
+  SuperflowApiError,
+  UNAUTHORIZED_MESSAGE,
+  timeoutFor,
+  toApiError,
+} from "../../src/client/api.ts";
 import { errorResult } from "../../src/lib/format.ts";
 import { createLogger, redact } from "../../src/lib/logger.ts";
 import { VERSION } from "../../src/version.ts";
@@ -95,7 +103,9 @@ describe("ApiClient URL building", () => {
     expect(api.buildUrl("listProjectPages", { path: { project: "Acme Dental/EU" } })).toBe(
       `${BASE}/projects/Acme%20Dental%2FEU/pages`,
     );
-    expect(api.buildUrl("getComment", { path: { comment: "#4821" } })).toBe(`${BASE}/comments/%234821`);
+    expect(api.buildUrl("getComment", { path: { comment: "https://acme.com/p?scommentId=8f3k2#top" } })).toBe(
+      `${BASE}/comments/https%3A%2F%2Facme.com%2Fp%3FscommentId%3D8f3k2%23top`,
+    );
   });
 
   it("refuses to build a URL with a missing path parameter", () => {
@@ -252,6 +262,23 @@ describe("ApiClient timeouts", () => {
       const error = await pending;
       expect(error.message).toBe("The Superflow API did not answer within 60 seconds.");
     }
+  });
+
+  it("allows 90 s for tag rewrites and 60 s for tag lists, which scan the workspace's comments", async () => {
+    for (const operationId of ["updateTag", "deleteTag", "mergeTags"] as const) expect(timeoutFor(operationId), operationId).toBe(90_000);
+    for (const operationId of ["listTags", "listProjectTags"] as const) expect(timeoutFor(operationId), operationId).toBe(60_000);
+    vi.useFakeTimers();
+    const hanging = hangingFetch();
+    const { api } = client({ fetch: hanging.fetch });
+    let settled = false;
+    const pending = rejection(api.call("updateTag", { path: { tag: "copy" }, body: { color: "#000000" } })).finally(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await pending).message).toBe("The Superflow API did not answer within 90 seconds.");
+    expect(hanging.calls).toHaveLength(1);
   });
 
   it("hands back the idempotency key when a write times out, and says to retry with it", async () => {

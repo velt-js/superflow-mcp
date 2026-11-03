@@ -1,5 +1,7 @@
 // Smoke test for the built CLI over real stdio. Run `pnpm build` first.
-// 1. With SUPERFLOW_API_KEY set, it answers initialize + tools/list; prints the tool count.
+// 1. With SUPERFLOW_API_KEY and SUPERFLOW_API_BASE_URL set (direct mode: the tools run in the
+//    process, so tools/list needs no network), it answers initialize + tools/list; prints the
+//    tool count. The default bridge mode is covered by the e2e suite against a fake hosted server.
 // 2. Without SUPERFLOW_API_KEY, it exits non-zero with one stderr line naming the variable.
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -7,7 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
-const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 104);
+const EXPECTED_TOOLS = Number(process.env.SMOKE_EXPECTED_TOOLS ?? 101);
 const TIMEOUT_MS = 15_000;
 
 function cleanEnv(extra) {
@@ -21,7 +23,7 @@ function cleanEnv(extra) {
 function listTools() {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [ENTRY], {
-      env: cleanEnv({ SUPERFLOW_API_KEY: "sf_pat_test", SUPERFLOW_LOG_LEVEL: "error" }),
+      env: cleanEnv({ SUPERFLOW_API_KEY: "sf_pat_test", SUPERFLOW_API_BASE_URL: "https://mcp.usesuperflow.ai/v1", SUPERFLOW_LOG_LEVEL: "error" }),
       stdio: ["pipe", "pipe", "pipe"],
     });
     const timer = setTimeout(() => {

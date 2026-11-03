@@ -22,7 +22,7 @@ describe(TOOL, () => {
     expect(result.isError).toBeFalsy();
     expect(data(result)).toEqual(created);
     expect(summaryOf(result)).toBe(
-      "Created comment #4821 on https://acme.com/pricing in Acme Dental. Link: https://acme.com/pricing?scommentId=8f3k2",
+      "Created comment cmt_8f3k2 on https://acme.com/pricing in Acme Dental. Link: https://acme.com/pricing?scommentId=8f3k2",
     );
     const body = recorded[0]?.body as Record<string, unknown>;
     expect(body).toMatchObject({
@@ -92,13 +92,17 @@ describe(TOOL, () => {
     expect(recorded.map((r) => (r.body as { idempotency_key: string }).idempotency_key)).toEqual(["k-7", "k-7"]);
   });
 
-  it("labels a new comment without a number by its id", async () => {
-    on("post", "/comments", ok({ ...created, number: null }, 201));
+  it("creates new tags by assigning them, a name or a name with a color", async () => {
+    on("post", "/comments", ok(created, 201));
     const h = await connect();
-    const result = await h.call(TOOL, { project: "Acme", page_url: "https://acme.com/", text: "Hi" });
-    expect(summaryOf(result)).toBe(
-      "Created comment cmt_8f3k2 on https://acme.com/pricing in Acme Dental. Link: https://acme.com/pricing?scommentId=8f3k2",
-    );
+    const result = await h.call(TOOL, {
+      project: "Acme",
+      page_url: "https://acme.com/",
+      text: "Hi",
+      tags: ["copy", { name: "launch blocker", color: "#b3261e" }, { name: "seo" }],
+    });
+    expect(result.isError).toBeFalsy();
+    expect((recorded[0]?.body as { tags: unknown }).tags).toEqual(["copy", { name: "launch blocker", color: "#b3261e" }, { name: "seo" }]);
   });
 
   standardErrorCases({

@@ -44,6 +44,10 @@ export interface SuperflowApiErrorInit {
   idempotencyKey?: string;
   /** When a rate limit resets (ISO time), from Retry-After. */
   resetAt?: string;
+  /** A scan that stopped early (a tag route's not_found): how far it read. */
+  scan?: { scanned: number; complete: boolean };
+  /** With scan: where to look further (send it back as cursor). */
+  nextCursor?: string | null;
 }
 
 /** One validation problem the API listed. */
@@ -64,6 +68,8 @@ export class SuperflowApiError extends Error {
   readonly reason: string | undefined;
   readonly idempotencyKey: string | undefined;
   readonly resetAt: string | undefined;
+  readonly scan: { scanned: number; complete: boolean } | undefined;
+  readonly nextCursor: string | null | undefined;
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -76,6 +82,8 @@ export class SuperflowApiError extends Error {
     this.reason = init.reason;
     this.idempotencyKey = init.idempotencyKey;
     this.resetAt = init.resetAt;
+    this.scan = init.scan;
+    this.nextCursor = init.nextCursor;
   }
 
   toJSON(): {
@@ -87,6 +95,8 @@ export class SuperflowApiError extends Error {
     reason?: string;
     idempotency_key?: string;
     reset_at?: string;
+    scan?: { scanned: number; complete: boolean };
+    next_cursor?: string | null;
   } {
     return {
       code: this.code,
@@ -97,6 +107,8 @@ export class SuperflowApiError extends Error {
       ...(this.reason ? { reason: this.reason } : {}),
       ...(this.idempotencyKey ? { idempotency_key: this.idempotencyKey } : {}),
       ...(this.resetAt ? { reset_at: this.resetAt } : {}),
+      ...(this.scan ? { scan: this.scan } : {}),
+      ...(this.nextCursor !== undefined ? { next_cursor: this.nextCursor } : {}),
     };
   }
 }
@@ -111,13 +123,18 @@ export interface RequestArgs {
 
 export interface ApiClientOptions {
   apiKey: string;
+  /**
+   * The REST API base, with /v1: https://mcp.usesuperflow.ai/v1 (the function that serves the
+   * hosted MCP server serves the API too), or staging's
+   * https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1.
+   */
   baseUrl: string;
   logger?: Logger;
   /** Override for tests. Defaults to the global fetch. */
   fetch?: typeof fetch;
   /** Override for tests. Defaults to a real timer. */
   sleep?: (ms: number) => Promise<void>;
-  /** Per-request timeout in ms. Defaults per operation (30 s, or 60 s for stats, export and bulk). */
+  /** Per-request timeout in ms. Defaults per operation (30 s; 60 s for scans, exports and bulk; 90 s for tag rewrites). */
   timeoutMs?: number;
   /**
    * Supplies the Bearer token per request instead of `apiKey`, for a signed-in session
@@ -136,6 +153,7 @@ export interface TokenProvider {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SLOW_TIMEOUT_MS = 60_000;
+const REWRITE_TIMEOUT_MS = 90_000;
 // Operations that scan, fetch a site, or change many comments get 60 s.
 const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
   "getCommentStats",
@@ -147,8 +165,9 @@ const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
   "removePage",
   "removeMember",
   "deleteStatus",
-  "deleteTag",
-  "mergeTags",
+  // A tag list scans the workspace's comments.
+  "listTags",
+  "listProjectTags",
   "getCreditUsage",
   // Phase 3: agent writes call a model, estimates read the sitemap, runs read every
   // execution, findings scan comments, and a push waits up to 20 s for the tracker.
@@ -166,6 +185,15 @@ const SLOW_OPERATIONS: ReadonlySet<OperationId> = new Set([
   "pushComment",
   "postToSlack",
 ]);
+// Tag rewrites scan the workspace's comments and then rewrite up to 500 of them over Velt: 90 s
+// (the API allows them 120 s).
+const REWRITE_OPERATIONS: ReadonlySet<OperationId> = new Set(["updateTag", "deleteTag", "mergeTags"]);
+
+/** The timeout of one request of an operation. */
+export function timeoutFor(operationId: OperationId): number {
+  if (REWRITE_OPERATIONS.has(operationId)) return REWRITE_TIMEOUT_MS;
+  return SLOW_OPERATIONS.has(operationId) ? SLOW_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+}
 const MAX_RETRIES = 2;
 const BACKOFF_MS = [500, 1500] as const;
 const RETRY_AFTER_CAP_MS = 10_000;
@@ -318,7 +346,7 @@ export class ApiClient {
     const operation = operations[operationId];
     const method: string = operation.method;
     const url = this.buildUrl(operationId, args);
-    const timeoutMs = this.timeoutOverride ?? (SLOW_OPERATIONS.has(operationId) ? SLOW_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+    const timeoutMs = this.timeoutOverride ?? timeoutFor(operationId);
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.tokenProvider ? await this.tokenProvider.token() : this.apiKey}`,
       Accept: "application/json",
@@ -499,6 +527,14 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
   if (!hint) hint = FALLBACK_HINTS[knownCode] ?? "";
 
   const reason = typeof errorBody?.reason === "string" && /^[a-z_]{1,64}$/.test(errorBody.reason) ? errorBody.reason : undefined;
+  // A tag route's not_found after a scan that stopped early: how far it read, and where to go on.
+  const rawScan = errorBody?.scan as { scanned?: unknown; complete?: unknown } | undefined;
+  const scan =
+    rawScan && typeof rawScan === "object" && typeof rawScan.scanned === "number" && typeof rawScan.complete === "boolean"
+      ? { scanned: rawScan.scanned, complete: rawScan.complete }
+      : undefined;
+  const nextCursor =
+    scan && (typeof errorBody?.next_cursor === "string" || errorBody?.next_cursor === null) ? (errorBody.next_cursor as string | null) : undefined;
 
   return new SuperflowApiError({
     status,
@@ -510,6 +546,8 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
     ...(issues.length > 0 ? { issues } : {}),
     ...(reason ? { reason } : {}),
     ...(resetAt ? { resetAt } : {}),
+    ...(scan ? { scan } : {}),
+    ...(nextCursor !== undefined ? { nextCursor } : {}),
   });
 }
 
@@ -562,4 +600,43 @@ export async function oauthRequest(request: OAuthRequest): Promise<{ status: num
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** What the stdio bridge's fetch needs (src/bridge.ts). */
+export interface BearerFetchOptions {
+  /** The API key or sign-in; a sign-in renews itself after a 401. */
+  tokens: TokenProvider;
+  /** Headers every request carries besides Authorization (the client's name, read-only). */
+  headers?: Record<string, string>;
+  /** Override for tests. Defaults to the global fetch. */
+  fetch?: typeof fetch;
+  logger?: Logger;
+}
+
+/**
+ * The fetch the stdio bridge hands to the MCP SDK's Streamable HTTP client, which talks to the
+ * hosted MCP server. It lives here so every network call the package makes starts in this file.
+ * It adds the bearer token and the given headers to every request. After a 401 it renews a
+ * sign-in once and sends the same request again: the body is a string, and a 401 is answered
+ * before the request runs, so nothing runs twice. An API key has nothing to renew, so its 401
+ * comes back as it is. Never logs a token or a body.
+ */
+export function bearerFetch(options: BearerFetchOptions): typeof fetch {
+  const base = options.fetch ?? ((input: string | URL | Request, init?: RequestInit) => fetch(input, init));
+  const logger = options.logger ?? silentLogger;
+  return async (input: string | URL | Request, init: RequestInit = {}) => {
+    const send = (token: string) => {
+      const headers = new Headers(init.headers);
+      headers.set("Authorization", `Bearer ${token}`);
+      for (const [name, value] of Object.entries(options.headers ?? {})) headers.set(name, value);
+      return base(input, { ...init, headers });
+    };
+    const response = await send(await options.tokens.token());
+    if (response.status !== 401) return response;
+    const fresh = await options.tokens.refresh();
+    if (!fresh) return response;
+    logger.debug("bridge: 401, renewed the sign-in and sent the request again");
+    await response.body?.cancel().catch(() => undefined);
+    return send(fresh);
+  };
 }

@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
 import type { ApiClient } from "../client/api.ts";
-import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Schedule } from "../client/types.ts";
+import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Scan, Schedule } from "../client/types.ts";
 import { CONFIRM_DELETE_SCHEDULE_MESSAGE, CONFIRM_SET_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
-import { asData, compact, join, nameList } from "./helpers.ts";
-import { estimateLine } from "./runs.ts";
+import { asData, compact, count, join, nameList } from "./helpers.ts";
+import { PAGES_NEED_LIST, estimateLine } from "./runs.ts";
 import {
   agentListSchema,
   confirmSchema,
@@ -28,8 +28,14 @@ function label(value: Schedule["project"] | Schedule["pack"]): string | undefine
   return value ? (value.name ?? value.id) : undefined;
 }
 
+/** How the newest run of a schedule went (last_run.status), in words. */
 const LAST_RUN_LABELS: Record<string, string> = {
+  started: "started",
+  in_progress: "in progress",
   skipped_insufficient_credits: "skipped (not enough AI credits)",
+  skipped_no_changes: "skipped (nothing changed since the last scan)",
+  skipped_creator_removed: "skipped (its creator no longer has access)",
+  skipped_no_agents: "skipped (no agents)",
   failed_to_start: "failed to start",
 };
 
@@ -38,27 +44,39 @@ export function scheduleLine(schedule: Schedule): string {
   const project = label(schedule.project);
   const pack = label(schedule.pack);
   const agents = (schedule.agents ?? []).map((agent) => agent.name ?? agent.id);
-  const what = pack ? `pack ${pack}` : agents.length > 0 ? plural(agents.length, "agent") : "the default agents";
+  // The agents are fixed when the schedule is saved, so an empty list is a schedule left with no
+  // agents (turned off), not one that runs the default agents.
+  const what = pack ? `pack ${pack}` : agents.length > 0 ? plural(agents.length, "agent") : "no agents (turned off)";
   return join(
     `${schedule.id}${project ? ` on ${project}` : ""}: ${schedule.cron} (${schedule.timezone ?? "UTC"}), ${what}, ${schedule.scope ?? "site"} scope, ${schedule.enabled ? "on" : "paused"}${schedule.next_run_at && schedule.enabled ? `, next run ${schedule.next_run_at}` : ""}${schedule.last_run ? `, last run ${LAST_RUN_LABELS[schedule.last_run.status] ?? schedule.last_run.status}` : ""}.`,
     agents.length > 0 && !pack && `Agents: ${nameList(agents)}.`,
   );
 }
 
-/** Finds a schedule by id (sch_ prefix optional) in the list, or null. */
-async function findSchedule(api: ApiClient, ref: string): Promise<Schedule | null> {
+/**
+ * Finds a schedule by id (sch_ prefix optional) in the list, with the scan the list was read from
+ * (the API reads at most 10,000 workflow definitions).
+ */
+async function findSchedule(api: ApiClient, ref: string): Promise<{ schedule: Schedule | null; scan: Scan | undefined }> {
   const list = await api.call<ListEnvelope<Schedule>>("listSchedules");
   const raw = ref.replace(/^sch_/, "");
-  return (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw) ?? null;
+  const schedule = (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw) ?? null;
+  return { schedule, scan: list.scan };
 }
 
-function scheduleNotFound(ref: string) {
+/** A schedule not in the list: gone, or, when the list's scan stopped early, possibly past it. */
+function scheduleNotFound(ref: string, scan: Scan | undefined) {
+  const partial = scan?.complete === false;
   return errorResult(
     new SuperflowApiError({
       status: 404,
       code: "not_found",
-      message: `No schedule ${ref}.`,
-      hint: "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
+      message: partial
+        ? `No schedule ${ref} in the ${count(scan.scanned)} schedule definitions the API read. It stopped before the last, so the schedule may be past what it read.`
+        : `No schedule ${ref}.`,
+      hint: partial
+        ? "Tell the user the schedule could not be read, and to check it in Superflow. Do not treat it as deleted."
+        : "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
     }),
   );
 }
@@ -83,7 +101,8 @@ export const setSchedule = defineTool({
   title: "Create or change a schedule",
   description: [
     "Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.",
-    "Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).",
+    "Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm.",
+    "The agents are fixed when the schedule is saved: the agents you name, the pack's members, or the default agents at that time. A pack changed with superflow_update_agent_pack updates its schedules; a pack changed in the portal, or a new default agent, is picked up the next time the schedule is saved. A skipped run spends nothing, and last_run.status says why: skipped_insufficient_credits, skipped_no_changes, skipped_creator_removed or skipped_no_agents; failed_to_start means it could not start. Its runs show in superflow_list_runs with trigger workflow.",
     "Runs at most once an hour: more frequent crons are refused. Delete with superflow_delete_schedule. For one run now use superflow_run_agents.",
     'Example: {"project": "Acme Dental", "cron": "0 9 * * 1", "timezone": "Europe/Berlin", "pack": "Pre-Launch"}',
   ].join("\n"),
@@ -110,7 +129,7 @@ export const setSchedule = defineTool({
       .optional()
       .describe("Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it."),
     scope: runScopeSchema,
-    pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, for scope list. On a change, null clears them."),
+    pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, with scope list only (the API refuses pages with scope page or site; for one page, scope list and that one URL). On a change, null clears them."),
     enabled: z.boolean().optional().describe("false pauses the schedule, true turns it back on. New schedules start on."),
     confirm: confirmSchema("create the schedule or change what or when it runs; every run spends AI credits"),
     idempotency_key: idempotencySchema.describe(
@@ -143,6 +162,7 @@ export const setSchedule = defineTool({
         return invalidInput("A new schedule needs project and cron.", "To change an existing schedule, pass its id as schedule.");
       }
       if (args.scope === "list" && !args.pages) return invalidInput("scope list needs pages: the page URLs to review.");
+      if (args.pages && args.scope !== "list") return invalidInput(PAGES_NEED_LIST);
       // A new schedule has nothing to clear, so null means "not given".
       const body = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null));
       if (!isConfirmed(args.confirm)) {
@@ -173,13 +193,16 @@ export const setSchedule = defineTool({
     if (Object.keys(fields).length === 0) {
       return invalidInput("Nothing to change. Give cron, timezone, agents, pack, scope, pages, enabled or project.");
     }
+    if (args.pages && args.scope !== undefined && args.scope !== "list") return invalidInput(PAGES_NEED_LIST);
     // Pausing and moving the time zone cannot raise what the schedule spends: no confirm.
     const spendsMore = Object.keys(fields).some((key) => key !== "timezone" && !(key === "enabled" && fields.enabled === false));
     if (spendsMore && !isConfirmed(args.confirm)) {
-      const current = await findSchedule(api, args.schedule.trim());
-      if (!current) return scheduleNotFound(args.schedule.trim());
-      // The schedule as it would be after the change: given fields win, null clears.
-      const agents = args.agents === null ? undefined : (args.agents ?? (args.pack ? undefined : current.agents?.map((agent) => agent.id)));
+      const { schedule: current, scan } = await findSchedule(api, args.schedule.trim());
+      if (!current) return scheduleNotFound(args.schedule.trim(), scan);
+      // The schedule as it would be after the change: given fields win, null clears. Its agents
+      // are its pack's members when it has a pack, so the pack is priced, never both.
+      const currentAgents = current.pack ? undefined : current.agents?.map((agent) => agent.id);
+      const agents = args.agents === null ? undefined : (args.agents ?? (args.pack ? undefined : currentAgents));
       const pack = args.pack === null ? undefined : (args.pack ?? (args.agents ? undefined : current.pack?.id));
       const price = await pricePerRun(api, {
         project: args.project ?? current.project.id,
@@ -188,10 +211,15 @@ export const setSchedule = defineTool({
         agents: agents?.length ? agents : undefined,
         pack,
       });
+      // The API plans the schedule again on save: a pack gives its current members and a
+      // schedule on the default agents gets today's default set, which may differ from the list.
+      const agentsTakenAgain = args.agents === undefined && args.pack === undefined;
       return confirmationResult(
         join(
           `Schedule ${scheduleLine(current)}`,
           `The change (${Object.keys(fields).join(", ")}) changes what or when it runs, and every run spends AI credits.`,
+          agentsTakenAgain &&
+            "Saving takes the agents again: a pack's current members, or today's default agents when the schedule used the default set (named agents stay as they are).",
           price.line,
           "Nothing was changed. Ask the user to confirm.",
         ),
@@ -207,8 +235,8 @@ export const listSchedules = defineTool({
   name: "superflow_list_schedules",
   title: "List schedules",
   description: [
-    "List scheduled agent runs: project, cron and time zone, agents or pack, whether each is on, the next run time and how the last run went (including runs skipped for lack of credits).",
-    "Use it before creating, changing or deleting a schedule. For runs that already happened use superflow_list_runs.",
+    "List scheduled agent runs: project, cron and time zone, the agents every run uses (fixed when the schedule was saved) and the pack they came from, whether each is on, the next run time and how the newest run went (last_run.status: started, in_progress, failed_to_start, or skipped_insufficient_credits, skipped_no_changes, skipped_creator_removed or skipped_no_agents).",
+    "Use it before creating, changing or deleting a schedule. For runs that already happened use superflow_list_runs (a schedule's runs have trigger workflow).",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {
@@ -220,7 +248,14 @@ export const listSchedules = defineTool({
     const list = await api.call<ListEnvelope<Schedule>>("listSchedules", { query: { project: args.project } });
     const items = list.items ?? [];
     const lines = items.slice(0, 3).map(scheduleLine).join(" ");
-    return okResult(join(`Found ${plural(items.length, "schedule")}${args.project ? ` on ${args.project}` : ""}.`, lines, items.length > 3 && "More in the list below."), asData(list));
+    // The API reads at most 10,000 workflow definitions; past that, schedules may be missing.
+    const partial =
+      list.scan?.complete === false &&
+      `The schedule scan stopped after ${count(list.scan.scanned)} definitions, so some schedules may not be listed.`;
+    return okResult(
+      join(`Found ${plural(items.length, "schedule")}${args.project ? ` on ${args.project}` : ""}.`, partial, lines, items.length > 3 && "More in the list below."),
+      asData(list),
+    );
   },
 });
 
@@ -246,8 +281,8 @@ export const deleteSchedule = defineTool({
       return okResult(`Deleted schedule ${result.id ?? ref}. No more runs start from it.`, asData(result));
     }
     // Preview: one read. Nothing that could delete is sent without confirm.
-    const schedule = await findSchedule(api, ref);
-    if (!schedule) return scheduleNotFound(ref);
+    const { schedule, scan } = await findSchedule(api, ref);
+    if (!schedule) return scheduleNotFound(ref, scan);
     return confirmationResult(
       `Schedule ${scheduleLine(schedule)} It would be deleted. Nothing was deleted. Ask the user to confirm.`,
       { preview: schedule, message: CONFIRM_DELETE_SCHEDULE_MESSAGE },

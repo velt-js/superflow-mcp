@@ -11,10 +11,10 @@ describe(TOOL, () => {
     const body = { reply, unresolved_mentions: ["@Bob"] };
     on("post", "/comments/:comment/replies", ok(body, 201));
     const h = await connect();
-    const result = await h.call(TOOL, { comment: "4821", project: "Acme Dental", text: "Fixed, please check. @Bob" });
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental", text: "Fixed, please check. @Bob" });
     expect(data(result)).toEqual(body);
     expect(summaryOf(result)).toBe(
-      "Replied to comment 4821 (reply rpl_8f3k2.654321). These mentions matched nobody and stayed plain text: @Bob. Check names with superflow_list_members.",
+      "Replied to comment cmt_8f3k2 (reply rpl_8f3k2.654321). These mentions matched nobody and stayed plain text: @Bob. Check names with superflow_list_members.",
     );
     const sent = recorded[0]?.body as Record<string, unknown>;
     expect(sent).toMatchObject({ project: "Acme Dental", text: "Fixed, please check. @Bob" });
@@ -35,7 +35,7 @@ describe(TOOL, () => {
 
   standardErrorCases({
     tool: TOOL,
-    args: { comment: "4821", project: "Acme", text: "Thanks" },
+    args: { comment: "cmt_8f3k2", project: "Acme", text: "Thanks" },
     method: "post",
     path: "/comments/:comment/replies",
     success: ok({ reply, unresolved_mentions: [] }, 201),

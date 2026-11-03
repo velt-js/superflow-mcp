@@ -12,6 +12,7 @@ const dryRun = {
   would_update: 44,
   already_in_state: 3,
   sample: [compactComment],
+  failed: [] as Array<{ id: string; error: string }>,
   applied_filters: { ...appliedProject, tags: [{ id: "tag_copy", name: "copy" }] },
   scan: { scanned: 312, complete: true },
 };
@@ -36,6 +37,18 @@ describe(TOOL, () => {
       dry_run: true,
       confirm: false,
     });
+  });
+
+  it("shows the comments a dry run would not write (failed), apart from would_update", async () => {
+    const failed = [
+      { id: "cmt_a1", error: "Its tags could not be read." },
+      { id: "cmt_a2", error: "Its tags could not be read." },
+    ];
+    on("post", "/comments/bulk", ok({ ...dryRun, would_update: 42, failed }));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, filterArgs))).toBe(
+      "Dry run. Would change 42 comments in Acme Dental (tags: copy). 3 already match. 2 would not be written (not counted above): cmt_a1 (Its tags could not be read), cmt_a2 (Its tags could not be read). Nothing was written. To apply it, ask the user, then call again with dry_run: false and confirm: true.",
+    );
   });
 
   it("says there is nothing to apply when every comment already matches", async () => {
@@ -75,7 +88,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { ...filterArgs, dry_run: false, confirm: true, idempotency_key: "k-1" });
     expect(result.isError).toBeFalsy();
     expect(summaryOf(result)).toBe(
-      "Updated 43 comments. 3 already matched and were skipped. 1 failed: cmt_x (Velt could not reach this comment.).",
+      "Updated 43 comments. 3 already matched and were skipped. 1 failed: cmt_x (Velt could not reach this comment).",
     );
     expect(recorded[0]?.body).toEqual({
       select: { filter: filterArgs.filter },
@@ -86,19 +99,27 @@ describe(TOOL, () => {
     });
   });
 
-  it("selects by ids and injects the default project for numbers", async () => {
+  it("selects by ids and links, trimmed, with the project only when given", async () => {
     on("post", "/comments/bulk", ok(dryRun));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    await h.call(TOOL, { comment_ids: ["#4821", "4822", "cmt_9x"], patch: { assignees: ["Jen"], priority: "high" } });
+    const h = await connect();
+    await h.call(TOOL, { comment_ids: [" cmt_8f3k2 ", "https://acme.com/?scommentId=9x"], patch: { assignees: ["Jen"], priority: "high" } });
     expect((recorded[0]?.body as { select: unknown }).select).toEqual({
-      comment_ids: ["4821", "4822", "cmt_9x"],
-      project: "Acme Dental",
+      comment_ids: ["cmt_8f3k2", "cmt_9x"],
     });
+    await h.call(TOOL, { comment_ids: ["cmt_8f3k2"], project: "Acme Dental", patch: { priority: "high" } });
+    expect((recorded[1]?.body as { select: unknown }).select).toEqual({ comment_ids: ["cmt_8f3k2"], project: "Acme Dental" });
+  });
+
+  it("adds tags by name or as a new tag with a color", async () => {
+    on("post", "/comments/bulk", ok(dryRun));
+    const h = await connect();
+    await h.call(TOOL, { comment_ids: ["cmt_8f3k2"], patch: { add_tags: ["copy", { name: "launch blocker", color: "#b3261e" }] } });
+    expect((recorded[0]?.body as { patch: unknown }).patch).toEqual({ add_tags: ["copy", { name: "launch blocker", color: "#b3261e" }] });
   });
 
   it("sends project with a filter so the API can use it as the filter's project", async () => {
     on("post", "/comments/bulk", ok(dryRun));
-    const h = await connect({ defaultProject: "Other" });
+    const h = await connect();
     await h.call(TOOL, { project: "Acme Dental", filter: { tags: ["copy"] }, patch: { add_tags: ["done"] } });
     expect((recorded[0]?.body as { select: unknown }).select).toEqual({ filter: { tags: ["copy"] }, project: "Acme Dental" });
   });

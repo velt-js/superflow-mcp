@@ -36,9 +36,12 @@ when their engines ship.
 - The `fix` prompt, and the server instructions point to the playbooks.
 - `superflow_comment_stats` takes `group_by: "rule_key"`.
 - `superflow_import_findings` (86 tools, scope `ingest`): push the findings of your own
-  review into Superflow as agent comments under your agent's name. Creates or merges, never
+  review into Superflow as agent comments under your agent's name. Creates or merges (only
+  into your own earlier imports of the same finding, never into Superflow's), never
   deletes; one invalid finding refuses the batch and every problem comes back in
-  `error.issues`. The `push_my_review` playbook and prompt walk through it.
+  `error.issues`. The `push_my_review` playbook and prompt walk through it, and report the
+  merges the same way. Imported findings are agent comments, not checks: the failing checks
+  and the fix list do not include them, and the descriptions and the playbook say so.
 - API errors carry `issues` (every validation problem) through to the tool result.
 - Billing (94 tools): `superflow_get_billing` and `superflow_get_payment_link` over the new
   read-only `GET /v1/billing`. Paying happens in the Superflow portal; the link never
@@ -76,6 +79,47 @@ when their engines ship.
   Owner only.
 
 ### Changed
+- `npx superflow-mcp` is now a bridge to the hosted server. It speaks stdio to the MCP
+  client and forwards every request (initialize info, tools, prompts, resources and
+  templates, completions, list_changed notifications) to `https://mcp.usesuperflow.ai/mcp`
+  over Streamable HTTP, with `SUPERFLOW_API_KEY` or the saved `login` sign-in as the bearer
+  token. The tools run on the hosted server, so the package and the hosted connector are one
+  server; results and errors pass through unchanged. `SUPERFLOW_MCP_URL` picks the
+  endpoint (https, http only for localhost; a saved sign-in defaults to the server it
+  signed in with; staging is `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp`).
+  A sign-in is renewed before it expires and once more after a 401, then the request goes
+  again once; a refused key or sign-in says to check the key or run `login`. A tool call is
+  never sent twice and may take 150 seconds; lists and reads go again once after a network
+  failure or a 5xx (cold starts). `SUPERFLOW_READ_ONLY` filters the tool list and refuses
+  write tools on the machine, and the bridge sends `X-Superflow-Read-Only: true` for the
+  hosted server to use. Every request names the package (`User-Agent` and
+  `X-Superflow-Client: superflow-mcp/<version>`). The hosted initialize gets 20 seconds and
+  one more try (a cold start) before stdio connects, so it fits MCP clients' start-up
+  timeouts. In read-only mode the instructions always end with the bridge's own note, which
+  never repeats the hosted read-only line (the hosted server words it for stdio when it sees
+  `X-Superflow-Read-Only`) and, when the key itself can only read and the hosted text says to
+  reconnect, says both steps are needed. The production client
+  configs do not change; a staging config adds `SUPERFLOW_MCP_URL` (above).
+- The library entry (`superflow-mcp/server`) keeps its exports (`createServer`,
+  `ApiClient`, `Config`, `ApiClientOptions`, ...), but the hosted server runs the tool code
+  from the vendored build, so every tool change in this release reaches it on the next
+  re-vendor: the tag rewrites (cursor, one retry pass, API-built delete and merge previews),
+  comment links sent as `cmt_` ids, the run and schedule wording, the run scope and pages
+  descriptions, the import descriptions, `scan` and `next_cursor` on API errors, and the
+  90-second rewrite timeouts.
+- `SUPERFLOW_API_BASE_URL` is for development only: when set, the tools run in the CLI
+  process against that REST API (direct mode), as every version before this one did, and
+  the server says so on stderr at start. The REST API moved into the MCP function, which
+  now serves `/mcp`, OAuth and `/v1`: the default API base (direct mode, and what `login`
+  saves) is `https://mcp.usesuperflow.ai/v1`, staging
+  `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1`. Direct mode refuses to start when
+  `SUPERFLOW_API_BASE_URL` and the MCP server the key or sign-in is for (`SUPERFLOW_MCP_URL`,
+  the saved sign-in's, or the default) are on different origins, so an inherited
+  `SUPERFLOW_API_BASE_URL` cannot send a staging key to prod. `pnpm smoke:stdio` runs in
+  direct mode; the e2e suite covers both modes.
+- `login` reads who signed in (`superflow_get_me`) through the hosted server, and only when
+  `SUPERFLOW_MCP_URL` (or, in direct mode, the API base) passes the same https check the
+  server uses; otherwise it skips the lookup with a note.
 - The `triage` prompt follows the triage playbook, which now builds its list from the
   failing checks and attaches human comments to them. The `fix` playbook marks checks fixed
   and reads the check until the rescan decides, instead of running the agents again. The
@@ -103,6 +147,81 @@ when their engines ship.
 - A 401 on a sign-in says the sign-in expired or was revoked and to run `login`; a 403 says
   scopes cannot be changed and how to get a key or a sign-in with the scope.
 - The server instructions name only registered tools, so read-only mode names no write tool.
+- The API keeps no storage of its own and reuses what Velt and Superflow already store
+  (snippyly/shared-firebase-function#4355, 2026-11-03; `openapi/openapi.json` has 106
+  operations). What that changes here:
+  - Comments have no numbers. A comment is given by its id (`cmt_...`) or its link (its
+    `url`); `#4821` and bare numbers are no longer references. A link with `scommentId` is
+    read here and sent as `cmt_<id>`, so the path carries an id, not an encoded URL.
+    `number` is gone from every comment shape, `sort: "number"` is gone, and the CSV export
+    has no number column. The `project` of a comment tool is optional and only narrows the
+    lookup.
+  - Deletes are permanent. `superflow_delete_comment` and `superflow_remove_page` say so in
+    their descriptions, previews and results, and their confirm messages no longer offer a
+    restore.
+  - Tags are workspace-wide and live on the comments. Putting a new name on a comment creates
+    the tag: `tags` and `add_tags` (create, update and bulk) take a name, a `tag_` id of a tag
+    already on the comment, or `{ "name", "color" }`, whose color applies to that comment's
+    copy only (one tag can show two colors). Tags are visible to everyone who can see the
+    comment, clients and review-link viewers included; the tag inputs, `superflow_update_tag`,
+    `superflow_merge_tags` and the README say not to put private notes in them.
+    `superflow_list_tags` counts the tags on the comments it scanned and takes `cursor`: when
+    the answer has `next_cursor` it says how to read the next page, and that a tag can show on
+    several pages (add `usage_count` up by tag id, or say the counts cover only the pages read).
+  - `superflow_update_tag`, `superflow_delete_tag` and `superflow_merge_tags` rewrite the
+    comments that carry the tag, at most 500 a call, and take `cursor`: each answer reports
+    `failed`, `complete`, `scan` and `next_cursor`, and the next call passes that
+    `next_cursor` on, a rename included (the cursor keeps the tag the job started with). A
+    pass goes on even through calls that changed nothing, and a null `next_cursor` ends it
+    with an explicit done line. Comments a call could not rewrite while it changed others get
+    at most ONE retry pass: the same call without a cursor and with `retry: true` (kept by the
+    package, never sent to the API; a rename's retry pass is a merge from the old name). A
+    retry pass never offers another, and a call that changed nothing while comments failed
+    never promises one (those comments are outside Velt's 1,000-comment update window), so a
+    job is at most two passes. When the API's own tag scan stops before it finds the tag, its
+    `not_found` carries `scan` and `next_cursor` (on every API error now, as `error.scan` and
+    `error.next_cursor`), and the tools say how to look further. `superflow_merge_tags` can
+    merge into a new name. `superflow_delete_tag` and `superflow_merge_tags` take no
+    `project` and act in every project, as their previews say. Their previews come from the
+    API itself: the unconfirmed call answers 409 with the tag and its count in one window of up
+    to 10,000 comments, and with `scan` and `next_cursor` when it stopped before the last. The
+    preview pages on with `cursor` and adds the window counts up in `counted` (kept by the
+    package, never sent) for the full count; a window without the tag is a page of 0. After a
+    paged preview the job is confirmed without a cursor, since a cursor with confirm rewrites
+    only from that point on. Tag cursors are signed by the API: an edited one is refused as
+    `invalid`. The three descriptions and the confirm
+    messages say that rewritten comments show as just updated (the default sort,
+    `updated_after` and `stale_days`). The rewrites get 90 seconds and the tag lists 60.
+  - `superflow_list_runs` lists every run of the workspace, the portal's and Always-on
+    Monitoring's included, with its `trigger` (`manual`, `workflow` for a schedule, `api`,
+    `mcp`, and the monitoring triggers). `superflow_list_findings` takes any of them, the run
+    id on an agent comment and an import's `run_id`. An import is not a run:
+    `superflow_list_runs` and `superflow_get_run` do not show it. Run summaries name the
+    trigger. An agent whose record is gone reads `missing` (final, `agent` null) and the
+    summary counts it; `credits_charged` is 0 once a charge was refunded or failed; runs of a
+    deleted project are not listed and read as not found. The `agent_findings_review` and read-only `prelaunch_run` prompts read the latest
+    finished run with a `status` filter, follow `next_cursor` past empty pages (at most 5),
+    prefer a site run that is not a resolve, uptime or change rescan, tell the user the
+    trigger of the run they picked and offer the other choice when the newest run is a small
+    rescan. They no longer fall back to agent comments or failing checks.
+  - A schedule's agents are fixed when it is saved (`agents` is always a list; `pack` says
+    where they came from), and `last_run.status` says how the newest run went: `started`,
+    `in_progress`, `failed_to_start`, or `skipped_insufficient_credits`,
+    `skipped_no_changes`, `skipped_creator_removed` or `skipped_no_agents`. Its runs have
+    trigger `workflow`. A schedule with no agents left reads "no agents (turned off)", and
+    `superflow_list_schedules` says when the API's schedule scan (10,000 definitions) stopped
+    early; then `superflow_set_schedule` and `superflow_delete_schedule` say a schedule they
+    cannot find may be past the scan (not gone), and `superflow_delete_agent` says its
+    schedule count may be low. The
+    change preview of `superflow_set_schedule` prices a pack schedule with its pack alone and
+    says that saving takes the agents again (a pack's current members, or today's default
+    agents), and `superflow_delete_agent`'s preview counts every schedule that runs the agent,
+    through a pack or the default agents too.
+  - `superflow_push_comment` needs `project_key` (a connection has no default project) and
+    sends `project` when given. A comment holds one item per tool: a second push returns the
+    existing link with `already_linked: true` and creates nothing.
+  - Runs and estimates that name no agents and no pack use Superflow's default agents; a
+    pack can no longer be the default for runs.
 
 ### Removed
 - The seven webhook tools (`superflow_list_webhooks`, `superflow_get_webhook`,
@@ -110,15 +229,27 @@ when their engines ship.
   `superflow_test_webhook`, `superflow_list_webhook_deliveries`), `docs/webhooks.md` and the
   `webhooks:read` and `webhooks:write` scopes. The first release ships without webhooks; they
   come later on the platform's own webhooks. 104 tools, 45 of them read-only.
+- `superflow_restore_comment`, `superflow_create_tag` and `superflow_update_integration`,
+  with the API routes they called (`restoreComment`, `createTag`, `updateIntegration`):
+  deletes are permanent, a tag is created by assigning it, and a connection has no settings.
+  `superflow_update_agent_pack` lost `is_default_for_runs`, an integration lost
+  `settings.default_project` and a tag lost `project_id`. `SUPERFLOW_DEFAULT_PROJECT` is
+  gone: it only served comment numbers. When it is still set, the server logs one warning
+  at start that it is no longer used. 101 tools: 45 read, 56 write; read-only mode
+  registers the 45.
 
 ### Fixed
+- `superflow_bulk_update_comments` dry runs show the comments they would not write (`failed`,
+  with why, for example a tag change on a comment whose tags could not be read), apart from
+  `would_update`; the confirm message asks to show them too.
+- Run scope and pages say what the API does: scope page reviews the project's own site URL
+  only, and pages go with scope list only (one page is scope list with that one URL). The
+  run, estimate and schedule tools refuse pages with another scope before calling the API.
 - A sign-in that `login` saved to the file because the keyring refused it is now found on
   the next start, and `logout` removes it.
 - Several MCP processes can share one sign-in: when the server refuses a refresh token
   that another process already rotated, the server reads the newer sign-in from the store
   instead of ending it.
-- `superflow_delete_tag` and `superflow_merge_tags` send the ids of the tags the preview
-  showed, so a tag name used in two projects no longer fails after a clean preview.
 - `pnpm playbooks` works on Windows.
 - The macOS Keychain write sent the sign-in's tokens as a `security` argument, visible to
   every process list. It now goes through stdin (`security -i`); a session too long for one
@@ -142,10 +273,6 @@ when their engines ship.
   `workspace:write`, a scope the key does not have, or an expiry past the key's own.
 - A 401 gives its advice once: the API's create-key hint is no longer added to the
   package's own message, and a sign-in is never told to create a key.
-- `superflow_list_runs` and `superflow_list_findings` say they do not cover portal or
-  Always-on Monitoring runs, and point to the failing checks and agent comments instead.
-  The `agent_findings_review` and read-only `prelaunch_run` prompts fall back to those when
-  no listed run is finished.
 - A sign-in refused for creating a key is no longer told to sign in again with more scopes.
 
 ## [0.3.0] - Unreleased

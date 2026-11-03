@@ -5,9 +5,15 @@ Guidance for Claude Code (and other agents) working in this repo.
 ## What this is
 
 `superflow-mcp`: a public npm package that runs a local MCP server over stdio for
-Superflow comments. It is a thin client over the Superflow REST API v1. The API
-resolves names, URLs, emails and numbers, parses relative dates and runs dry runs;
-this package validates input, calls the API and shapes the answer.
+Superflow comments. By default it is a bridge (`src/bridge.ts`): it forwards every MCP
+request to the hosted server (`SUPERFLOW_MCP_URL`, default `https://mcp.usesuperflow.ai/mcp`,
+the backend's `superflowmcphandler`) with the user's key or sign-in, and passes results
+and errors through. The hosted server runs this package's tool code in process (the
+library entry, `src/lib.ts`), and those tools are a thin client over the Superflow REST
+API v1. The API resolves names, URLs, emails and comment links, parses relative dates
+and runs dry runs; the tools validate input, call the API and shape the answer.
+`SUPERFLOW_API_BASE_URL` (development only) runs the tools in the CLI process against
+that API instead (direct mode).
 
 The README also documents the hosted server at `https://mcp.usesuperflow.ai/mcp`.
 Its code lives elsewhere. `server.json` is its registry manifest: do not edit it here.
@@ -17,7 +23,14 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
 - **Never call `fetch` outside `src/client/api.ts`.** Every request goes through
   `ApiClient.call(operationId, ...)` so auth, timeouts, retries and error mapping stay
   in one place. The OAuth calls of `login` (`src/auth/`) go through `oauthRequest` in the
-  same file.
+  same file, and the bridge's MCP client gets its fetch from `bearerFetch` there.
+- **The library surface does not change for the bridge.** The backend vendors
+  `dist/server.cjs` (`functions/scripts/sync-superflow-mcp.js`) and types it in
+  `functions/src/superflow-v2/mcp/hosted/superflow-mcp-package.types.ts`: keep `src/lib.ts`,
+  `createServer`, `Config` and `ApiClientOptions` compatible, and never import
+  `src/bridge.ts` from the library entry.
+- **The bridge never sends a tool call twice** (it may write). Lists and reads go again
+  once after a network failure or a 5xx; a 401 on a sign-in renews it once and retries.
 - **Never log or print a token.** `src/auth/` holds access and refresh tokens; the
   credential store never puts them in argv: `secret-tool` reads the secret on stdin and
   `security -i` reads the whole Keychain command on stdin (never `security ... -w <value>`).
@@ -31,7 +44,8 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
   and run `pnpm generate:client`.
 - **No em dashes or en dashes** in code, comments, descriptions, docs or commit
   messages. Use periods, commas or colons.
-- Run `pnpm test` and `pnpm check:drift` before every commit; after `pnpm build`, `pnpm test:e2e`.
+- Run `pnpm test` and `pnpm check:drift` before every commit; after `pnpm build`, `pnpm test:e2e`
+  (bridge mode against a fake hosted server, direct mode against a fake API).
   A new tool needs no e2e change: the suite reads tools/list and calls each tool's Example.
 
 ## Tool descriptions are for a language model
@@ -72,16 +86,20 @@ playbook line in the server instructions.
 
 ## Rules the tools follow
 
-- Ids pass through to the API (URL-encoded in paths). For a bare comment number with no
-  `project`, inject `SUPERFLOW_DEFAULT_PROJECT` (`projectForComment` in `src/lib/resolve.ts`).
+- Ids pass through to the API (URL-encoded in paths). A comment is its `cmt_` id, raw id or
+  link (its `url`); a comment tool's `project` only narrows the lookup. Comments have no
+  numbers.
 - Lists: `limit` default 25, max 100; pass `cursor` through; the summary says when more
   results exist (`paginationNote`).
 - Dates: validate with `findInvalidDate` before calling the API.
 - Gates: every destructive tool (`destructiveHint: true`) except bulk needs `confirm: true`;
   without it it only reads and returns a `needs_confirmation` preview (`confirmationResult`).
-  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The one exception
-  is `superflow_remove_member`, which asks the API without confirm and shows its 409
-  preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
+  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The exceptions
+  ask the API without confirm and show its 409 preview: `superflow_remove_member`,
+  `superflow_delete_tag` and `superflow_merge_tags` (the API reads the tag's comments itself, one
+  window a page: the preview pages with its `next_cursor` and adds the counts up in `counted`,
+  and after a paged preview the job is confirmed WITHOUT a cursor, since a cursor with confirm
+  rewrites only from that point on). Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
   `superflow_reject_comment` is destructive (a rejection cannot be undone): without confirm
   it reads the comment and returns it with the reason as the preview.
@@ -131,7 +149,14 @@ playbook line in the server instructions.
 - Checks: a resolve or a mark fixed is a claim; the rescan verifies it. Summaries say so,
   and report `verify` when the API returns one. An engine refusal keeps the API's `reason`
   (`already_verified`, `not_agent_comment`, ...) on the error; never retry it.
-- Comment `number` can be null. Label comments with `commentLabel`, which falls back to the id.
+- Label a comment by its id. Deleting a comment (or a page's comments) is permanent: the
+  descriptions and previews say so. Tag rewrites change at most 500 comments a call and go
+  on from the answer's `next_cursor` (passed back as `cursor`, a rename too); a null
+  `next_cursor` ends the pass, and the answer says it is done. Comments a call could not
+  rewrite while it changed others get ONE retry pass (no cursor, `retry: true`, a flag the
+  package keeps and never sends); a retry pass never offers another, so a job is at most two
+  passes. Text and tests: `rewriteNote` in `src/tools/tags.ts`, `TAG_REWRITE_STEPS` in
+  `src/lib/confirm.ts`.
 
 ## Commands
 
@@ -163,6 +188,11 @@ vendored copy there (`functions/vendor/superflow-mcp/`). So:
   (`node functions/scripts/sync-superflow-mcp.js <this checkout>`); its conformance test
   fails while the copy is stale. Old hosted tool names map to new ones in
   `LEGACY_TOOL_RENAMES` there.
+- Since the npm package forwards to the hosted server, a tool change reaches npm users when
+  the backend re-vendors and deploys, not with an npm release. A workspace gets the package
+  tool set on `/mcp` only when the backend's `SUPERFLOW_MCP_TOOLSET` default is `package` or
+  its apiKey is in `SUPERFLOW_MCP_TOOLSET_PACKAGE_APIKEYS`; otherwise it gets the 20 legacy
+  tools, through the bridge too.
 
 The PR template asks "MCP updated, or why not".
 

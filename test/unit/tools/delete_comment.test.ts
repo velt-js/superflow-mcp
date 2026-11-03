@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONFIRM_DELETE_COMMENT_MESSAGE } from "../../../src/lib/confirm.ts";
-import { compactComment, fullComment, unnumberedComment } from "../../helpers/fixtures.ts";
+import { compactComment, fullComment } from "../../helpers/fixtures.ts";
 import { connect, data, ok, on, recorded, standardErrorCases, summaryOf, useMsw, writes } from "../../helpers/harness.ts";
 
 useMsw();
@@ -8,10 +8,10 @@ useMsw();
 const TOOL = "superflow_delete_comment";
 
 describe(TOOL, () => {
-  it("without confirm, only reads the comment and returns a compact preview", async () => {
+  it("without confirm, only reads the comment and returns a compact preview that says it is permanent", async () => {
     on("get", "/comments/:comment", ok(fullComment));
     const h = await connect();
-    const result = await h.call(TOOL, { comment: "4821", project: "Acme Dental" });
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental" });
     expect(result.isError).toBeFalsy();
     expect(data(result)).toEqual({
       needs_confirmation: true,
@@ -19,8 +19,9 @@ describe(TOOL, () => {
       message: CONFIRM_DELETE_COMMENT_MESSAGE,
     });
     expect(summaryOf(result)).toBe(
-      "Comment #4821 in Acme Dental would be deleted. Nothing was deleted. Ask the user to confirm. Link: https://acme.com/pricing?scommentId=8f3k2",
+      "Comment cmt_8f3k2 in Acme Dental would be deleted for good, with its replies: it cannot be restored. Nothing was deleted. Ask the user to confirm. Link: https://acme.com/pricing?scommentId=8f3k2",
     );
+    expect(CONFIRM_DELETE_COMMENT_MESSAGE).toContain("cannot be restored");
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "false" });
     expect(writes()).toEqual([]);
   });
@@ -32,36 +33,29 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
-  it("deletes with confirm: true and says until when it can be restored", async () => {
-    const body = { deleted: true, id: "cmt_8f3k2", number: 4821, restore_until: "2026-11-07T00:00:00Z" };
+  it("deletes with confirm: true and says it is gone for good", async () => {
+    const body = { deleted: true, id: "cmt_8f3k2" };
     on("delete", "/comments/:comment", ok(body));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    const result = await h.call(TOOL, { comment: "#4821", confirm: true });
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", confirm: true });
     expect(data(result)).toEqual(body);
-    expect(summaryOf(result)).toBe(
-      "Deleted comment #4821. It can be restored with superflow_restore_comment until 2026-11-07T00:00:00Z.",
-    );
+    expect(summaryOf(result)).toBe("Deleted comment cmt_8f3k2 and its replies for good. It cannot be restored.");
     expect(recorded[0]?.method).toBe("DELETE");
-    expect(recorded[0]?.query).toEqual({ project: "Acme Dental" });
+    expect(recorded[0]?.query).toEqual({});
   });
 
-  it("labels a comment without a number by its id in the preview and after deleting", async () => {
-    on("get", "/comments/:comment", ok(unnumberedComment));
-    on("delete", "/comments/:comment", ok({ deleted: true, id: "cmt_8f3k2", number: null, restore_until: null }));
+  it("passes the project through on the delete", async () => {
+    on("delete", "/comments/:comment", ok({ deleted: true, id: "cmt_8f3k2" }));
     const h = await connect();
-    const preview = await h.call(TOOL, { comment: "cmt_8f3k2" });
-    expect(summaryOf(preview)).toMatch(/^Comment cmt_8f3k2 in Acme Dental would be deleted/);
-    expect((data(preview).preview as { number: unknown }).number).toBeNull();
-    const done = await h.call(TOOL, { comment: "cmt_8f3k2", confirm: true });
-    expect(summaryOf(done)).toBe("Deleted comment cmt_8f3k2. It can be restored with superflow_restore_comment.");
-    expect(`${summaryOf(preview)} ${summaryOf(done)}`).not.toContain("#null");
+    await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental", confirm: true });
+    expect(recorded[0]?.query).toEqual({ project: "Acme Dental" });
   });
 
   standardErrorCases({
     tool: TOOL,
-    args: { comment: "4821", project: "Acme", confirm: true },
+    args: { comment: "cmt_nope", project: "Acme", confirm: true },
     method: "delete",
     path: "/comments/:comment",
-    success: ok({ deleted: true, id: "cmt_8f3k2", number: 4821, restore_until: null }),
+    success: ok({ deleted: true, id: "cmt_8f3k2" }),
   });
 });
