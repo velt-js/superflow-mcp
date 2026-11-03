@@ -210,12 +210,22 @@ export interface Tag {
   usage_count: number | null;
 }
 
-/** What a rewrite of a tag on its comments did (rename, recolor, delete, merge: at most 500 a call). */
+/**
+ * What a rewrite of a tag on its comments did (rename, recolor, delete, merge): one call
+ * rewrites at most 500 comments that need it, starting at `cursor` (or the start).
+ */
 export interface TagRewrite {
-  /** Comments not rewritten (the 1,000-comment update window, or a refused batch). */
+  /**
+   * Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused
+   * batch). A call without a cursor retries them; those outside the window never change.
+   */
   failed: number;
-  /** False when some comments still carry the old tag: call again to finish. */
+  /** True only when next_cursor is null and failed is 0. */
   complete: boolean;
+  /** Where the next call starts (just after the last comment this one read), or null at the end. */
+  next_cursor: string | null;
+  /** How many comments this call read, and whether it read to the end. */
+  scan: Scan;
 }
 
 /** PATCH /tags/{tag}: the tag as it is now, and the comments rewritten. */
@@ -710,8 +720,9 @@ export type ScheduleRunStatus =
 export interface RunExecution {
   /** run_<executionId>: readable on its own with GET /runs/{run}. */
   id: string;
+  /** Null when the execution's record is gone (status missing). */
   agent: Ref | null;
-  /** running, passed, failed, partial, error or skipped. */
+  /** running, passed, failed, partial, error or skipped; missing (final) when its record is gone. */
   status: string;
   findings: number | null;
 }
@@ -723,6 +734,7 @@ export interface Run {
   scope: RunScope;
   pages_requested: string[];
   status: RunStatus;
+  /** The scan's charge; 0 once it was refunded or its debit failed. */
   credits_charged: number | null;
   findings_count: number | null;
   started_at: string | null;

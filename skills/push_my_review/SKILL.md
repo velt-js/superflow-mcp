@@ -58,8 +58,8 @@ findings today: say so and offer to send the rest tomorrow.
 
 ## 4. Report
 
-Tell the user, in one short paragraph: how many were created, how many merged into comments
-already there (found before, by their agent or by Superflow's), and how many were dropped
+Tell the user, in one short paragraph: how many were created, how many merged into your own
+earlier imports of the same finding (never into Superflow's), and how many were dropped
 (low confidence) or failed (send the batch again to retry them). Link three of the new
 comments.
 

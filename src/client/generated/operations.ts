@@ -138,7 +138,7 @@ export const operations = {
     method: "DELETE",
     path: "/tags/{tag}",
     pathParams: ["tag"],
-    queryParams: ["confirm"],
+    queryParams: ["confirm", "cursor"],
   },
   duplicateAgent: {
     method: "POST",
@@ -644,7 +644,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "77a6f36fafd07a2f848e84d7cef600092d313d90b469684c25c145dbb43f9cf3";
+export const OPENAPI_SHA256 = "cabd28733698b174a8008ea8cd665ad09ec51a98eaa536f46c391cecd21912a2";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

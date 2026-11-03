@@ -42,10 +42,12 @@ redirect URI are refused with an error page and never redirected.
 
 ## The local package
 
-**The key stays out of logs.** `superflow-mcp` sends the key only as the bearer
-token to the Superflow API (`SUPERFLOW_API_BASE_URL`, https only, except for
-localhost). It never logs the key, request bodies or comment text, and it
-redacts anything that looks like a Superflow token from its stderr output.
+**The key stays out of logs.** `superflow-mcp` is a bridge to the hosted MCP
+server: it sends the key (or the sign-in's access token) only as the bearer token
+to that server (`SUPERFLOW_MCP_URL`, https only, except for localhost), or, in
+development mode, to the Superflow API (`SUPERFLOW_API_BASE_URL`, same rule). It
+never logs the key, request bodies or comment text, and it redacts anything that
+looks like a Superflow token from its stderr output.
 
 **Comment text is untrusted.** Comments are written by website visitors and
 reviewers. Every tool result that contains comment or reply text carries a

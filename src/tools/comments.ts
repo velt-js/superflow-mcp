@@ -56,6 +56,7 @@ import {
   pickFilters,
   projectRefSchema,
   sortSchema,
+  TAG_PRIVACY_NOTE,
   tagInputSchema,
 } from "./schemas.ts";
 
@@ -110,7 +111,7 @@ function refuseUnassign(...lists: Array<readonly string[] | undefined>): CallToo
     "Assign someone else, or tell the user to unassign the comment in the Superflow toolbar.",
   );
 }
-const TAG_NOTE = 'Each is a name, a tag_ id, or {"name", "color"}. A new name creates the tag for the whole workspace (default color #605CEC).';
+const TAG_NOTE = `Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). ${TAG_PRIVACY_NOTE}`;
 const tagsInput = (what: string) => z.array(tagInputSchema).optional().describe(`${what} ${TAG_NOTE}`);
 const idempotencyInput = idempotencySchema;
 

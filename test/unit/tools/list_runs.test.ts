@@ -14,7 +14,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme Dental", status: ["done", "partial"], since: "7d", limit: 5 });
     expect(data(result)).toEqual(body);
     expect(summaryOf(result)).toBe(
-      "Found 1 run. Latest: Run run_8f3k2 on Acme Dental: done. 5 findings reported by 2 agents (Proofreader, Legal footer) (duplicates across agents merge into fewer comments). Credits charged: 10. Read them with superflow_list_findings. Showing 1. More results exist. Call again with cursor=c2 for more.",
+      "Found 1 run. Latest: Run run_8f3k2 on Acme Dental (trigger: api): done. 5 findings reported by 2 agents (Proofreader, Legal footer) (duplicates across agents merge into fewer comments). Credits charged: 10. Read them with superflow_list_findings. Showing 1. More results exist. Call again with cursor=c2 for more.",
     );
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", status: "done,partial", since: "7d", limit: "5" });
   });
@@ -25,7 +25,7 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, { project: "Acme Dental" });
     expect(data(result)).toEqual(body);
-    expect(summaryOf(result)).toMatch(/^Found 2 runs\. Latest: Run run_p1 on Acme Dental: done\./);
+    expect(summaryOf(result)).toMatch(/^Found 2 runs\. Latest: Run run_p1 on Acme Dental \(trigger: manual\): done\./);
   });
 
   it("defaults the limit to 25", async () => {

@@ -130,7 +130,8 @@ export function runSummary(run: Run, lead = "Run"): string {
   const executions = run.executions ?? [];
   const finished = executions.filter((e) => e.status !== "running").length;
   const terminal = (TERMINAL_RUN_STATUSES as readonly string[]).includes(run.status);
-  const head = `${lead} ${run.id}${project ? ` on ${project}` : ""}: ${run.status}`;
+  const missing = executions.filter((e) => e.status === "missing").length;
+  const head = `${lead} ${run.id}${project ? ` on ${project}` : ""}${run.trigger ? ` (trigger: ${run.trigger})` : ""}: ${run.status}`;
   if (!terminal) {
     return join(
       `${head}${executions.length > 0 ? ` (${finished} of ${plural(executions.length, "agent")} finished)` : ""}.`,
@@ -142,6 +143,7 @@ export function runSummary(run: Run, lead = "Run"): string {
     `${head}. ${plural(run.findings_count ?? 0, "finding")} reported by ${agentNames(run.agents)} (duplicates across agents merge into fewer comments).`,
     typeof run.credits_charged === "number" && `Credits charged: ${count(run.credits_charged)}.`,
     run.status === "partial" && "Some agents did not finish; their status is in executions.",
+    missing > 0 && `${plural(missing, "agent")} left no record (status missing).`,
     run.status === "failed" && "No agent finished; see executions for each agent's status.",
     (run.findings_count ?? 0) > 0 && "Read them with superflow_list_findings.",
   );
@@ -212,6 +214,7 @@ export const getRun = defineTool({
   description: [
     "Get an agent run's live status: overall status, each agent's status and findings count, credits charged, what started it (trigger), and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution).",
     `The run is finished when status is done, failed or partial (partial: some agents did not finish). While it is queued or running, call again no more often than every ${POLL_SECONDS} seconds; a full site run can take several minutes.`,
+    "An agent whose record is gone shows status missing (final, agent null). credits_charged is 0 once the run's charge was refunded or failed. A run of a deleted project is not found.",
     "To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs. An import's run_id from superflow_import_findings is not a run: read its findings with superflow_list_findings.",
     'Example: {"run": "run_8f3k2"}',
   ].join("\n"),
@@ -229,7 +232,7 @@ export const listRuns = defineTool({
   title: "List runs",
   description: [
     "List every agent run of the workspace, newest first, with status, findings count, credits and trigger (what started it): runs started through the API or this server (api, mcp), by a schedule from superflow_set_schedule (workflow), in the Superflow portal (manual) and by Always-on Monitoring (schedule, deploy, change, resolve, uptime). Filter by project, status or start date.",
-    "Imports from superflow_import_findings are not runs and are not listed: read an import's findings with superflow_list_findings and the run_id the import returned.",
+    "Imports from superflow_import_findings are not runs and are not listed: read an import's findings with superflow_list_findings and the run_id the import returned. Runs of a deleted project are not listed either.",
     'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings.',
     'Example: {"project": "Acme Dental", "status": ["done", "partial"], "limit": 5}',
   ].join("\n"),

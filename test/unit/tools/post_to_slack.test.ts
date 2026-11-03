@@ -64,7 +64,7 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, { integration: "Acme workspace", comments: [" cmt_8f3k2 ", "https://acme.com/?scommentId=9x"] });
     expect(summaryOf(result)).toBe("Would post to Slack #design-feedback (Acme workspace): 2 comments. Nothing was posted. Ask the user to confirm.");
-    expect((data(result).preview as { comments: string[] }).comments).toEqual(["cmt_8f3k2", "https://acme.com/?scommentId=9x"]);
+    expect((data(result).preview as { comments: string[] }).comments).toEqual(["cmt_8f3k2", "cmt_9x"]);
     expect(recorded.map((r) => r.operationId)).toEqual(["getIntegration"]);
     expect(writes()).toEqual([]);
   });

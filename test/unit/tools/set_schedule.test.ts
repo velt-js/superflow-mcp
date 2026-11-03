@@ -98,6 +98,8 @@ describe(TOOL, () => {
       message: CONFIRM_SET_SCHEDULE_MESSAGE,
     });
     expect(summaryOf(result)).toContain("The change (cron, scope, pages) changes what or when it runs, and every run spends AI credits.");
+    // The change names no agents or pack, so saving takes them again.
+    expect(summaryOf(result)).toContain("Saving takes the agents again: a pack's current members, or today's default agents when the schedule used the default set");
     expect(recorded.map((r) => r.operationId)).not.toContain("updateSchedule");
   });
 
@@ -105,8 +107,9 @@ describe(TOOL, () => {
     on("get", "/schedules", ok({ items: [agentSchedule], next_cursor: null }));
     on("post", "/runs/estimate", ok(estimate));
     const h = await connect();
-    await h.call(TOOL, { schedule: "sch_7g8h9i", pack: "Pre-Launch", agents: null });
+    const result = await h.call(TOOL, { schedule: "sch_7g8h9i", pack: "Pre-Launch", agents: null });
     expect(recorded[1]?.body).toEqual({ project: "prj_1a2b", scope: "site", pack: "Pre-Launch" });
+    expect(summaryOf(result)).not.toContain("Saving takes the agents again");
   });
 
   it("a pack schedule is priced with its pack, not with the pack's members it lists as agents", async () => {

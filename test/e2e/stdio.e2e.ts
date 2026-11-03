@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ApiClient } from "../../src/client/api.ts";
 import { silentLogger } from "../../src/lib/logger.ts";
 import { createServer } from "../../src/server.ts";
+import { FAKE_ME, startFakeHosted } from "../helpers/fake-hosted.ts";
 import { FakeSuperflowApi, apiError, echoLookups } from "./fake-api.ts";
 import { ENTRY, assertBuilt, exampleOf, isolatedEnv, launch, textOf } from "./launch.ts";
 import type { Launched } from "./launch.ts";
@@ -429,6 +430,26 @@ describe("startup", () => {
     expect(out.stderr).toContain("https");
   });
 
+  it("refuses a plain-http MCP URL outside localhost before going over the network", async () => {
+    const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: "http://mcp.example.com/mcp" });
+    expect(out.code).not.toBe(0);
+    expect(out.stdout).toBe("");
+    expect(out.stderr).toContain("SUPERFLOW_MCP_URL must use https");
+  });
+
+  it("in bridge mode, a key the hosted server refuses exits non-zero with the reason on stderr only", async () => {
+    const hosted = await startFakeHosted(["sf_pat_someone_else"]);
+    try {
+      const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: hosted.url });
+      expect(out.code).not.toBe(0);
+      expect(out.stdout).toBe("");
+      expect(out.stderr).toContain("The Superflow API key was rejected.");
+      expect(out.stderr).not.toContain(KEY);
+    } finally {
+      await hosted.close();
+    }
+  });
+
   it("refuses an unknown log level and a malformed read-only flag", async () => {
     const bad: Array<Record<string, string>> = [{ SUPERFLOW_LOG_LEVEL: "loud" }, { SUPERFLOW_READ_ONLY: "maybe" }];
     for (const env of bad) {
@@ -436,5 +457,31 @@ describe("startup", () => {
       expect(out.code, JSON.stringify(env)).not.toBe(0);
       expect(out.stdout).toBe("");
     }
+  });
+});
+
+describe("bridge mode (the default: no SUPERFLOW_API_BASE_URL)", () => {
+  it("forwards to the hosted server with the key, and never calls the REST API itself", async () => {
+    const hosted = await startFakeHosted([KEY]);
+    const bridged = await launch({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_MCP_URL: hosted.url, SUPERFLOW_LOG_LEVEL: "debug" });
+    try {
+      expect(bridged.client.getServerVersion()).toMatchObject({ name: "superflow-mcp", version: "9.9.9" });
+      expect((await bridged.client.listTools()).tools.map((tool) => tool.name)).toContain("superflow_list_projects");
+      const me = await bridged.call("superflow_get_me");
+      expect(me.structuredContent).toEqual(FAKE_ME);
+      expect(hosted.requests.filter((r) => r.method === "POST").every((r) => r.headers.authorization === `Bearer ${KEY}`)).toBe(true);
+      expect(bridged.stderr()).toContain(`forwarding to ${new URL(hosted.url).host}`);
+      expect(bridged.stderr()).not.toContain("development mode");
+      expect(bridged.stderr()).not.toContain(KEY);
+      expect(api.requests).toEqual([]);
+    } finally {
+      await bridged.close();
+      await hosted.close();
+    }
+  });
+
+  it("with SUPERFLOW_API_BASE_URL set, runs the tools here and says it is development mode", () => {
+    expect(server.stderr()).toContain("SUPERFLOW_API_BASE_URL is set, so the tools run here");
+    expect(server.stderr()).toContain("(development mode)");
   });
 });

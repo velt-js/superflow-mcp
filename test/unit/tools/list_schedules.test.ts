@@ -18,5 +18,21 @@ describe(TOOL, () => {
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental" });
   });
 
+  it("says a schedule left with no agents is turned off, not on the default agents", async () => {
+    on("get", "/schedules", ok(list([{ ...agentSchedule, agents: [], enabled: false }])));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL));
+    expect(summary).toContain("sch_7g8h9i on Acme Dental: 0 9 * * 1 (Europe/Berlin), no agents (turned off), site scope, paused");
+    expect(summary).not.toContain("default agents");
+  });
+
+  it("says when the schedule scan stopped early, so some schedules may be missing", async () => {
+    on("get", "/schedules", ok(list([schedule], { scan: { scanned: 10000, complete: false } })));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL))).toContain(
+      "Found 1 schedule. The schedule scan stopped after 10,000 definitions, so some schedules may not be listed.",
+    );
+  });
+
   standardErrorCases({ tool: TOOL, args: {}, method: "get", path: "/schedules", success: ok(list([schedule])) });
 });

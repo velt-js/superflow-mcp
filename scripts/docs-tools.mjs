@@ -13,7 +13,7 @@ const OUTPUT = fileURLToPath(new URL("../docs/tools.md", import.meta.url));
 
 const config = {
   apiKey: "sf_pat_docs",
-  baseUrl: "https://api.usesuperflow.ai/v1",
+  baseUrl: "https://mcp.usesuperflow.ai/v1",
   readOnly: false,
   logLevel: "silent",
 };

@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.usesuperflow.ai/v1"
+      "url": "https://mcp.usesuperflow.ai/v1"
     }
   ],
   "security": [
@@ -1822,7 +1822,7 @@
                   },
                   "tags": {
                     "type": "array",
-                    "description": "A tag is created by assigning it. A new tag without a color gets #605CEC.",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
                       "oneOf": [
                         {
@@ -2377,7 +2377,7 @@
                       },
                       "add_tags": {
                         "type": "array",
-                        "description": "A tag is created by assigning it. A new tag without a color gets #605CEC.",
+                        "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                         "items": {
                           "oneOf": [
                             {
@@ -2654,7 +2654,7 @@
                   },
                   "tags": {
                     "type": "array",
-                    "description": "A tag is created by assigning it. A new tag without a color gets #605CEC.",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
                       "oneOf": [
                         {
@@ -2682,7 +2682,7 @@
                   },
                   "add_tags": {
                     "type": "array",
-                    "description": "A tag is created by assigning it. A new tag without a color gets #605CEC.",
+                    "description": "A tag is created by assigning it (a name), and a new tag without a color gets #605CEC. A tag_ id from list_tags works only on a comment that already carries the tag. Tags are readable by everyone who can read the comment: no private notes.",
                     "items": {
                       "oneOf": [
                         {
@@ -4788,7 +4788,7 @@
     "/tags/{tag}": {
       "patch": {
         "operationId": "updateTag",
-        "summary": "Rename or recolor a tag on every comment that carries it (a rename gives the new name's id)",
+        "summary": "Rename or recolor a tag on the comments that carry it (a rename gives the new name's id); resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -4824,6 +4824,10 @@
                   "color": {
                     "type": "string",
                     "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                  },
+                  "cursor": {
+                    "type": "string",
+                    "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused."
                   }
                 },
                 "required": [],
@@ -4880,7 +4884,7 @@
       },
       "delete": {
         "operationId": "deleteTag",
-        "summary": "Take a tag off every comment that carries it",
+        "summary": "Take a tag off the comments that carry it; resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -4909,6 +4913,15 @@
             "description": "true to perform it. Without it the request answers 409 needs_confirmation with a preview.",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4962,7 +4975,7 @@
     "/tags/{tag}/merge": {
       "post": {
         "operationId": "mergeTags",
-        "summary": "Merge a tag into another (or into a new name) on every comment that carries it",
+        "summary": "Merge a tag into another (or into a new name) on the comments that carry it; resumable with cursor",
         "tags": [
           "tags"
         ],
@@ -4997,6 +5010,10 @@
                   },
                   "confirm": {
                     "type": "boolean"
+                  },
+                  "cursor": {
+                    "type": "string",
+                    "description": "The next_cursor of the previous call of this same rewrite (same tag, same body): the scan resumes just after the last comment that call processed. A cursor of another tag or body is refused."
                   }
                 },
                 "required": [
@@ -8559,7 +8576,7 @@
     "/runs": {
       "post": {
         "operationId": "runAgents",
-        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per rolling hour; past that 429 with Retry-After.",
+        "summary": "Run agents (one scan; spends AI credits). At most 10 API runs per project per UTC hour; past that 429 with Retry-After until the next hour.",
         "tags": [
           "runs"
         ],
@@ -8677,7 +8694,7 @@
       },
       "get": {
         "operationId": "listRuns",
-        "summary": "List runs",
+        "summary": "List runs (never those of a deleted earlier project with the same id)",
         "tags": [
           "runs"
         ],
@@ -8799,7 +8816,7 @@
     "/runs/{run}": {
       "get": {
         "operationId": "getRun",
-        "summary": "Get a run (live)",
+        "summary": "Get a run (live). A run of a deleted earlier project with the same id (the same site) is not_found.",
         "tags": [
           "runs"
         ],
@@ -10837,11 +10854,25 @@
           },
           "failed": {
             "type": "integer",
-            "description": "Comments Velt did not rewrite (the 1,000-comment update window, or a refused batch)."
+            "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
           },
           "complete": {
             "type": "boolean",
-            "description": "False when some comments still carry the old tag (the scan budget, the 500-comment cap or a failure): call again to finish."
+            "description": "True only when next_cursor is null and failed is 0."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
           }
         },
         "required": [
@@ -10849,7 +10880,9 @@
           "id",
           "removed_from",
           "failed",
-          "complete"
+          "complete",
+          "next_cursor",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -10871,11 +10904,25 @@
           },
           "failed": {
             "type": "integer",
-            "description": "Comments Velt did not rewrite (the 1,000-comment update window, or a refused batch)."
+            "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
           },
           "complete": {
             "type": "boolean",
-            "description": "False when some comments still carry the old tag (the scan budget, the 500-comment cap or a failure): call again to finish."
+            "description": "True only when next_cursor is null and failed is 0."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
           }
         },
         "required": [
@@ -10884,7 +10931,9 @@
           "into",
           "comments_updated",
           "failed",
-          "complete"
+          "complete",
+          "next_cursor",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -10902,17 +10951,33 @@
               },
               "failed": {
                 "type": "integer",
-                "description": "Comments Velt did not rewrite (the 1,000-comment update window, or a refused batch)."
+                "description": "Comments Velt did not rewrite in this call (the 1,000-comment update window, or a refused batch). They stay behind next_cursor: calling again without a cursor retries them; those outside Velt's update window cannot be rewritten."
               },
               "complete": {
                 "type": "boolean",
-                "description": "False when some comments still carry the old tag (the scan budget, the 500-comment cap or a failure): call again to finish."
+                "description": "True only when next_cursor is null and failed is 0."
+              },
+              "next_cursor": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Where this rewrite resumes: just after the last comment it processed (at most 500 a call, within the 10,000-comment scan). Send it back as cursor with the same tag and body. Null when the scan reached the end."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scan": {
+                "$ref": "#/components/schemas/Scan"
               }
             },
             "required": [
               "comments_updated",
               "failed",
-              "complete"
+              "complete",
+              "next_cursor",
+              "scan"
             ],
             "additionalProperties": false
           }
@@ -12244,7 +12309,8 @@
               "page",
               "list",
               "site"
-            ]
+            ],
+            "description": "From the scan's census and pages (the scan stores no scope): list, page (one requested page), else site."
           },
           "pages_requested": {
             "type": "array",
@@ -12265,7 +12331,8 @@
           "credits_charged": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "description": "The scan's charge; 0 once it was refunded or its debit failed (status error)."
               },
               {
                 "type": "null"
@@ -12395,7 +12462,7 @@
                 },
                 "status": {
                   "type": "string",
-                  "description": "running, passed, failed, partial, error or skipped"
+                  "description": "running, passed, failed, partial, error or skipped; missing when the execution's record is gone (final, agent null)"
                 },
                 "findings": {
                   "anyOf": [
@@ -12955,12 +13022,17 @@
           },
           "applied_filters": {
             "type": "object"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan",
+            "description": "Workflow definitions read (at most 10,000). complete false: the schedules on the definitions not read are not in items."
           }
         },
         "required": [
           "items",
           "next_cursor",
-          "applied_filters"
+          "applied_filters",
+          "scan"
         ],
         "additionalProperties": false
       },
@@ -14960,6 +15032,21 @@
                 "type": "object",
                 "description": "needs_confirmation only: what the request would do. Bulk: { would_update, sample }. Deletes and removals: the entity and the counts it affects."
               },
+              "scan": {
+                "$ref": "#/components/schemas/Scan",
+                "description": "A tag route's not_found when its scan stopped early: the tag may be on a comment past the ones read."
+              },
+              "next_cursor": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "With scan: send it back as cursor to look past the comments already read."
+              },
               "issues": {
                 "type": "array",
                 "description": "invalid only, when a request has more than one problem: up to 20 { field, reason } pairs, field written like findings[37].fix_type.",
@@ -15950,7 +16037,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "tag_ id (derived from the name: one id per name)"
+            "description": "tag_ id (derived from the name: one id per name; a tag made outside the API keeps its own id)"
           },
           "name": {
             "type": "string"
@@ -15976,7 +16063,8 @@
           "color",
           "usage_count"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "A Velt category on the comment. Anyone who can read the comment (members, guests, review link viewers, any SDK client of the project) can read its tags: keep private notes out of them."
       },
       "Project": {
         "type": "object",
@@ -16084,9 +16172,6 @@
                   }
                 ]
               },
-              "default_agent_pack": {
-                "type": "null"
-              },
               "statuses": {
                 "type": "array",
                 "items": {
@@ -16104,7 +16189,6 @@
               "member_count",
               "guest_count",
               "total_comment_count",
-              "default_agent_pack",
               "statuses",
               "settings",
               "install"

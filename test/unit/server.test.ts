@@ -317,7 +317,23 @@ describe("tool registration", () => {
     expect(describe("superflow_remove_page")).toContain("cannot be restored");
     for (const name of ["superflow_update_tag", "superflow_delete_tag", "superflow_merge_tags"]) {
       expect(describe(name), name).toContain("at most 500 comments");
-      expect(describe(name), name).toContain("complete: false");
+      // Each call goes on from next_cursor, and a null next_cursor ends it: never "the same arguments" alone.
+      expect(describe(name), name).toContain("cursor set to next_cursor");
+      expect(describe(name), name).toContain("When next_cursor is null the job is done");
+      expect(describe(name), name).toContain("when a call changes nothing, tell the user and stop");
+      expect(describe(name), name).toContain("Rewritten comments show as just updated");
+      expect(describe(name), name).not.toMatch(/call again with the same arguments to finish/);
+    }
+    // Tags are not private: every tool that writes tags says so.
+    for (const name of ["superflow_update_tag", "superflow_merge_tags"]) {
+      expect(describe(name), name).toContain("do not put private notes in tags");
+    }
+    const tagNotes = ["superflow_create_comment", "superflow_update_comment", "superflow_bulk_update_comments"].map((name) =>
+      JSON.stringify(listed.find((t) => t.name === name)?.inputSchema),
+    );
+    for (const note of tagNotes) {
+      expect(note).toContain("do not put private notes in tags");
+      expect(note).toContain("A tag_ id works only for a tag already on the comment.");
     }
     expect(describe("superflow_push_comment")).toContain("already_linked: true");
     expect(describe("superflow_set_schedule")).toContain("fixed when the schedule is saved");

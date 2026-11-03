@@ -8,12 +8,12 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 
 | | Local package | Hosted server |
 |---|---|---|
-| What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
+| What | `npx -y superflow-mcp`, a small bridge on your machine: stdio to your client, the hosted server behind it | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
 | Tools | 101 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
-You can use both at once.
+Both give the same tools, because the local package forwards every request to the hosted server (see [How the local package works](#how-the-local-package-works)). You can use both at once.
 
 ## Quick start
 
@@ -132,6 +132,14 @@ The same key works for the local package, the hosted server and the REST API. Re
 
 ## Local package
 
+### How the local package works
+
+`npx -y superflow-mcp` is a thin bridge. It speaks stdio to your MCP client and forwards every request (tools, prompts, resources, completions) to the hosted server at `https://mcp.usesuperflow.ai/mcp` over Streamable HTTP, with your API key or your `login` sign-in as the bearer token. The tools run on the hosted server, so the local package and the hosted connector are one server: the same tools, the same answers, and the same key. Results and errors come back unchanged. The install snippets below do not change.
+
+What the bridge adds: it renews a sign-in's token (once more after a refused one), applies read-only mode locally, waits up to 150 seconds for a tool call (the longest tools, tag rewrites, take up to 90), and says clearly when the hosted server cannot be reached or refuses the key. A tool call is never sent twice, since it may change data. It names itself to the hosted server (`X-Superflow-Client: superflow-mcp/<version>`).
+
+For development only, `SUPERFLOW_API_BASE_URL` switches to direct mode: the tools run in the process and call that REST API themselves, and the server says so on stderr at start.
+
 ### Sign in with the browser
 
 `npx -y superflow-mcp login` opens Superflow's consent screen in your browser. Sign in (or
@@ -169,7 +177,8 @@ own.
 | `SUPERFLOW_AUTH_URL` | no | `https://mcp.usesuperflow.ai` | The sign-in server `login` uses. |
 | `SUPERFLOW_CREDENTIALS_STORE` | no | `auto` | `auto` (Keychain or Secret Service, else a file) or `file`. |
 | `SUPERFLOW_CREDENTIALS_FILE` | no | `~/.config/superflow-mcp/credentials.json` | Where the file store keeps the sign-in. |
-| `SUPERFLOW_API_BASE_URL` | no | `https://api.usesuperflow.ai/v1` | The API to call. Must be https (http only for localhost). |
+| `SUPERFLOW_MCP_URL` | no | `https://mcp.usesuperflow.ai/mcp` | The hosted MCP server the bridge forwards to. Must be https (http only for localhost). A saved sign-in uses the server it signed in with. Staging: `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp` (use the run.app origin: the cloudfunctions.net one fails the OAuth resource check). |
+| `SUPERFLOW_API_BASE_URL` | no | | Development only. When set, the tools run in the process against this REST API instead of the hosted server (direct mode). The API is served by the same function as the hosted MCP server: `https://mcp.usesuperflow.ai/v1`, staging `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1`. Must be https (http only for localhost). |
 | `SUPERFLOW_READ_ONLY` | no | `false` | `true` hides every write tool. |
 | `SUPERFLOW_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn`, `error` or `silent`. Logs go to stderr. |
 
@@ -177,7 +186,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 56 write tools are not registered at all. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
+Set `SUPERFLOW_READ_ONLY=true` and the 56 write tools are not listed, and a call to one is refused on your machine without reaching Superflow. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work. For a hard guarantee, and prompts and server instructions that present changes as recommendations, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -278,6 +287,8 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_revoke_review_link` | Turn a review link off (needs confirm). |
 | `superflow_get_notification_settings` | Your own digest, inbox and email settings. |
 | `superflow_update_notification_settings` | Change your own notification settings. |
+
+Tags are workspace-wide and live on the comments: a tag exists while some comment carries it, and putting a new name on a comment creates it. Give tags by name; a `tag_` id works only for a tag already on the comment, and a color given with a name colors that comment's copy only, so one tag can show two colors. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. Renaming, recoloring, deleting or merging a tag rewrites at most 500 comments a call: the assistant goes on with the `next_cursor` of each answer until it is null. Comments counted in `failed` then could not be changed (on a project with more than 1,000 comments, only the newest 1,000 can be), and the rewritten comments show as just updated.
 
 #### Agents, runs and schedules
 
@@ -397,13 +408,15 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - A schedule runs agents, and spends credits, on every run. Creating one, or changing what or when it runs, needs `confirm: true`; without it the tool prices one run and shows it. Pausing needs no confirm.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
-- The key is only ever sent as the bearer token to the Superflow API, and it is never logged. See [SECURITY.md](SECURITY.md).
+- The key is only ever sent as the bearer token to the Superflow MCP server (in development mode, to the Superflow API), and it is never logged. See [SECURITY.md](SECURITY.md).
 
 ## Hosted server
 
 The hosted server lives at `https://mcp.usesuperflow.ai/mcp`. It speaks Streamable HTTP and accepts OAuth 2.1 (with dynamic client registration) or an API key as a bearer token. A client only sees the tools its scopes allow.
 
 ### Hosted tools
+
+These are the hosted server's first 20 tools. They are being replaced by the package tool set, the 101 tools under [Tools](#tools), on the hosted server and so through the local package too. Until a workspace has the package tool set, the local package forwards these 20.
 
 | Area | Tool | Scope | What it does |
 |---|---|---|---|
@@ -479,7 +492,7 @@ See [`docs/migrating-from-bugherd.md`](docs/migrating-from-bugherd.md) for how B
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `pnpm install`, `pnpm test`, `pnpm build`, `pnpm check:drift`.
 
-The e2e suite (`pnpm test:e2e`) runs the built package over real stdio against a local fake API on every pull request and every push to staging and main. The live suite (`pnpm test:live`, `test/live/` plus `test/integration/`) runs against a real API on every push to staging and main when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project. The admin tools can now create and delete a throwaway project, but the suite does not do that yet.
+The e2e suite (`pnpm test:e2e`) runs the built package over real stdio on every pull request and every push to staging and main: in direct mode against a local fake API (every tool), and in bridge mode against a local fake of the hosted server. The live suite (`pnpm test:live`, `test/live/` plus `test/integration/`) runs against a real API on every push to staging and main when `SUPERFLOW_TEST_API_KEY` and `SUPERFLOW_TEST_PROJECT` are set. It works inside an existing project. The admin tools can now create and delete a throwaway project, but the suite does not do that yet.
 
 ## Support
 

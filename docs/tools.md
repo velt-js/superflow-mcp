@@ -423,7 +423,7 @@ Ask the user before creating comments they did not ask for.
 | `priority` | `critical`, `high`, `medium`, `none` | no | Superflow has three priorities: critical (P0), high (P1) and medium (P2). "none", or leaving it out, creates the comment without a priority. |
 | `status` | string | no | Status name or id. "open" means the default status and "resolved" the resolved status. |
 | `assignees` | array of string | no | The assignee: one name, email or id, or "me". A comment has one assignee. Leave it out for no assignee. |
-| `tags` | array of string or object (name, color) | no | Tags to add. Each is a name, a tag_ id, or {"name", "color"}. A new name creates the tag for the whole workspace (default color #605CEC). |
+| `tags` | array of string or object (name, color) | no | Tags to add. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
 | `attachments` | array of object (url, name) | no | Files to attach, by public URL. |
 | `on_behalf_of` | string | no | Post as this existing project guest (email). Needs the users:invite scope. |
 | `idempotency_key` | string | no | Optional key so a retried call is not applied twice. Same key within 24 hours returns the first result. After a timeout, pass the idempotency_key the error returned. |
@@ -453,8 +453,8 @@ Ask the user before changing comments they did not ask about.
 | `status` | string | no | Status name or id. "open" means the default status and "resolved" the resolved status. |
 | `assignees` | array of string | no | The new assignee: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
 | `add_assignees` | array of string | no | Same as assignees: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
-| `tags` | array of string or object (name, color) | no | Replace all tags with these. [] removes every tag. Each is a name, a tag_ id, or {"name", "color"}. A new name creates the tag for the whole workspace (default color #605CEC). |
-| `add_tags` | array of any | no | Tags to add. Each is a name, a tag_ id, or {"name", "color"}. A new name creates the tag for the whole workspace (default color #605CEC). |
+| `tags` | array of string or object (name, color) | no | Replace all tags with these. [] removes every tag. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
+| `add_tags` | array of any | no | Tags to add. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
 | `remove_tags` | array of string | no | Tags to remove: names or tag_ ids. |
 | `page_url` | string | no | Move the comment to this page URL. |
 | `anchor` | object (selector, xpath, x, y, element_text, viewport, device) | no | Where on the page the comment is pinned. Omit for a page-level comment. |
@@ -1351,7 +1351,8 @@ Example:
 
 Rename or recolor a tag on every comment that carries it, in every project. Tags are workspace-wide. A rename gives the tag the new name's id (one id per name); a new color, or the same name in other letter case, keeps the id.
 A name another tag already has is refused: fold the tag into that one with superflow_merge_tags instead.
-One call changes at most 500 comments. When a rename comes back with complete: false, finish it with superflow_merge_tags from the old name into the new one (a second rename is refused, since the new name is now in use).
+One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false). For a new color or a change of letter case, call again with the same arguments and cursor set to next_cursor. A real rename that stopped early is finished with superflow_merge_tags from the old name into the new one (a second rename is refused, since the new name is now in use). When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags.
 To find tag names and ids use superflow_list_tags.
 
 | Parameter | Type | Required | Description |
@@ -1359,6 +1360,7 @@ To find tag names and ids use superflow_list_tags.
 | `tag` | string | yes | Tag: its name ("copy") or id (tag_...), as superflow_list_tags shows it. |
 | `name` | string | no | New name, up to 64 characters. |
 | `color` | string | no | Hex color, for example #b3261e. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
 
 Example:
 
@@ -1372,13 +1374,15 @@ Example:
 
 Take a tag off every comment that carries it, in every project. The comments stay; the tag is gone once no comment carries it.
 Without confirm: true nothing changes: you get the tag and how many comments carry it as a preview. Call again with confirm: true only after the user says yes.
-One call changes at most 500 comments: when the result says complete: false, call again with the same arguments to finish.
+One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same tag, confirm: true and cursor set to next_cursor. When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match.
 To fold a tag into another one instead use superflow_merge_tags.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `tag` | string | yes | Tag: its name ("copy") or id (tag_...), as superflow_list_tags shows it. |
 | `confirm` | boolean | no | Must be true to delete the tag. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
 
 Example:
 
@@ -1392,7 +1396,8 @@ Example:
 
 Merge one tag into another: every comment that carries tag gets into instead, in every project, and tag is gone. into is a tag some comment carries, or a new name (the new tag keeps tag's color). Use it to clean up near-duplicates such as "Copy text" and "copy", or to finish a rename that stopped early.
 Without confirm: true nothing changes: you get both tags and how many comments would change as a preview. Call again with confirm: true only after the user says yes.
-One call changes at most 500 comments: when the result says complete: false, call again with the same arguments to finish.
+One call rewrites at most 500 comments and returns next_cursor while more may carry tag (complete: false): call again with the same tag, into, confirm: true and cursor set to next_cursor. When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags.
 To just rename or recolor a tag use superflow_update_tag.
 
 | Parameter | Type | Required | Description |
@@ -1400,6 +1405,7 @@ To just rename or recolor a tag use superflow_update_tag.
 | `tag` | string | yes | The tag to merge away (name or tag_ id). It is gone after the merge. |
 | `into` | string | yes | The tag to keep (name or tag_ id), or a new name. |
 | `confirm` | boolean | no | Must be true to merge the tags. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
 
 Example:
 
@@ -1956,6 +1962,7 @@ Example:
 
 Get an agent run's live status: overall status, each agent's status and findings count, credits charged, what started it (trigger), and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution).
 The run is finished when status is done, failed or partial (partial: some agents did not finish). While it is queued or running, call again no more often than every 20 seconds; a full site run can take several minutes.
+An agent whose record is gone shows status missing (final, agent null). credits_charged is 0 once the run's charge was refunded or failed. A run of a deleted project is not found.
 To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs. An import's run_id from superflow_import_findings is not a run: read its findings with superflow_list_findings.
 
 | Parameter | Type | Required | Description |
@@ -1973,7 +1980,7 @@ Example:
 **List runs**
 
 List every agent run of the workspace, newest first, with status, findings count, credits and trigger (what started it): runs started through the API or this server (api, mcp), by a schedule from superflow_set_schedule (workflow), in the Superflow portal (manual) and by Always-on Monitoring (schedule, deploy, change, resolve, uptime). Filter by project, status or start date.
-Imports from superflow_import_findings are not runs and are not listed: read an import's findings with superflow_list_findings and the run_id the import returned.
+Imports from superflow_import_findings are not runs and are not listed: read an import's findings with superflow_list_findings and the run_id the import returned. Runs of a deleted project are not listed either.
 Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings.
 
 | Parameter | Type | Required | Description |

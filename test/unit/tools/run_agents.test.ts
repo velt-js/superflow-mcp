@@ -39,7 +39,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme Dental", scope: "site", agents: ["Proofreader", "Legal footer"], confirm: true });
     expect(data(result)).toEqual(runningRun);
     expect(summaryOf(result)).toBe(
-      "Started run run_8f3k2 on Acme Dental: running (1 of 2 agents finished). Credits charged: 10. Check again with superflow_get_run in 20 seconds or more; it is finished when the status is done, failed or partial.",
+      "Started run run_8f3k2 on Acme Dental (trigger: api): running (1 of 2 agents finished). Credits charged: 10. Check again with superflow_get_run in 20 seconds or more; it is finished when the status is done, failed or partial.",
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["runAgents"]);
     expect(recorded[0]?.body).toEqual({

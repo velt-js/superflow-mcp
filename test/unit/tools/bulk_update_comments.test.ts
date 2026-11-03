@@ -91,7 +91,7 @@ describe(TOOL, () => {
     const h = await connect();
     await h.call(TOOL, { comment_ids: [" cmt_8f3k2 ", "https://acme.com/?scommentId=9x"], patch: { assignees: ["Jen"], priority: "high" } });
     expect((recorded[0]?.body as { select: unknown }).select).toEqual({
-      comment_ids: ["cmt_8f3k2", "https://acme.com/?scommentId=9x"],
+      comment_ids: ["cmt_8f3k2", "cmt_9x"],
     });
     await h.call(TOOL, { comment_ids: ["cmt_8f3k2"], project: "Acme Dental", patch: { priority: "high" } });
     expect((recorded[1]?.body as { select: unknown }).select).toEqual({ comment_ids: ["cmt_8f3k2"], project: "Acme Dental" });

@@ -13,7 +13,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { run: "run_8f3k2" });
     expect(data(result)).toEqual(runningRun);
     expect(summaryOf(result)).toBe(
-      "Run run_8f3k2 on Acme Dental: running (1 of 2 agents finished). Credits charged: 10. Check again with superflow_get_run in 20 seconds or more; it is finished when the status is done, failed or partial.",
+      "Run run_8f3k2 on Acme Dental (trigger: api): running (1 of 2 agents finished). Credits charged: 10. Check again with superflow_get_run in 20 seconds or more; it is finished when the status is done, failed or partial.",
     );
     expect(recorded[0]?.path).toBe("/runs/run_8f3k2");
   });
@@ -22,8 +22,15 @@ describe(TOOL, () => {
     on("get", "/runs/:run", ok(doneRun));
     const h = await connect();
     expect(summaryOf(await h.call(TOOL, { run: "run_8f3k2" }))).toBe(
-      "Run run_8f3k2 on Acme Dental: done. 5 findings reported by 2 agents (Proofreader, Legal footer) (duplicates across agents merge into fewer comments). Credits charged: 10. Read them with superflow_list_findings.",
+      "Run run_8f3k2 on Acme Dental (trigger: api): done. 5 findings reported by 2 agents (Proofreader, Legal footer) (duplicates across agents merge into fewer comments). Credits charged: 10. Read them with superflow_list_findings.",
     );
+  });
+
+  it("says when an agent's record is gone (status missing, agent null)", async () => {
+    const executions = [doneRun.executions[0], { id: "run_exec2", agent: null, status: "missing", findings: null }];
+    on("get", "/runs/:run", ok({ ...doneRun, status: "partial", executions }));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, { run: "run_8f3k2" }))).toContain("1 agent left no record (status missing).");
   });
 
   it("explains a partial run", async () => {

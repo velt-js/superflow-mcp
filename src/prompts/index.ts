@@ -36,6 +36,23 @@ function message(lines: string[], options: PromptOptions, writes: boolean): GetP
 
 const json = (value: unknown) => JSON.stringify(value);
 
+/** How many pages of superflow_list_runs a prompt reads looking for the run to review. */
+const RUN_PAGES = 5;
+
+/**
+ * How a prompt picks "the latest finished run": a status filter can leave a page empty with a
+ * next_cursor, and a resolve, uptime or change rescan covers a few pages only, so the newest
+ * finished run is often not the one to review.
+ */
+function pickRunStep(listArgs: Record<string, unknown>): string {
+  return [
+    `Call superflow_list_runs with ${json(listArgs)}: it lists every run, the portal's and Always-on Monitoring's too, newest first.`,
+    `While no run on the page qualifies and next_cursor is set, call again with cursor set to next_cursor (at most ${RUN_PAGES} pages in all).`,
+    "Prefer the newest run with scope site whose trigger is not resolve, uptime or change: those are small rescans of a few pages. If none you read qualifies, take the newest finished run.",
+    "Tell the user which run you picked (id, project, when) and its trigger. When the newest finished run is a small rescan, say so, and offer the other choice: that rescan, or an older full run.",
+  ].join(" ");
+}
+
 function checkDate(name: string, value: string | undefined): void {
   if (value === undefined) return;
   const problem = describeDateProblem(name, value);
@@ -228,7 +245,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
       const steps: string[] = [];
       if (!run) {
         steps.push(
-          `Call superflow_list_runs with ${json({ ...(scope ? { project: scope } : {}), status: ["done", "partial"], limit: 1 })}: it lists every run, the portal's and Always-on Monitoring's too. Tell the user which run you picked (id, project, when, trigger). If there is none, say no run has finished yet and stop.`,
+          `${pickRunStep({ ...(scope ? { project: scope } : {}), status: ["done", "partial"], limit: 10 })} If there is none, say no run has finished yet and stop.`,
         );
       }
       steps.push(
@@ -344,7 +361,7 @@ export function registerPrompts(server: McpServer, options: PromptOptions): void
           "Steps:",
           estimate,
           "2. Explain that this server is read-only, so it cannot start the run. The user can start it in Superflow.",
-          `3. Look for the latest finished run instead (it lists the portal's and Always-on Monitoring's runs too): call superflow_list_runs with ${json({ project, status: ["done", "partial"], limit: 1 })}. If there is one, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor. If there is none, say no run on this site has finished yet.`,
+          `3. Look for the latest finished run instead. ${pickRunStep({ project, status: ["done", "partial"], limit: 10 })} If there is one, call superflow_list_findings with ${json({ run: "<the run id>", limit: 100 })} and follow next_cursor. If there is none, say no run on this site has finished yet.`,
           `4. ${summarize}`,
           "5. Recommend which critical findings to push to Jira, as a list the user can act on in Superflow.",
         ];

@@ -7,7 +7,7 @@ import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Schedule } from
 import { CONFIRM_DELETE_SCHEDULE_MESSAGE, CONFIRM_SET_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
-import { asData, compact, join, nameList } from "./helpers.ts";
+import { asData, compact, count, join, nameList } from "./helpers.ts";
 import { estimateLine } from "./runs.ts";
 import {
   agentListSchema,
@@ -44,7 +44,9 @@ export function scheduleLine(schedule: Schedule): string {
   const project = label(schedule.project);
   const pack = label(schedule.pack);
   const agents = (schedule.agents ?? []).map((agent) => agent.name ?? agent.id);
-  const what = pack ? `pack ${pack}` : agents.length > 0 ? plural(agents.length, "agent") : "the default agents";
+  // The agents are fixed when the schedule is saved, so an empty list is a schedule left with no
+  // agents (turned off), not one that runs the default agents.
+  const what = pack ? `pack ${pack}` : agents.length > 0 ? plural(agents.length, "agent") : "no agents (turned off)";
   return join(
     `${schedule.id}${project ? ` on ${project}` : ""}: ${schedule.cron} (${schedule.timezone ?? "UTC"}), ${what}, ${schedule.scope ?? "site"} scope, ${schedule.enabled ? "on" : "paused"}${schedule.next_run_at && schedule.enabled ? `, next run ${schedule.next_run_at}` : ""}${schedule.last_run ? `, last run ${LAST_RUN_LABELS[schedule.last_run.status] ?? schedule.last_run.status}` : ""}.`,
     agents.length > 0 && !pack && `Agents: ${nameList(agents)}.`,
@@ -197,10 +199,15 @@ export const setSchedule = defineTool({
         agents: agents?.length ? agents : undefined,
         pack,
       });
+      // The API plans the schedule again on save: a pack gives its current members and a
+      // schedule on the default agents gets today's default set, which may differ from the list.
+      const agentsTakenAgain = args.agents === undefined && args.pack === undefined;
       return confirmationResult(
         join(
           `Schedule ${scheduleLine(current)}`,
           `The change (${Object.keys(fields).join(", ")}) changes what or when it runs, and every run spends AI credits.`,
+          agentsTakenAgain &&
+            "Saving takes the agents again: a pack's current members, or today's default agents when the schedule used the default set (named agents stay as they are).",
           price.line,
           "Nothing was changed. Ask the user to confirm.",
         ),
@@ -229,7 +236,14 @@ export const listSchedules = defineTool({
     const list = await api.call<ListEnvelope<Schedule>>("listSchedules", { query: { project: args.project } });
     const items = list.items ?? [];
     const lines = items.slice(0, 3).map(scheduleLine).join(" ");
-    return okResult(join(`Found ${plural(items.length, "schedule")}${args.project ? ` on ${args.project}` : ""}.`, lines, items.length > 3 && "More in the list below."), asData(list));
+    // The API reads at most 10,000 workflow definitions; past that, schedules may be missing.
+    const partial =
+      list.scan?.complete === false &&
+      `The schedule scan stopped after ${count(list.scan.scanned)} definitions, so some schedules may not be listed.`;
+    return okResult(
+      join(`Found ${plural(items.length, "schedule")}${args.project ? ` on ${args.project}` : ""}.`, partial, lines, items.length > 3 && "More in the list below."),
+      asData(list),
+    );
   },
 });
 

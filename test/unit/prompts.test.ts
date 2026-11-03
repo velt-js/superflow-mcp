@@ -116,7 +116,12 @@ describe("prompts", () => {
   it("agent_findings_review picks the latest finished run when none is given", async () => {
     const text = await promptText("agent_findings_review", { project: "Acme Dental" });
     // list_runs lists every run (the portal's and Always-on Monitoring's too), so there is no fallback.
-    expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":1}');
+    expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":10}');
+    // A filtered page can be empty with a next_cursor, and the newest run can be a small rescan.
+    expect(text).toContain("While no run on the page qualifies and next_cursor is set, call again with cursor set to next_cursor (at most 5 pages in all).");
+    expect(text).toContain("Prefer the newest run with scope site whose trigger is not resolve, uptime or change");
+    expect(text).toContain("Tell the user which run you picked (id, project, when) and its trigger.");
+    expect(text).toContain("offer the other choice: that rescan, or an older full run.");
     expect(text).toContain("If there is none, say no run has finished yet and stop.");
     expect(text).toContain('2. Call superflow_get_run with {"run":"<the run id>"}');
     expect(text).not.toContain("superflow_list_comments");
@@ -144,7 +149,9 @@ describe("prompts", () => {
   it("prelaunch_run in read-only mode estimates and reviews the last run, without running or pushing", async () => {
     const text = await promptText("prelaunch_run", { project: "Acme Dental", pack: "Pre-Launch" }, true);
     expect(text).toContain("superflow_estimate_run");
-    expect(text).toContain('superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":1}');
+    expect(text).toContain('superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":10}');
+    expect(text).toContain("at most 5 pages in all");
+    expect(text).toContain("whose trigger is not resolve, uptime or change");
     expect(text).not.toContain("superflow_list_failing_checks");
     expect(text).not.toContain("superflow_run_agents");
     expect(text).not.toContain("superflow_push_comment");

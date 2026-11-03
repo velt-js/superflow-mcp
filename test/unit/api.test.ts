@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiClient, SESSION_ENDED_MESSAGE, SESSION_SCOPE_HINT, SuperflowApiError, UNAUTHORIZED_MESSAGE, toApiError } from "../../src/client/api.ts";
+import {
+  ApiClient,
+  SESSION_ENDED_MESSAGE,
+  SESSION_SCOPE_HINT,
+  SuperflowApiError,
+  UNAUTHORIZED_MESSAGE,
+  timeoutFor,
+  toApiError,
+} from "../../src/client/api.ts";
 import { errorResult } from "../../src/lib/format.ts";
 import { createLogger, redact } from "../../src/lib/logger.ts";
 import { VERSION } from "../../src/version.ts";
@@ -254,6 +262,23 @@ describe("ApiClient timeouts", () => {
       const error = await pending;
       expect(error.message).toBe("The Superflow API did not answer within 60 seconds.");
     }
+  });
+
+  it("allows 90 s for tag rewrites and 60 s for tag lists, which scan the workspace's comments", async () => {
+    for (const operationId of ["updateTag", "deleteTag", "mergeTags"] as const) expect(timeoutFor(operationId), operationId).toBe(90_000);
+    for (const operationId of ["listTags", "listProjectTags"] as const) expect(timeoutFor(operationId), operationId).toBe(60_000);
+    vi.useFakeTimers();
+    const hanging = hangingFetch();
+    const { api } = client({ fetch: hanging.fetch });
+    let settled = false;
+    const pending = rejection(api.call("updateTag", { path: { tag: "copy" }, body: { color: "#000000" } })).finally(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await pending).message).toBe("The Superflow API did not answer within 90 seconds.");
+    expect(hanging.calls).toHaveLength(1);
   });
 
   it("hands back the idempotency key when a write times out, and says to retry with it", async () => {

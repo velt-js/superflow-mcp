@@ -28,12 +28,19 @@ describe(TOOL, () => {
     expect(recorded[0]?.query).toEqual({ include_replies: "false" });
   });
 
-  it("takes the comment's link, URL-encoded in the path", async () => {
+  it("takes the comment's link and sends its id in the path", async () => {
     on("get", "/comments/:comment", ok(fullComment));
     const h = await connect();
-    await h.call(TOOL, { comment: "https://acme.com/pricing?scommentId=8f3k2" });
-    expect(decodeURIComponent(recorded[0]?.path ?? "")).toBe("/comments/https://acme.com/pricing?scommentId=8f3k2");
+    await h.call(TOOL, { comment: "https://acme.com/pricing?utm_source=x&scommentId=8f3k2#top" });
+    expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2");
     expect(recorded[0]?.operationId).toBe("getComment");
+  });
+
+  it("passes a link without scommentId through for the API to answer", async () => {
+    on("get", "/comments/:comment", ok(fullComment));
+    const h = await connect();
+    await h.call(TOOL, { comment: "https://acme.com/pricing" });
+    expect(decodeURIComponent(recorded[0]?.path ?? "")).toBe("/comments/https://acme.com/pricing");
   });
 
   it("never labels a comment by a number", async () => {

@@ -132,6 +132,10 @@ export interface ToolErrorShape {
   idempotency_key?: string;
   /** When a rate limit resets (ISO time). */
   reset_at?: string;
+  /** A tag route's not_found after a scan that stopped early: how far it read. */
+  scan?: { scanned: number; complete: boolean };
+  /** With scan: send it back as cursor to look further. */
+  next_cursor?: string | null;
 }
 
 /** Builds an isError tool result in the contract's error shape. Never throws. */

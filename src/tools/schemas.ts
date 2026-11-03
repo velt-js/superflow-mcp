@@ -224,15 +224,27 @@ export const hexColorSchema = z
   .string()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex color like #605CEC");
 
-/** A tag to put on a comment: a name or tag_ id, or a new tag with its color. */
+/** Tags show to everyone who can see the comment (accepted: tags are not private). */
+export const TAG_PRIVACY_NOTE =
+  "Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags.";
+
+/**
+ * A tag to put on a comment: a name, a tag_ id of a tag already on the comment, or a name with
+ * the color of this comment's copy (each comment keeps its own copy of a tag, so one tag can show
+ * two colors).
+ */
 export const tagInputSchema = z.union([
-  z.string().min(1).max(64).describe("Tag name or id (tag_...)."),
+  z.string().min(1).max(64).describe("Tag name. A tag_ id works only for a tag already on the comment."),
   z
     .object({
       name: z.string().min(1).max(64).describe("Tag name, up to 64 characters."),
-      color: hexColorSchema.optional().describe("Hex color for a new tag, for example #b3261e. Default #605CEC."),
+      color: hexColorSchema
+        .optional()
+        .describe(
+          "Hex color for this comment's copy of the tag, for example #b3261e (a new tag defaults to #605CEC). Other comments keep their color, so one tag can show two colors.",
+        ),
     })
-    .describe("A tag by name, with the color it gets when it is new."),
+    .describe("A tag by name, with the color for this comment's copy of it."),
 ]);
 
 // ---------------------------------------------------------------------------------------------

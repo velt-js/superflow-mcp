@@ -47,11 +47,19 @@ export const CONFIRM_REMOVE_GUEST_MESSAGE =
 export const CONFIRM_DELETE_STATUS_MESSAGE =
   "Nothing was deleted. Show the user the status, where its comments will move, and how many comments that is, and ask whether to delete it. If the user says yes, call superflow_delete_status again with the same move_comments_to and confirm: true.";
 
-export const CONFIRM_DELETE_TAG_MESSAGE =
-  "Nothing was deleted. Show the user the tag and how many comments carry it, and ask whether to delete it. Deleting takes the tag off every comment that carries it, in every project; the comments stay. One call changes at most 500 comments: when the result says complete: false, call again to finish. If the user says yes, call superflow_delete_tag again with confirm: true.";
+/** A tag rewrite sets lastUpdated on every comment it changes. */
+export const TAG_REWRITE_UPDATED_NOTE =
+  "Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match.";
 
-export const CONFIRM_MERGE_TAGS_MESSAGE =
-  "Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one instead, in every project, and the first tag is gone. One call changes at most 500 comments: when the result says complete: false, call again to finish. If the user says yes, call superflow_merge_tags again with confirm: true.";
+/** Why a tag rewrite reports failed comments, and why calling again cannot change them. */
+export const TAG_REWRITE_WINDOW_REASON = "on a project with more than 1,000 comments, only the newest 1,000 can be changed";
+
+/** How a confirmed delete or merge goes on after one call, and when it stops. */
+const TAG_REWRITE_CURSOR_STEPS = `One call rewrites at most 500 comments: while the result has a next_cursor, call again with confirm: true and cursor set to that next_cursor. When next_cursor is null it is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (${TAG_REWRITE_WINDOW_REASON}); when a call changes nothing, tell the user and stop.`;
+
+export const CONFIRM_DELETE_TAG_MESSAGE = `Nothing was deleted. Show the user the tag and how many comments carry it, and ask whether to delete it. Deleting takes the tag off every comment that carries it, in every project; the comments stay. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_delete_tag again with confirm: true. ${TAG_REWRITE_CURSOR_STEPS}`;
+
+export const CONFIRM_MERGE_TAGS_MESSAGE = `Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one instead, in every project, and the first tag is gone. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_merge_tags again with confirm: true. ${TAG_REWRITE_CURSOR_STEPS}`;
 
 export const CONFIRM_CREATE_API_KEY_MESSAGE =
   "Nothing was created. Show the user the label, scopes and expiry, and ask whether to create the key. Its token will appear once, in this conversation. If the user says yes, call superflow_create_api_key again with confirm: true.";
