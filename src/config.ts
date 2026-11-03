@@ -5,8 +5,6 @@ export interface Config {
   apiKey: string;
   /** API base including the version path, without a trailing slash. */
   baseUrl: string;
-  /** Project used for bare comment numbers (#4821) when a tool call gives no project. */
-  defaultProject: string | undefined;
   /** When true, write tools are not registered at all. */
   readOnly: boolean;
   logLevel: LogLevel;
@@ -72,7 +70,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   return {
     apiKey,
     baseUrl: readBaseUrl(env.SUPERFLOW_API_BASE_URL),
-    defaultProject: env.SUPERFLOW_DEFAULT_PROJECT?.trim() || undefined,
     readOnly: readBoolean("SUPERFLOW_READ_ONLY", env.SUPERFLOW_READ_ONLY, false),
     logLevel: readLogLevel(env.SUPERFLOW_LOG_LEVEL),
   };

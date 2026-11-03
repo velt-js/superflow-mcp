@@ -103,6 +103,45 @@ when their engines ship.
 - A 401 on a sign-in says the sign-in expired or was revoked and to run `login`; a 403 says
   scopes cannot be changed and how to get a key or a sign-in with the scope.
 - The server instructions name only registered tools, so read-only mode names no write tool.
+- The API keeps no storage of its own and reuses what Velt and Superflow already store
+  (snippyly/shared-firebase-function#4355, 2026-11-03; `openapi/openapi.json` has 106
+  operations). What that changes here:
+  - Comments have no numbers. A comment is given by its id (`cmt_...`) or its link (its
+    `url`); `#4821` and bare numbers are no longer references. `number` is gone from every
+    comment shape, `sort: "number"` is gone, and the CSV export has no number column. The
+    `project` of a comment tool is optional and only narrows the lookup.
+  - Deletes are permanent. `superflow_delete_comment` and `superflow_remove_page` say so in
+    their descriptions, previews and results, and their confirm messages no longer offer a
+    restore.
+  - Tags are workspace-wide and live on the comments. Putting a new name on a comment creates
+    the tag: `tags` and `add_tags` (create, update and bulk) take a name, a `tag_` id or
+    `{ "name", "color" }`. `superflow_list_tags` counts the tags on the comments it scanned and
+    says when the scan stopped early. `superflow_update_tag`, `superflow_delete_tag` and
+    `superflow_merge_tags` rewrite every comment that carries the tag, at most 500 a call, and
+    report `failed` and `complete`: when `complete` is false, delete and merge are called
+    again, and a rename is finished with a merge into the new name. `superflow_merge_tags`
+    can merge into a new name. `superflow_delete_tag` and `superflow_merge_tags` take no
+    `project`; their previews read the workspace's tags, and the confirmed call sends the
+    caller's reference without reading them again.
+  - `superflow_list_runs` lists every run of the workspace, the portal's and Always-on
+    Monitoring's included, with its `trigger` (`manual`, `workflow` for a schedule, `api`,
+    `mcp`, and the monitoring triggers). `superflow_list_findings` takes any of them, the run
+    id on an agent comment and an import's `run_id`. An import is not a run:
+    `superflow_list_runs` and `superflow_get_run` do not show it. The `agent_findings_review`
+    and read-only `prelaunch_run` prompts read the latest finished run with a `status` filter
+    and no longer fall back to agent comments or failing checks.
+  - A schedule's agents are fixed when it is saved (`agents` is always a list; `pack` says
+    where they came from), and `last_run.status` says how the newest run went: `started`,
+    `in_progress`, `failed_to_start`, or `skipped_insufficient_credits`,
+    `skipped_no_changes`, `skipped_creator_removed` or `skipped_no_agents`. Its runs have
+    trigger `workflow`. The change preview of `superflow_set_schedule` prices a pack schedule
+    with its pack alone, and `superflow_delete_agent`'s preview counts every schedule that
+    runs the agent, through a pack or the default agents too.
+  - `superflow_push_comment` needs `project_key` (a connection has no default project) and
+    sends `project` when given. A comment holds one item per tool: a second push returns the
+    existing link with `already_linked: true` and creates nothing.
+  - Runs and estimates that name no agents and no pack use Superflow's default agents; a
+    pack can no longer be the default for runs.
 
 ### Removed
 - The seven webhook tools (`superflow_list_webhooks`, `superflow_get_webhook`,
@@ -110,6 +149,13 @@ when their engines ship.
   `superflow_test_webhook`, `superflow_list_webhook_deliveries`), `docs/webhooks.md` and the
   `webhooks:read` and `webhooks:write` scopes. The first release ships without webhooks; they
   come later on the platform's own webhooks. 104 tools, 45 of them read-only.
+- `superflow_restore_comment`, `superflow_create_tag` and `superflow_update_integration`,
+  with the API routes they called (`restoreComment`, `createTag`, `updateIntegration`):
+  deletes are permanent, a tag is created by assigning it, and a connection has no settings.
+  `superflow_update_agent_pack` lost `is_default_for_runs`, an integration lost
+  `settings.default_project` and a tag lost `project_id`. `SUPERFLOW_DEFAULT_PROJECT` is
+  gone: it only served comment numbers. 101 tools: 45 read, 56 write; read-only mode
+  registers the 45.
 
 ### Fixed
 - A sign-in that `login` saved to the file because the keyring refused it is now found on
@@ -117,8 +163,6 @@ when their engines ship.
 - Several MCP processes can share one sign-in: when the server refuses a refresh token
   that another process already rotated, the server reads the newer sign-in from the store
   instead of ending it.
-- `superflow_delete_tag` and `superflow_merge_tags` send the ids of the tags the preview
-  showed, so a tag name used in two projects no longer fails after a clean preview.
 - `pnpm playbooks` works on Windows.
 - The macOS Keychain write sent the sign-in's tokens as a `security` argument, visible to
   every process list. It now goes through stdin (`security -i`); a session too long for one
@@ -142,10 +186,6 @@ when their engines ship.
   `workspace:write`, a scope the key does not have, or an expiry past the key's own.
 - A 401 gives its advice once: the API's create-key hint is no longer added to the
   package's own message, and a sign-in is never told to create a key.
-- `superflow_list_runs` and `superflow_list_findings` say they do not cover portal or
-  Always-on Monitoring runs, and point to the failing checks and agent comments instead.
-  The `agent_findings_review` and read-only `prelaunch_run` prompts fall back to those when
-  no listed run is finished.
 - A sign-in refused for creating a key is no longer told to sign in again with more scopes.
 
 ## [0.3.0] - Unreleased

@@ -95,7 +95,9 @@ describe("ApiClient URL building", () => {
     expect(api.buildUrl("listProjectPages", { path: { project: "Acme Dental/EU" } })).toBe(
       `${BASE}/projects/Acme%20Dental%2FEU/pages`,
     );
-    expect(api.buildUrl("getComment", { path: { comment: "#4821" } })).toBe(`${BASE}/comments/%234821`);
+    expect(api.buildUrl("getComment", { path: { comment: "https://acme.com/p?scommentId=8f3k2#top" } })).toBe(
+      `${BASE}/comments/https%3A%2F%2Facme.com%2Fp%3FscommentId%3D8f3k2%23top`,
+    );
   });
 
   it("refuses to build a URL with a missing path parameter", () => {

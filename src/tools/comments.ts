@@ -1,4 +1,4 @@
-// The 15 comment tools: read, filter, count, export, write, reply, delete, restore, bulk.
+// The 14 comment tools: read, filter, count, export, write, reply, delete, bulk.
 import { randomUUID } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -10,7 +10,6 @@ import type {
   CommentCompact,
   CommentFull,
   CreateReplyResponse,
-  DeleteCommentResponse,
   DeleteResponse,
   ExportResponse,
   ListEnvelope,
@@ -27,7 +26,6 @@ import {
 } from "../lib/confirm.ts";
 import { findInvalidDate } from "../lib/dates.ts";
 import {
-  commentLabel,
   confirmationResult,
   describeFilters,
   errorResult,
@@ -38,7 +36,7 @@ import {
   scanNote,
   toCompactComment,
 } from "../lib/format.ts";
-import { anyCommentNumber, normalizeCommentRef, parseReplyId, projectForComment } from "../lib/resolve.ts";
+import { normalizeCommentRef, parseReplyId } from "../lib/resolve.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import type { Data } from "./helpers.ts";
 import { asData, compact, join } from "./helpers.ts";
@@ -48,6 +46,7 @@ import {
   METRICS,
   anchorSchema,
   attachmentInputSchema,
+  commentProjectSchema,
   commentRefSchema,
   cursorSchema,
   fieldsSchema,
@@ -55,9 +54,9 @@ import {
   idempotencySchema,
   limitSchema,
   pickFilters,
-  projectForNumberSchema,
   projectRefSchema,
   sortSchema,
+  tagInputSchema,
 } from "./schemas.ts";
 
 
@@ -65,7 +64,7 @@ function commentSummary(comment: CommentFull): string {
   const assignee = comment.assignees?.[0]?.name;
   const page = comment.page?.url ? ` on ${comment.page.url}` : "";
   return (
-    `Comment ${commentLabel(comment)} in ${comment.project?.name ?? "its project"}${page}: ` +
+    `Comment ${comment.id} in ${comment.project?.name ?? "its project"}${page}: ` +
     `${comment.status?.name ?? "unknown status"}, ${comment.priority ?? "no"} priority, ` +
     `${assignee ? `assigned to ${assignee}` : "unassigned"}, ${plural(comment.reply_count ?? 0, "reply", "replies")}. ` +
     `Link: ${comment.url}`
@@ -111,8 +110,8 @@ function refuseUnassign(...lists: Array<readonly string[] | undefined>): CallToo
     "Assign someone else, or tell the user to unassign the comment in the Superflow toolbar.",
   );
 }
-const tagsInput = (what: string) =>
-  z.array(z.string().min(1)).optional().describe(`${what} Unknown tag names are created in the comment's project.`);
+const TAG_NOTE = 'Each is a name, a tag_ id, or {"name", "color"}. A new name creates the tag for the whole workspace (default color #605CEC).';
+const tagsInput = (what: string) => z.array(tagInputSchema).optional().describe(`${what} ${TAG_NOTE}`);
 const idempotencyInput = idempotencySchema;
 
 // ---------------------------------------------------------------------------------------------
@@ -159,24 +158,21 @@ export const getComment = defineTool({
   title: "Get a comment",
   description: [
     "Get one comment with every field: page, status, priority, assignee, author, tags, pin position, attachments, and its replies.",
-    'Use it when the user names a comment ("comment 4821", "#4821", or a cmt_ id) or after a list call to read a thread in full.',
-    "A comment number needs a project unless SUPERFLOW_DEFAULT_PROJECT is set. To search or list many comments use superflow_list_comments.",
-    'Example: {"comment": "4821", "project": "Acme Dental"}',
+    "Use it when you have a comment's id (cmt_...) or its link, for example after a list call, to read a thread in full.",
+    "To find a comment by its page, text, author or status, or to list many, use superflow_list_comments.",
+    'Example: {"comment": "cmt_8f3k2"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     include_replies: z.boolean().default(true).describe("Include the thread's replies. Default true."),
   },
   annotations: READ_HINTS,
   write: false,
-  async run(args, { api, config }) {
+  async run(args, { api }) {
     const comment = await api.call<CommentFull>("getComment", {
       path: { comment: normalizeCommentRef(args.comment) },
-      query: {
-        project: projectForComment(args.comment, args.project, config.defaultProject),
-        include_replies: args.include_replies,
-      },
+      query: { project: args.project, include_replies: args.include_replies },
     });
     return okResult(commentSummary(comment), asData(comment));
   },
@@ -276,7 +272,7 @@ export const createComment = defineTool({
     `${PRIORITY_NOTE} Use "none" or leave priority out for no priority.`,
     "Use it when the user asks to leave or log feedback on a page. To answer an existing thread use superflow_add_reply instead.",
     "Ask the user before creating comments they did not ask for.",
-    'Example: {"project": "Acme Dental", "page_url": "https://acme.com/pricing", "text": "The CTA button overlaps the nav on mobile.", "priority": "high", "tags": ["mobile"]}',
+    'Example: {"project": "Acme Dental", "page_url": "https://acme.com/pricing", "text": "The CTA button overlaps the nav on mobile.", "priority": "high", "tags": ["mobile", {"name": "launch blocker", "color": "#b3261e"}]}',
   ].join("\n"),
   inputSchema: {
     project: projectRefSchema,
@@ -316,7 +312,7 @@ export const createComment = defineTool({
     });
     const page = comment.page?.url ?? args.page_url;
     return okResult(
-      `Created comment ${commentLabel(comment)} on ${page} in ${comment.project?.name ?? args.project}. Link: ${comment.url}`,
+      `Created comment ${comment.id} on ${page} in ${comment.project?.name ?? args.project}. Link: ${comment.url}`,
       asData(comment),
     );
   },
@@ -326,16 +322,16 @@ export const updateComment = defineTool({
   name: "superflow_update_comment",
   title: "Update a comment",
   description: [
-    "Change one comment: text, priority, status, assignee, tags (replace, add or remove), page URL or pin position.",
+    "Change one comment: text, priority, status, assignee, tags (replace, add or remove; a new tag name creates the tag), page URL or pin position.",
     `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet: set a different value, or tell the user to change it in the Superflow toolbar.`,
     "Use it for a single comment. To resolve or reopen prefer superflow_resolve_comment and superflow_reopen_comment (they can post a note). For many comments use superflow_bulk_update_comments.",
     "To attach a person's comment to a check an agent already found (a client's \"the Book now button is dead\" on the same element as a link-broken finding), set rule_key. It then lists, resolves and verifies with that check, in the portal too. null detaches it. An agent finding already belongs to its own check and cannot be attached.",
     "Ask the user before changing comments they did not ask about.",
-    'Example: {"comment": "4821", "project": "Acme Dental", "priority": "high", "assignees": ["Jen"], "add_tags": ["mobile"]}',
+    'Example: {"comment": "cmt_8f3k2", "priority": "high", "assignees": ["Jen"], "add_tags": ["mobile"]}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     text: z.string().min(1).max(10_000).optional().describe("New text for the comment's first message."),
     priority: setPriorityInput,
     status: statusInput,
@@ -343,7 +339,7 @@ export const updateComment = defineTool({
     add_assignees: setAssigneesInput("Same as assignees"),
     tags: tagsInput("Replace all tags with these. [] removes every tag."),
     add_tags: tagsInput("Tags to add."),
-    remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove."),
+    remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove: names or tag_ ids."),
     page_url: z.string().min(1).optional().describe("Move the comment to this page URL."),
     anchor: anchorSchema.optional(),
     rule_key: z
@@ -356,8 +352,8 @@ export const updateComment = defineTool({
   },
   annotations: hints(false, false, true, false),
   write: true,
-  async run(args, { api, config }) {
-    const { comment: ref, project: _project, ...changes } = args;
+  async run(args, { api }) {
+    const { comment: ref, project, ...changes } = args;
     if (Object.values(changes).every((value) => value === undefined)) {
       return invalidInput(
         "Nothing to change. Give at least one of text, priority, status, assignees, add_assignees, tags, add_tags, remove_tags, page_url, anchor or rule_key.",
@@ -367,7 +363,7 @@ export const updateComment = defineTool({
     if (unassign) return unassign;
     const comment = await api.call<CommentFull>("updateComment", {
       path: { comment: normalizeCommentRef(ref) },
-      body: compact({ project: projectForComment(ref, args.project, config.defaultProject), ...changes }),
+      body: compact({ project, ...changes }),
     });
     const verify = (comment as CommentFull & { verify?: VerifyInfo }).verify;
     return okResult(`Updated. ${commentSummary(comment)}${verify ? ` ${verifyNote(verify)}` : ""}`, asData(comment));
@@ -398,18 +394,18 @@ function resolveTool(kind: "resolve" | "reopen") {
           "On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.",
           "Safe to repeat: if it is already resolved nothing changes and the note is not posted.",
           "To resolve many comments at once use superflow_bulk_update_comments with patch {\"resolve\": true}. To undo use superflow_reopen_comment.",
-          'Example: {"comment": "4821", "project": "Acme Dental", "note": "Fixed in the latest deploy, please check."}',
+          'Example: {"comment": "cmt_8f3k2", "note": "Fixed in the latest deploy, please check."}',
         ]
       : [
           "Reopen one resolved comment (back to the default status), optionally posting a note as a reply first.",
           "Safe to repeat: if it is already open nothing changes and the note is not posted.",
           "To reopen many comments use superflow_bulk_update_comments with patch {\"reopen\": true}.",
-          'Example: {"comment": "4821", "project": "Acme Dental", "note": "Still broken on Safari."}',
+          'Example: {"comment": "cmt_8f3k2", "note": "Still broken on Safari."}',
         ]
     ).join("\n"),
     inputSchema: {
       comment: commentRefSchema,
-      project: projectForNumberSchema,
+      project: commentProjectSchema,
       note: z
         .string()
         .min(1)
@@ -419,12 +415,12 @@ function resolveTool(kind: "resolve" | "reopen") {
     },
     annotations: hints(false, false, true, false),
     write: true,
-    async run(args, { api, config }) {
+    async run(args, { api }) {
       const result = await api.call<ResolveResponse>(resolve ? "resolveComment" : "reopenComment", {
         path: { comment: normalizeCommentRef(args.comment) },
-        body: compact({ project: projectForComment(args.comment, args.project, config.defaultProject), note: args.note }),
+        body: compact({ project: args.project, note: args.note }),
       });
-      const label = result.comment ? commentLabel(result.comment) : args.comment;
+      const label = result.comment?.id ?? args.comment;
       const link = result.comment?.url ? ` Link: ${result.comment.url}` : "";
       const summary = result.changed
         ? `${resolve ? "Resolved" : "Reopened"} comment ${label}${result.note_reply_id ? " and posted the note as a reply" : ""}.${result.verify ? ` ${verifyNote(result.verify)}` : ""}${link}`
@@ -444,22 +440,22 @@ export const addReply = defineTool({
     "Post a reply in a comment thread, as the key's member. @Name, @First Last or @email in the text mention and notify people on the project.",
     "Use it to answer a comment or nudge someone. To close the thread with a note use superflow_resolve_comment with note instead.",
     "Ask the user before posting replies they did not ask for.",
-    'Example: {"comment": "4821", "project": "Acme Dental", "text": "Fixed, please check. @Jen can you confirm on mobile?"}',
+    'Example: {"comment": "cmt_8f3k2", "text": "Fixed, please check. @Jen can you confirm on mobile?"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     text: z.string().min(1).max(10_000).describe("Reply text. Mentions: @Name, @First Last or @email."),
     attachments: z.array(attachmentInputSchema).max(10).optional().describe("Files to attach, by public URL."),
     idempotency_key: idempotencyInput,
   },
   annotations: hints(false, false, false, false),
   write: true,
-  async run(args, { api, config }) {
+  async run(args, { api }) {
     const result = await api.call<CreateReplyResponse>("createReply", {
       path: { comment: normalizeCommentRef(args.comment) },
       body: compact({
-        project: projectForComment(args.comment, args.project, config.defaultProject),
+        project: args.project,
         text: args.text,
         attachments: args.attachments,
         // Generated once per tool call, so the client's own retries cannot double-post.
@@ -551,14 +547,14 @@ export const deleteComment = defineTool({
   name: "superflow_delete_comment",
   title: "Delete a comment",
   description: [
-    "Delete one comment thread with its replies. It can be restored with superflow_restore_comment until restore_until.",
+    "Delete one comment thread with its replies, for good: a deleted comment cannot be restored.",
     "Without confirm: true nothing is deleted: you get the comment back as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To close a comment without deleting it use superflow_resolve_comment. There is no bulk delete: delete one comment at a time.",
-    'Example: {"comment": "4821", "project": "Acme Dental"}',
+    'Example: {"comment": "cmt_8f3k2"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema,
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     confirm: z
       .boolean()
       .default(false)
@@ -566,17 +562,12 @@ export const deleteComment = defineTool({
   },
   annotations: hints(false, true, true, false),
   write: true,
-  async run(args, { api, config }) {
-    const project = projectForComment(args.comment, args.project, config.defaultProject);
+  async run(args, { api }) {
+    const project = args.project;
     const ref = normalizeCommentRef(args.comment);
     if (isConfirmed(args.confirm)) {
-      const result = await api.call<DeleteCommentResponse>("deleteComment", { path: { comment: ref }, query: { project } });
-      const label = typeof result.number === "number" ? `#${result.number}` : (result.id ?? args.comment);
-      const until = result.restore_until ? ` until ${result.restore_until}` : "";
-      return okResult(
-        `Deleted comment ${label}. It can be restored with superflow_restore_comment${until}.`,
-        asData(result),
-      );
+      const result = await api.call<DeleteResponse>("deleteComment", { path: { comment: ref }, query: { project } });
+      return okResult(`Deleted comment ${result.id ?? ref} and its replies for good. It cannot be restored.`, asData(result));
     }
     const comment = await api.call<CommentFull>("getComment", {
       path: { comment: ref },
@@ -584,32 +575,9 @@ export const deleteComment = defineTool({
     });
     const preview = toCompactComment(comment);
     return confirmationResult(
-      `Comment ${commentLabel(comment)} in ${preview.project} would be deleted. Nothing was deleted. Ask the user to confirm. Link: ${comment.url}`,
+      `Comment ${comment.id} in ${preview.project} would be deleted for good, with its replies: it cannot be restored. Nothing was deleted. Ask the user to confirm. Link: ${comment.url}`,
       { preview, message: CONFIRM_DELETE_COMMENT_MESSAGE },
     );
-  },
-});
-
-export const restoreComment = defineTool({
-  name: "superflow_restore_comment",
-  title: "Restore a comment",
-  description: [
-    "Restore a deleted comment thread, with its replies, before its restore window ends.",
-    "Use it when the user wants a deleted comment back. It does not reopen resolved comments: use superflow_reopen_comment for that.",
-    'Example: {"comment": "cmt_8f3k2"}',
-  ].join("\n"),
-  inputSchema: {
-    comment: commentRefSchema,
-    project: projectForNumberSchema,
-  },
-  annotations: hints(false, false, true, false),
-  write: true,
-  async run(args, { api, config }) {
-    const comment = await api.call<CommentFull>("restoreComment", {
-      path: { comment: normalizeCommentRef(args.comment) },
-      body: compact({ project: projectForComment(args.comment, args.project, config.defaultProject) }),
-    });
-    return okResult(`Restored. ${commentSummary(comment)}`, asData(comment));
   },
 });
 
@@ -619,8 +587,8 @@ const bulkPatchSchema = z
     priority: setPriorityInput,
     assignees: setAssigneesInput("The new assignee for every selected comment"),
     add_assignees: setAssigneesInput("Same as assignees"),
-    add_tags: z.array(z.string().min(1)).optional().describe("Tags to add. Unknown names are created."),
-    remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove."),
+    add_tags: tagsInput("Tags to add."),
+    remove_tags: z.array(z.string().min(1)).optional().describe("Tags to remove: names or tag_ ids."),
     resolve: z.boolean().optional().describe("true: resolve every selected comment. Not with reopen or status."),
     reopen: z.boolean().optional().describe("true: reopen every selected comment. Not with resolve or status."),
     note: z.string().min(1).max(10_000).optional().describe("Reply posted on each comment that resolve or reopen changes."),
@@ -654,9 +622,9 @@ export const bulkUpdateComments = defineTool({
       .min(1)
       .max(200)
       .optional()
-      .describe("Comments to change: numbers (\"4821\") or ids (cmt_...). Give this or filter, not both."),
-    project: projectForNumberSchema.describe(
-      "Project for comment numbers in comment_ids (defaults to SUPERFLOW_DEFAULT_PROJECT when set). With filter, it is used as the filter's project when the filter has none.",
+      .describe("Comments to change: ids (cmt_...) or links, from a list call. Give this or filter, not both."),
+    project: commentProjectSchema.describe(
+      "Project (name, site URL or id). With comment_ids it narrows the lookup. With filter, it is used as the filter's project when the filter has none.",
     ),
     filter: z
       .object(filterShape)
@@ -672,7 +640,7 @@ export const bulkUpdateComments = defineTool({
   },
   annotations: hints(false, true, false, false),
   write: true,
-  async run(args, { api, config }) {
+  async run(args, { api }) {
     const hasIds = Array.isArray(args.comment_ids) && args.comment_ids.length > 0;
     const hasFilter = args.filter !== undefined;
     if (hasIds === hasFilter) {
@@ -681,8 +649,7 @@ export const bulkUpdateComments = defineTool({
     let select: Data;
     if (hasIds) {
       const ids = args.comment_ids ?? [];
-      const project = args.project ?? (anyCommentNumber(ids) ? config.defaultProject : undefined);
-      select = compact({ comment_ids: ids.map(normalizeCommentRef), project });
+      select = compact({ comment_ids: ids.map(normalizeCommentRef), project: args.project });
     } else {
       const filter = pickFilters(args.filter ?? {});
       if (Object.keys(filter).length === 0) {
@@ -760,18 +727,18 @@ export const addAttachment = defineTool({
     "Attach a file to a comment (its first message) or to a reply, by public URL. Superflow downloads the file from the URL.",
     "Give exactly one of comment or reply. Use it when the user shares a screenshot or file link that belongs on a thread.",
     "To post text use superflow_add_reply (it can carry attachments too).",
-    'Example: {"comment": "4821", "project": "Acme Dental", "url": "https://files.example.com/fix.png", "name": "fix.png"}',
+    'Example: {"comment": "cmt_8f3k2", "url": "https://files.example.com/fix.png", "name": "fix.png"}',
   ].join("\n"),
   inputSchema: {
     comment: commentRefSchema.optional(),
     reply: z.string().min(1).optional().describe("Reply id (rpl_...). Give this or comment, not both."),
-    project: projectForNumberSchema,
+    project: commentProjectSchema,
     url: z.string().url().describe("Public https URL of an image, video or PDF, at most 25 MB."),
     name: z.string().min(1).optional().describe("File name to show. Defaults to the URL's file name."),
   },
   annotations: hints(false, false, false, true),
   write: true,
-  async run(args, { api, config }) {
+  async run(args, { api }) {
     if (Boolean(args.comment) === Boolean(args.reply)) {
       return invalidInput("Give exactly one of comment or reply.");
     }
@@ -781,7 +748,7 @@ export const addAttachment = defineTool({
       attachment = await api.call<Attachment>("addCommentAttachment", {
         path: { comment: normalizeCommentRef(args.comment) },
         body: compact({
-          project: projectForComment(args.comment, args.project, config.defaultProject),
+          project: args.project,
           url: args.url,
           name: args.name,
         }),
@@ -815,7 +782,6 @@ export const commentTools = [
   updateReply,
   deleteReply,
   deleteComment,
-  restoreComment,
   bulkUpdateComments,
   addAttachment,
 ];

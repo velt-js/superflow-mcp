@@ -31,12 +31,12 @@ export function agentSummary(agent: Agent, lead = "Agent"): string {
   return `${lead} ${agent.name} (${parts.join(", ")}).`;
 }
 
-/** The agent ids a schedule names (null when it runs a pack or the default agents). */
+/** The agent ids a schedule runs: fixed when it was saved (named, a pack's members or the default agents). */
 function scheduleAgentIds(schedule: Schedule): string[] {
   return (schedule.agents ?? []).map((agent) => agent.id);
 }
 
-/** True when a schedule names the agent by id, prefixed (agt_) or raw. */
+/** True when a schedule runs the agent, by id, prefixed (agt_) or raw. */
 function scheduleNames(schedule: Schedule, agentId: string): boolean {
   const raw = agentId.replace(/^agt_/, "");
   return scheduleAgentIds(schedule).some((id) => id.replace(/^agt_/, "") === raw);
@@ -177,7 +177,7 @@ export const deleteAgent = defineTool({
   name: "superflow_delete_agent",
   title: "Delete an agent",
   description: [
-    "Delete a custom agent for good. It is also taken out of the schedules that name it, and a schedule left with no agents is turned off. Built-in agents cannot be deleted: turn them off with superflow_update_agent.",
+    "Delete a custom agent for good. It is also taken out of the schedules that run it, and a schedule left with no agents is turned off. Built-in agents cannot be deleted: turn them off with superflow_update_agent.",
     "Without confirm: true nothing is deleted: you get the agent, its packs and the schedules that use it as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To stop using an agent without deleting it, use superflow_update_agent with enabled: false.",
     'Example: {"agent": "Legal footer"}',
@@ -220,8 +220,8 @@ export const deleteAgent = defineTool({
         `Agent ${agent.name} (${agent.id}) would be deleted for good.`,
         packs.length > 0 ? `It is in ${plural(packs.length, "pack")}: ${nameList(packNames(agent))}.` : "It is in no pack.",
         using.length > 0
-          ? `${plural(using.length, "schedule")} ${using.length === 1 ? "names" : "name"} it${lonely > 0 ? `; ${lonely} would have no agents left and would be turned off` : ""}.`
-          : "No schedule names it.",
+          ? `${plural(using.length, "schedule")} ${using.length === 1 ? "runs" : "run"} it${lonely > 0 ? `; ${lonely} would have no agents left and would be turned off` : ""}.`
+          : "No schedule runs it.",
         "Nothing was deleted. Ask the user to confirm.",
       ),
       { preview: { agent, packs, schedules_using: using }, message: CONFIRM_DELETE_AGENT_MESSAGE },
@@ -255,7 +255,7 @@ export const duplicateAgent = defineTool({
 });
 
 function packLine(pack: AgentPack): string {
-  const notes = [plural(pack.agent_count ?? pack.agent_ids?.length ?? 0, "agent"), pack.system ? "system" : "", pack.is_default_for_runs ? "default for runs" : ""]
+  const notes = [plural(pack.agent_count ?? pack.agent_ids?.length ?? 0, "agent"), pack.system ? "system" : ""]
     .filter(Boolean)
     .join(", ");
   return `${pack.name} (${notes})`;
@@ -265,7 +265,7 @@ export const listAgentPacks = defineTool({
   name: "superflow_list_agent_packs",
   title: "List agent packs",
   description: [
-    "List agent packs: named groups of agents, such as Superflow's system packs (Copy QA, SEO, Design checks, Performance, Brand checks) and your own. Each pack lists its agent ids, and one pack can be the default for runs.",
+    "List agent packs: named groups of agents, such as Superflow's system packs (Copy QA, SEO, Design checks, Performance, Brand checks) and your own. Each pack lists its agent ids. A run that names no agents and no pack uses Superflow's default agents, not a pack.",
     "Use it to pick a pack for superflow_estimate_run and superflow_run_agents, or before changing a pack.",
     "For the agents themselves use superflow_list_agents.",
     "Example: {}",
@@ -315,10 +315,10 @@ export const updateAgentPack = defineTool({
   name: "superflow_update_agent_pack",
   title: "Update an agent pack",
   description: [
-    "Change an agent pack: rename it, change its description, add or remove agents, or make it the default for runs (runs and estimates that name no agents and no pack then use it instead of Superflow's default agents).",
+    "Change an agent pack: rename it, change its description, or add or remove agents. Schedules that run the pack are saved again with its new agents.",
     "System packs keep their name and description, but you can add and remove agents.",
     "To create a pack use superflow_create_agent_pack.",
-    'Example: {"pack": "Pre-Launch", "add_agents": ["Legal footer"], "is_default_for_runs": true}',
+    'Example: {"pack": "Pre-Launch", "add_agents": ["Legal footer"]}',
   ].join("\n"),
   inputSchema: {
     pack: packRefSchema,
@@ -326,10 +326,6 @@ export const updateAgentPack = defineTool({
     description: z.string().max(1000).optional().describe("New description. Not for system packs."),
     add_agents: z.array(z.string().min(1)).min(1).max(100).optional().describe("Agents to add: names or agt_ ids."),
     remove_agents: z.array(z.string().min(1)).min(1).max(100).optional().describe("Agents to remove: names or agt_ ids."),
-    is_default_for_runs: z
-      .boolean()
-      .optional()
-      .describe("true: runs and estimates with no agents and no pack use this pack. false: go back to Superflow's default agents."),
   },
   annotations: hints(false, false, true, false),
   write: true,
@@ -339,10 +335,9 @@ export const updateAgentPack = defineTool({
       description: args.description,
       add_agents: args.add_agents,
       remove_agents: args.remove_agents,
-      is_default_for_runs: args.is_default_for_runs,
     });
     if (Object.keys(body).length === 0) {
-      return invalidInput("Nothing to change. Give name, description, add_agents, remove_agents or is_default_for_runs.");
+      return invalidInput("Nothing to change. Give name, description, add_agents or remove_agents.");
     }
     const pack = await api.call<AgentPack>("updateAgentPack", { path: { pack: args.pack }, body });
     return okResult(`Updated agent pack ${packLine(pack)}, id ${pack.id}.`, asData(pack));

@@ -115,7 +115,7 @@ export const importFindings = defineTool({
         `Imported into ${result.project?.name ?? project} as ${result.source?.name ?? args.source}: ${counts}.`,
         result.failed > 0 && "Send the same batch again to retry the failed ones; the rest merge.",
         result.install && !result.install.installed && "The Superflow script is not on the site yet, so the findings show in the portal, not as pins on the live page. Offer superflow_get_install_snippet.",
-        `Run ${result.run_id}.`,
+        `Read them with superflow_list_findings and run ${result.run_id} (an import is not a run, so superflow_list_runs does not show it).`,
       ),
       asData(result),
       { untrusted: false },

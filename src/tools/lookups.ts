@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ListEnvelope, Me, Member, Page, Project, Status, Tag } from "../client/types.ts";
 import { okResult, paginationNote, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool } from "./define.ts";
+import { count, join } from "./helpers.ts";
 import { cursorSchema, limitSchema, projectRefSchema } from "./schemas.ts";
 
 const optionalProject = projectRefSchema.optional();
@@ -160,13 +161,13 @@ export const listTags = defineTool({
   name: "superflow_list_tags",
   title: "List tags",
   description: [
-    "List comment tags with how often each is used. Give a project to include its project tags.",
-    "Use it to find exact tag names before filtering, tagging or bulk updating by tag.",
+    "List the tags on comments with how many comments carry each: the workspace's, or one project's. Tags are workspace-wide: a tag exists while some comment carries it, and tagging a comment with a new name creates it.",
+    "Use it to find exact tag names before filtering, tagging, bulk updating or merging by tag.",
     "To count comments per tag under other filters use superflow_comment_stats with group_by tag.",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {
-    project: optionalProject.describe("Project (name, site URL or id). Omit for workspace-wide tags."),
+    project: optionalProject.describe("Only the tags on this project's comments (name, site URL or id). Omit for the whole workspace."),
   },
   annotations: READ_HINTS,
   write: false,
@@ -179,7 +180,11 @@ export const listTags = defineTool({
       .sort((a, b) => (b.usage_count ?? 0) - (a.usage_count ?? 0))
       .slice(0, 8)
       .map((t) => (typeof t.usage_count === "number" ? `${t.name} (${t.usage_count})` : t.name));
-    const summary = `${plural(items.length, "tag")}${top.length ? `: ${top.join(", ")}${items.length > 8 ? ", ..." : ""}` : ""}.`;
+    const summary = join(
+      `${plural(items.length, "tag")}${top.length ? `: ${top.join(", ")}${items.length > 8 ? ", ..." : ""}` : ""}.`,
+      list.scan?.complete === false &&
+        `The tag scan stopped after ${count(list.scan.scanned)} comments, so some tags or counts may be missing.${args.project ? "" : " Give a project for a full answer on one site."}`,
+    );
     return okResult(summary, list as unknown as Record<string, unknown>);
   },
 });

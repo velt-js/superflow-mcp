@@ -16,7 +16,7 @@ describe(TOOL, () => {
     expect(result.isError).toBeFalsy();
     expect(data(result)).toEqual({ needs_confirmation: true, preview: schedule, message: CONFIRM_DELETE_SCHEDULE_MESSAGE });
     expect(summaryOf(result)).toBe(
-      "Schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run done. It would be deleted. Nothing was deleted. Ask the user to confirm.",
+      "Schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run started. It would be deleted. Nothing was deleted. Ask the user to confirm.",
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["listSchedules"]);
     expect(writes()).toEqual([]);

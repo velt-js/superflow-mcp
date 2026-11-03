@@ -15,10 +15,11 @@ const attachment = {
 describe(TOOL, () => {
   it("attaches to a comment", async () => {
     on("post", "/comments/:comment/attachments", ok(attachment, 201));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    const result = await h.call(TOOL, { comment: "4821", url: "https://files.example.com/fix.png", name: "fix.png" });
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2", project: "Acme Dental", url: "https://files.example.com/fix.png", name: "fix.png" });
     expect(data(result)).toEqual(attachment);
-    expect(summaryOf(result)).toBe("Attached fix.png to comment 4821. File: https://storage.example.com/fix.png");
+    expect(summaryOf(result)).toBe("Attached fix.png to comment cmt_8f3k2. File: https://storage.example.com/fix.png");
+    expect(recorded[0]?.path).toBe("/comments/cmt_8f3k2/attachments");
     expect(recorded[0]?.body).toEqual({ project: "Acme Dental", url: "https://files.example.com/fix.png", name: "fix.png" });
   });
 
@@ -41,7 +42,7 @@ describe(TOOL, () => {
 
   standardErrorCases({
     tool: TOOL,
-    args: { comment: "4821", project: "Acme", url: "https://files.example.com/fix.png" },
+    args: { comment: "cmt_8f3k2", project: "Acme", url: "https://files.example.com/fix.png" },
     method: "post",
     path: "/comments/:comment/attachments",
     success: ok(attachment, 201),

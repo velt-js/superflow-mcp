@@ -28,7 +28,6 @@ Environment:
   SUPERFLOW_AUTH_URL         Sign-in server for login. Default ${DEFAULT_AUTH_URL}
   SUPERFLOW_CREDENTIALS_STORE  auto (Keychain or Secret Service, else a file) or file.
   SUPERFLOW_API_BASE_URL     Default ${DEFAULT_BASE_URL}
-  SUPERFLOW_DEFAULT_PROJECT  Project used for bare comment numbers like #4821.
   SUPERFLOW_READ_ONLY        true to hide every write tool. Default false.
   SUPERFLOW_LOG_LEVEL        debug, info, warn, error or silent. Default info. Logs go to stderr.
 `;

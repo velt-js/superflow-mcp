@@ -75,7 +75,7 @@ export const removePage = defineTool({
   name: "superflow_remove_page",
   title: "Remove a page",
   description: [
-    `Remove a page from a project and delete every comment on it (at most ${REMOVE_PAGE_COMMENT_CAP}). The comments can be restored one by one with superflow_restore_comment for 30 days.`,
+    `Remove a page from a project and delete every comment on it (at most ${REMOVE_PAGE_COMMENT_CAP}) for good: the comments cannot be restored.`,
     "Without confirm: true nothing is removed: you get the page and its comment count as a preview to show the user. Call again with confirm: true only after the user says yes.",
     "To delete a single comment use superflow_delete_comment. To resolve the page's comments instead use superflow_bulk_update_comments.",
     'Example: {"project": "Acme Dental", "page": "https://acme.com/old-pricing"}',
@@ -94,12 +94,10 @@ export const removePage = defineTool({
         query: { confirm: true },
       });
       const deleted = result.comments_deleted ?? 0;
-      const summary = join(
-        `Removed page ${result.id ?? args.page} from ${args.project} and deleted ${plural(deleted, "comment")}.`,
-        deleted > 0 &&
-          `They can be restored with superflow_restore_comment${result.restore_until ? ` until ${result.restore_until}` : " for 30 days"}.`,
+      return okResult(
+        `Removed page ${result.id ?? args.page} from ${args.project} and deleted ${plural(deleted, "comment")} for good.`,
+        asData(result),
       );
-      return okResult(summary, asData(result));
     }
     // Preview: one read. Nothing that could remove is sent without confirm.
     const page = await api.call<Page>("getPage", { path: { project: args.project, page: args.page } });
@@ -112,7 +110,7 @@ export const removePage = defineTool({
     }
     const comments = typeof total === "number" ? plural(total, "comment") : "an unknown number of comments";
     return confirmationResult(
-      `Page ${page.url ?? args.page} in ${args.project} would be removed and its ${comments} deleted (restorable for 30 days). Nothing was removed. Ask the user to confirm.`,
+      `Page ${page.url ?? args.page} in ${args.project} would be removed and its ${comments} deleted for good: they cannot be restored. Nothing was removed. Ask the user to confirm.`,
       { preview: { page, comment_count: total ?? null }, message: CONFIRM_REMOVE_PAGE_MESSAGE },
     );
   },

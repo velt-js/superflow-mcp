@@ -19,6 +19,15 @@ describe(TOOL, () => {
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", status: "done,partial", since: "7d", limit: "5" });
   });
 
+  it("lists portal and Always-on Monitoring runs too, with their trigger", async () => {
+    const body = list([{ ...doneRun, id: "run_p1", trigger: "manual" as const }, { ...doneRun, id: "run_m1", trigger: "schedule" as const }]);
+    on("get", "/runs", ok(body));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental" });
+    expect(data(result)).toEqual(body);
+    expect(summaryOf(result)).toMatch(/^Found 2 runs\. Latest: Run run_p1 on Acme Dental: done\./);
+  });
+
   it("defaults the limit to 25", async () => {
     on("get", "/runs", ok(list([])));
     const h = await connect();

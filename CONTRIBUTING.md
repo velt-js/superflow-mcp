@@ -76,7 +76,7 @@ Point it at staging or a local API with `SUPERFLOW_API_BASE_URL`.
 
 - `expect_first_tool` is a tool name, a list of acceptable names, or `null` for "no tool call".
 - `{project}` and `{page_url}` are filled from `SUPERFLOW_TEST_PROJECT` and `SUPERFLOW_TEST_PAGE_URL`.
-- Optional: `read_only`, `default_project`, `expect_tools_any_order`.
+- Optional: `read_only`, `expect_tools_any_order`.
 - Checks: `{ "tool", "arg_includes" }`, `{ "result_path_nonempty": "items" }`,
   `{ "tool_not_called": "..." }`, `{ "no_confirmed_writes": true }`.
 

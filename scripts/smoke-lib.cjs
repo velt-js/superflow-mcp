@@ -15,7 +15,7 @@ async function main() {
     return new Response(JSON.stringify({ member: { id: "usr_1", name: "Host", email: "h@x.com", role: "owner" }, organization: { id: "org_1", name: "Org", plan: null }, scopes: ["comments:read"], key: { kind: "oauth", label: null, created_at: null, expires_at: null } }), { status: 200, headers: { "content-type": "application/json" } });
   };
   const api = new lib.ApiClient({ apiKey: "in-process", baseUrl: "https://in-process.superflow.invalid/v1", fetch });
-  const config = { apiKey: "in-process", baseUrl: "https://in-process.superflow.invalid/v1", defaultProject: undefined, readOnly: true, logLevel: "silent" };
+  const config = { apiKey: "in-process", baseUrl: "https://in-process.superflow.invalid/v1", readOnly: true, logLevel: "silent" };
   const server = lib.createServer({ config, client: api, surface: "hosted", renamedTools: { list_workspaces: "superflow_get_me" } });
   const client = new Client({ name: "smoke-lib", version: "0.0.0" });
   const [a, b] = InMemoryTransport.createLinkedPair();

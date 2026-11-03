@@ -101,7 +101,7 @@ export const estimateRun = defineTool({
   title: "Estimate a run",
   description: [
     "Price an AI agent run before starting it: the credits it would spend, how many pages, which agents, the current balance and whether it is enough. It charges nothing and starts nothing.",
-    "Always call it before superflow_run_agents and show the user the credits. Use the same project, scope, pages and agents or pack you will run. With no agents and no pack it uses the default agents (or the pack set as default for runs).",
+    "Always call it before superflow_run_agents and show the user the credits. Use the same project, scope, pages and agents or pack you will run. With no agents and no pack it uses Superflow's default agents.",
     "Exact in scan pricing; an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance (credits is null).",
     'Example: {"project": "Acme Dental", "scope": "site", "pack": "Pre-Launch"}',
   ].join("\n"),
@@ -210,9 +210,9 @@ export const getRun = defineTool({
   name: "superflow_get_run",
   title: "Get a run",
   description: [
-    "Get an agent run's live status: overall status, each agent's status and findings count, credits charged, and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution), which covers runs started in the Superflow portal.",
+    "Get an agent run's live status: overall status, each agent's status and findings count, credits charged, what started it (trigger), and start and finish times. It reads the run live. It also takes the run_ id on an agent comment (one agent's execution).",
     `The run is finished when status is done, failed or partial (partial: some agents did not finish). While it is queued or running, call again no more often than every ${POLL_SECONDS} seconds; a full site run can take several minutes.`,
-    "To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs.",
+    "To read what the agents found use superflow_list_findings. To find a run use superflow_list_runs. An import's run_id from superflow_import_findings is not a run: read its findings with superflow_list_findings.",
     'Example: {"run": "run_8f3k2"}',
   ].join("\n"),
   inputSchema: { run: runRefSchema },
@@ -228,9 +228,9 @@ export const listRuns = defineTool({
   name: "superflow_list_runs",
   title: "List runs",
   description: [
-    "List agent runs started through the API or this server, by a schedule from superflow_set_schedule, or by superflow_import_findings, newest first, with status, findings count and credits. Filter by project, status or start date.",
-    'Not listed: runs started in the Superflow portal and Always-on Monitoring (care mode) runs, so an empty list does not mean no agent ran. Their results are in superflow_list_failing_checks and superflow_get_check_details, and in superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows a site\'s monitoring cadence and last run.',
-    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings. Statuses here are as last recorded: superflow_get_run reads a run live.',
+    "List every agent run of the workspace, newest first, with status, findings count, credits and trigger (what started it): runs started through the API or this server (api, mcp), by a schedule from superflow_set_schedule (workflow), in the Superflow portal (manual) and by Always-on Monitoring (schedule, deploy, change, resolve, uptime). Filter by project, status or start date.",
+    "Imports from superflow_import_findings are not runs and are not listed: read an import's findings with superflow_list_findings and the run_id the import returned.",
+    'Use it for "the last run" or "runs this week", then read one with superflow_get_run or superflow_list_findings.',
     'Example: {"project": "Acme Dental", "status": ["done", "partial"], "limit": 5}',
   ].join("\n"),
   inputSchema: {
@@ -284,12 +284,12 @@ export const listFindings = defineTool({
   title: "List a run's findings",
   description: [
     "List what an agent run found: the comments its agents left, with each finding's severity and confidence, page and link. Filter by severity. Pages with cursor.",
-    'It covers the runs superflow_list_runs lists. For runs started in the Superflow portal and Always-on Monitoring (care mode) runs, read the results with superflow_list_failing_checks and superflow_get_check_details, or superflow_list_comments with author_type: ["agent"]; superflow_get_site_monitoring shows the monitoring cadence and last run.',
+    "It takes any run superflow_list_runs lists (portal and Always-on Monitoring runs included), the run_ id on an agent comment, and the run_id superflow_import_findings returned.",
     "Use it after superflow_get_run says the run is done or partial, to summarize, triage or push findings to a tracker. Findings are comments: resolve, reply or bulk update them with the comment tools.",
     'Example: {"run": "run_8f3k2", "severity": ["critical", "high"]}',
   ].join("\n"),
   inputSchema: {
-    run: runRefSchema,
+    run: runRefSchema.describe("Agent run id (run_...), from superflow_list_runs or superflow_run_agents, or the run_id superflow_import_findings returned."),
     severity: z
       .array(z.enum(FINDING_SEVERITIES))
       .min(1)

@@ -1,7 +1,7 @@
 # Example prompts
 
 Things to ask your assistant once `superflow-mcp` is connected. Names, domains,
-emails and comment numbers all work: the server resolves them.
+emails and comment links all work: the server resolves them.
 
 ## The basics
 
@@ -11,14 +11,14 @@ emails and comment numbers all work: the server resolves them.
 4. Resolve everything tagged `copy` on the homepage.
 5. Assign all high priority mobile comments on Acme to Jen.
 6. What did the agents find in the last run? Which ones look like false positives?
-7. Reply to comment 4821: fixed, please check.
+7. Reply to the newest comment on acme.com/pricing: fixed, please check.
 8. Draft a client update for Acme covering what was closed this week.
 
 ## Finding things
 
 - What came in on Acme since yesterday?
 - Find every comment that mentions checkout, across all projects.
-- Show me comment #4821 on Acme with its replies.
+- Show me this comment with its replies: https://acme.com/pricing?scommentId=8f3k2
 - Which pages on Acme have no comments yet?
 - What is assigned to me that is still open?
 - Show me mobile comments on the pricing page.
@@ -35,11 +35,11 @@ emails and comment numbers all work: the server resolves them.
 
 The assistant asks before it writes. Bulk changes are a dry run first.
 
-- Mark 4821 on Acme as resolved with a note saying the copy was updated.
-- Reopen 4821, the fix did not work on mobile.
+- Resolve the comment about the price table on Acme with a note saying the copy was updated.
+- Reopen that comment, the fix did not work on mobile.
 - Set every open comment tagged `legal` on Acme to high priority.
 - Leave a comment on https://acme.com/pricing saying the price table is cut off on mobile.
-- Attach https://files.example.com/fix.png to comment 4821.
+- Attach https://files.example.com/fix.png to that comment.
 
 ## Running the workspace
 
@@ -70,10 +70,10 @@ in your team's own tools, so it asks before those too.
 - Is the run finished yet? What did it find, by severity?
 - Which findings from the last run look like false positives?
 - Create a custom agent that checks every footer has the copyright line and a privacy link.
-- Add the Legal footer agent to the Pre-Launch pack and make that pack the default for runs.
+- Add the Legal footer agent to the Pre-Launch pack.
 - Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
 - Which schedules do we have, and did the last runs go through?
-- Push comment 4821 on Acme to Jira, project WEB.
+- Push the critical comments on Acme's pricing page to Jira, project WEB (id 10001).
 - Connect our Jira to Superflow.
 - Post the open critical comments on Acme to #design-feedback in Slack.
 

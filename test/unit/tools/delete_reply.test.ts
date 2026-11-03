@@ -38,7 +38,7 @@ describe(TOOL, () => {
 
   it("rejects a value that is not a reply id", async () => {
     const h = await connect();
-    const result = await h.call(TOOL, { reply: "4821" });
+    const result = await h.call(TOOL, { reply: "8f3k2" });
     expect(errorOf(result).code).toBe("invalid");
     expect(recorded).toHaveLength(0);
   });

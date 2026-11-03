@@ -6,7 +6,7 @@ Guidance for Claude Code (and other agents) working in this repo.
 
 `superflow-mcp`: a public npm package that runs a local MCP server over stdio for
 Superflow comments. It is a thin client over the Superflow REST API v1. The API
-resolves names, URLs, emails and numbers, parses relative dates and runs dry runs;
+resolves names, URLs, emails and comment links, parses relative dates and runs dry runs;
 this package validates input, calls the API and shapes the answer.
 
 The README also documents the hosted server at `https://mcp.usesuperflow.ai/mcp`.
@@ -72,8 +72,9 @@ playbook line in the server instructions.
 
 ## Rules the tools follow
 
-- Ids pass through to the API (URL-encoded in paths). For a bare comment number with no
-  `project`, inject `SUPERFLOW_DEFAULT_PROJECT` (`projectForComment` in `src/lib/resolve.ts`).
+- Ids pass through to the API (URL-encoded in paths). A comment is its `cmt_` id, raw id or
+  link (its `url`); a comment tool's `project` only narrows the lookup. Comments have no
+  numbers.
 - Lists: `limit` default 25, max 100; pass `cursor` through; the summary says when more
   results exist (`paginationNote`).
 - Dates: validate with `findInvalidDate` before calling the API.
@@ -131,7 +132,9 @@ playbook line in the server instructions.
 - Checks: a resolve or a mark fixed is a claim; the rescan verifies it. Summaries say so,
   and report `verify` when the API returns one. An engine refusal keeps the API's `reason`
   (`already_verified`, `not_agent_comment`, ...) on the error; never retry it.
-- Comment `number` can be null. Label comments with `commentLabel`, which falls back to the id.
+- Label a comment by its id. Deleting a comment (or a page's comments) is permanent: the
+  descriptions and previews say so. Tag rewrites change at most 500 comments a call and
+  report `complete`.
 
 ## Commands
 

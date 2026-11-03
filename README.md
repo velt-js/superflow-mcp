@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y superflow-mcp`, runs on your machine over stdio | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 104 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
+| Tools | 101 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
 You can use both at once.
@@ -123,8 +123,7 @@ More examples: [`examples/`](examples/).
      change and delete agents and packs) and `agents:run` (start runs and manage schedules; runs
      spend AI credits). Findings also need `comments:read`.
    - Integrations: `integrations:read` (connected tools) and `integrations:write` (connect
-     links, default projects, push a comment to a tracker, post to Slack; pushing also needs
-     `comments:read`).
+     links, push a comment to a tracker, post to Slack; pushing also needs `comments:read`).
 
    Leave out the write scopes for a read-only key. A tool whose scope the key lacks answers with a clear forbidden error.
 4. Pick an expiry, then copy the key. It is shown once. Superflow stores only a hash.
@@ -171,7 +170,6 @@ own.
 | `SUPERFLOW_CREDENTIALS_STORE` | no | `auto` | `auto` (Keychain or Secret Service, else a file) or `file`. |
 | `SUPERFLOW_CREDENTIALS_FILE` | no | `~/.config/superflow-mcp/credentials.json` | Where the file store keeps the sign-in. |
 | `SUPERFLOW_API_BASE_URL` | no | `https://api.usesuperflow.ai/v1` | The API to call. Must be https (http only for localhost). |
-| `SUPERFLOW_DEFAULT_PROJECT` | no | | Project used for bare comment numbers like `#4821` when you do not name one. |
 | `SUPERFLOW_READ_ONLY` | no | `false` | `true` hides every write tool. |
 | `SUPERFLOW_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn`, `error` or `silent`. Logs go to stderr. |
 
@@ -179,7 +177,7 @@ Requires Node.js 20 or later.
 
 ### Read-only mode
 
-Set `SUPERFLOW_READ_ONLY=true` and the 59 write tools are not registered at all. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
+Set `SUPERFLOW_READ_ONLY=true` and the 56 write tools are not registered at all. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work and present changes as recommendations. For a hard guarantee, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
 
 ```bash
 claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
@@ -228,20 +226,19 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_list_pages` | Pages of a project with open and total comment counts. |
 | `superflow_list_members` | Your team, plus a project's guests. |
 | `superflow_list_statuses` | Workflow statuses in order, and which count as resolved. |
-| `superflow_list_tags` | Tags and how often each is used. |
+| `superflow_list_tags` | The tags on comments, workspace-wide or for one project, and how many comments carry each. |
 | `superflow_list_comments` | Find comments by project, page, status, assignee, tags, dates, text and more. |
 | `superflow_get_comment` | One comment with every field and its replies. |
 | `superflow_comment_stats` | Counts grouped by page, status, assignee, week and more, plus response times. |
 | `superflow_export_comments` | Export matching comments as csv, json or markdown. |
 | `superflow_create_comment` | Leave a new, public comment on a page. |
-| `superflow_update_comment` | Change one comment: text, priority, status, assignee, tags, page or pin. |
+| `superflow_update_comment` | Change one comment: text, priority, status, assignee, tags (a new name creates the tag), page or pin. |
 | `superflow_resolve_comment` | Resolve one comment, with an optional note. |
 | `superflow_reopen_comment` | Reopen one comment, with an optional note. |
 | `superflow_add_reply` | Reply in a thread, with @mentions. |
 | `superflow_update_reply` | Edit a reply. |
 | `superflow_delete_reply` | Delete a reply (needs confirm). |
-| `superflow_delete_comment` | Delete a comment thread (needs confirm, restorable). |
-| `superflow_restore_comment` | Restore a deleted comment. |
+| `superflow_delete_comment` | Delete a comment thread for good (needs confirm; it cannot be restored). |
 | `superflow_bulk_update_comments` | Change up to 200 comments at once (dry run first, then confirm). |
 | `superflow_add_attachment` | Attach a file by URL to a comment or reply. |
 
@@ -259,7 +256,7 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_verify_install` | Check that the snippet is live on the site. |
 | `superflow_get_page` | One page with its comment counts. |
 | `superflow_add_page` | Add a page before anyone comments on it. |
-| `superflow_remove_page` | Remove a page and delete its comments, restorable for 30 days (needs confirm). |
+| `superflow_remove_page` | Remove a page and delete its comments for good (needs confirm). |
 | `superflow_invite_member` | Invite teammates to the workspace (sends email). |
 | `superflow_remove_member` | Remove a teammate, optionally reassigning their open comments (owner only, needs confirm). |
 | `superflow_list_guests` | A project's guests. |
@@ -269,10 +266,9 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_update_status` | Rename or recolor a status. |
 | `superflow_reorder_statuses` | Set the order of the statuses. |
 | `superflow_delete_status` | Delete a status, moving its comments to another (needs confirm). |
-| `superflow_create_tag` | Create a tag. |
-| `superflow_update_tag` | Rename or recolor a tag. |
-| `superflow_delete_tag` | Delete a tag from every comment (needs confirm). |
-| `superflow_merge_tags` | Fold one tag into another (needs confirm). |
+| `superflow_update_tag` | Rename or recolor a tag on every comment that carries it. |
+| `superflow_delete_tag` | Take a tag off every comment that carries it (needs confirm). |
+| `superflow_merge_tags` | Fold one tag into another, or into a new name (needs confirm). |
 | `superflow_get_organization` | The workspace: plan, seats, projects and AI credits. |
 | `superflow_update_organization` | Rename the workspace (owner only). |
 | `superflow_get_credit_usage` | AI credits used, by project, agent or day. |
@@ -295,14 +291,14 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_duplicate_agent` | Copy a custom agent. |
 | `superflow_list_agent_packs` | Agent packs, such as Copy QA, SEO or your own. |
 | `superflow_create_agent_pack` | Group agents into a pack. |
-| `superflow_update_agent_pack` | Change a pack, or make it the default for runs. |
+| `superflow_update_agent_pack` | Change a pack's name, description or agents. |
 | `superflow_estimate_run` | What a run would cost in AI credits, and whether the balance covers it. Charges nothing. |
 | `superflow_run_agents` | Start a run on a site, a page or a list of pages (spends credits; estimate first, then confirm). |
 | `superflow_get_run` | A run's live status per agent. |
-| `superflow_list_runs` | Past runs started through the API or MCP, by an API schedule or by an import, newest first. Runs started in the portal and Always-on Monitoring runs are not listed: their results are in the failing checks and the agent comments. |
-| `superflow_list_findings` | What one of those runs found, with severity and confidence. |
-| `superflow_set_schedule` | Create or change a scheduled run (cron, at most hourly; each run spends credits). Needs `confirm: true`, except to pause or move the time zone; without it the tool shows the price of one run. |
-| `superflow_list_schedules` | Scheduled runs, the next run and how the last one went. |
+| `superflow_list_runs` | Every agent run of the workspace, newest first, with what started it: the API or MCP, a schedule, the portal or Always-on Monitoring. An import is not a run and is not listed. |
+| `superflow_list_findings` | What a run found, with severity and confidence. Also takes an import's run id. |
+| `superflow_set_schedule` | Create or change a scheduled run (cron, at most hourly; each run spends credits; the agents are fixed when it is saved). Needs `confirm: true`, except to pause or move the time zone; without it the tool shows the price of one run. |
+| `superflow_list_schedules` | Scheduled runs, their agents, the next run and how the last one went (started, skipped and why, or failed to start). |
 | `superflow_delete_schedule` | Delete a schedule (needs confirm). |
 
 #### Integrations
@@ -310,19 +306,18 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | Tool | What it does |
 |---|---|
 | `superflow_list_integrations` | Connected tools: Slack, Jira, Asana, ClickUp, Monday. |
-| `superflow_get_integration` | One connection and its default project. |
+| `superflow_get_integration` | One connection and whether it still works. |
 | `superflow_connect_integration` | A link the user opens to connect a tool. The assistant cannot finish the sign-in. |
-| `superflow_update_integration` | Set a connection's default project. |
-| `superflow_push_comment` | Create a Jira issue or a task from a comment, and link it on the comment. |
+| `superflow_push_comment` | Create a Jira issue or a task from a comment, and link it on the comment. Needs `project_key`; a comment already in that tool returns its link and creates nothing. |
 | `superflow_post_to_slack` | Post a message, with comments, to a Slack channel (needs confirm). |
 
 Superflow has three priorities you can set: critical (P0), high (P1) and medium (P2). Removing an assignee or clearing a priority is not supported yet, so the assistant will ask you to do that in the Superflow toolbar. Filters can still find `low` and `none` priority comments and `unassigned` ones.
 
-Every id parameter also takes a name, a site URL, an email or a comment number. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
+Every id parameter also takes a name, a site URL or an email, and a comment is given by its id or its link. The API resolves it. When a name matches more than one thing, the tool returns the candidates so the assistant can ask you which one.
 
 Some admin changes are not available: a project's site URL cannot change (add extra domains instead), members have no roles beyond owner and admin, and review links have no expiry. Deleting a project is permanent. While a project has an active review link it is in preview: archiving, install checks and settings changes wait until the link is revoked. Site, domain and page addresses are full `https://` URLs.
 
-Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Pushing a comment needs the target's ids, not names: Jira `KEY:12345` (project key and numeric project id), Asana `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`. Asana, ClickUp and Monday connections must also be set up to create items from Superflow.
+Some agent and integration features are not available yet: a run cannot be cancelled once started, schedules run on a cron (not when a page changes) with the agents fixed when the schedule is saved, a pack cannot be the default for runs (runs that name no agents use Superflow's default agents), and disconnecting a tool happens in the Superflow portal. Run prices are exact in scan pricing and an estimate in flat pricing; workspaces billed by model usage cannot be priced in advance. Pushing a comment needs the target's ids, not names, every time (a connection has no default project): Jira `KEY:12345` (project key and numeric project id), Asana `<workspace gid>:<project gid>`, ClickUp `<team>:<space>:<list>`, Monday `<board id>`. Asana, ClickUp and Monday connections must also be set up to create items from Superflow.
 
 #### Playbooks
 
@@ -376,14 +371,14 @@ The server also ships eleven prompts (`triage`, `fix`, `push_my_review`, `onboar
 6. Resolve everything tagged `copy` on the homepage.
 7. Assign all high priority mobile comments on Acme to Jen.
 8. What did the agents find in the last run? Which ones look like false positives?
-9. Reply to comment 4821: fixed, please check.
+9. Reply to the newest comment on acme.com/pricing: fixed, please check.
 10. Draft a client update for Acme covering what was closed this week.
 11. Export every resolved comment on Acme from last week as a CSV.
 12. What is our median time to first reply on client comments, week by week?
 13. Create a project for client Northwind at northwind-dental.com on Webflow, invite dana@northwind-dental.com, and give me the install snippet.
 14. Is the Superflow snippet live on acme.com yet?
 15. How many member seats do we have left, and which agent used the most AI credits this month?
-16. Merge the tag "Copy text" into "copy" on Acme, then add an "In review" status.
+16. Merge the tag "Copy text" into "copy", then add an "In review" status on Acme.
 17. Estimate a full run of the Pre-Launch pack on Acme, then run it.
 18. What did the agents find in the last run on Acme? Group it by severity and push the critical ones to Jira.
 19. Run the Pre-Launch pack on Acme every Monday at 9am Berlin time.
@@ -393,7 +388,7 @@ More in [`examples/prompts.md`](examples/prompts.md).
 
 ### Safety
 
-- Deletes, removals, tag merges and review link revokes need `confirm: true`. Without it the tool only reads and shows what would happen. Deleting a project is permanent; removed pages' comments can be restored for 30 days.
+- Deletes, removals, tag merges and review link revokes need `confirm: true`. Without it the tool only reads and shows what would happen. Deleting a comment, a project, or a page with its comments is permanent: nothing can be restored.
 - Invite tools (and guests on a new project) send real email. The assistant is told to ask you first.
 - A review link makes a project visible to anyone who has the link.
 - Agent runs spend AI credits. The assistant prices the run with `superflow_estimate_run`, shows you the credits and asks; `superflow_run_agents` starts nothing without `confirm: true`. When the balance is too low it tells you how to add credits and does not retry.
@@ -473,7 +468,7 @@ The authenticated endpoint never serves these two, and this endpoint never serve
 | `users:write` | Remove members and guests (local package and REST API). |
 | `workspace:write` | Rename the workspace and change your own notification settings (local package and REST API). |
 | `integrations:read` | Read connected tools (local package and REST API). |
-| `integrations:write` | Get connect links, set default projects, push comments to a tracker and post to Slack (local package and REST API). |
+| `integrations:write` | Get connect links, push comments to a tracker and post to Slack (local package and REST API). |
 | `ingest` | Push your own review's findings in as agent comments; creates or merges, never deletes (local package and REST API). |
 
 ## Migrating from BugHerd

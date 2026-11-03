@@ -9,8 +9,8 @@ const TOOL = "superflow_list_findings";
 
 describe(TOOL, () => {
   it("lists a run's findings with counts by severity and the untrusted notice", async () => {
-    const second = { ...finding, id: "cmt_f3", number: 4902 };
-    const low = { ...finding, id: "cmt_f2", number: 4901, severity: "low" };
+    const second = { ...finding, id: "cmt_f3" };
+    const low = { ...finding, id: "cmt_f2", severity: "low" };
     const body = list([finding, second, low], { total: 3 });
     on("get", "/runs/:run/findings", ok(body));
     const h = await connect();

@@ -16,6 +16,14 @@ describe(TOOL, () => {
     expect(recorded[0]?.operationId).toBe("listTags");
   });
 
+  it("says when the tag scan stopped early", async () => {
+    on("get", "/tags", ok(list(tags, { scan: { scanned: 10000, complete: false } })));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL))).toBe(
+      "2 tags: copy (12), mobile (5). The tag scan stopped after 10,000 comments, so some tags or counts may be missing. Give a project for a full answer on one site.",
+    );
+  });
+
   it("uses the project route when a project is given", async () => {
     on("get", "/projects/:project/tags", ok(list(tags)));
     const h = await connect();

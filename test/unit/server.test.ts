@@ -25,7 +25,6 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_update_reply: [false, false, true, false],
   superflow_delete_reply: [false, true, true, false],
   superflow_delete_comment: [false, true, true, false],
-  superflow_restore_comment: [false, false, true, false],
   superflow_bulk_update_comments: [false, true, false, false],
   superflow_add_attachment: [false, false, false, true],
   // CONTRACT-P2 section 10.
@@ -49,7 +48,6 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_update_status: [false, false, true, false],
   superflow_reorder_statuses: [false, false, true, false],
   superflow_delete_status: [false, true, true, false],
-  superflow_create_tag: [false, false, false, false],
   superflow_update_tag: [false, false, true, false],
   superflow_delete_tag: [false, true, true, false],
   superflow_merge_tags: [false, true, true, false],
@@ -83,7 +81,6 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_list_integrations: [true, false, true, false],
   superflow_get_integration: [true, false, true, false],
   superflow_connect_integration: [true, false, true, false],
-  superflow_update_integration: [false, false, true, false],
   superflow_push_comment: [false, false, false, true],
   superflow_post_to_slack: [false, false, false, true],
   // Spec addendum v2.1.
@@ -143,10 +140,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 104 contract tools", async () => {
+  it("registers exactly the 101 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(104);
+    expect(listed).toHaveLength(101);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -297,19 +294,36 @@ describe("tool registration", () => {
     expect(describe("superflow_set_schedule")).toContain("spends AI credits");
   });
 
-  it("says which runs list_runs and list_findings cover, and where portal and monitoring results are", async () => {
+  it("says list_runs covers portal and monitoring runs, and that an import is not a run", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
     const describe = (name: string) => listed.find((t) => t.name === name)?.description ?? "";
-    expect(describe("superflow_list_runs")).toContain("superflow_set_schedule");
-    expect(describe("superflow_list_runs")).toContain("superflow_import_findings");
-    for (const name of ["superflow_list_runs", "superflow_list_findings"]) {
-      const text = describe(name);
-      expect(text, name).toContain("runs started in the Superflow portal and Always-on Monitoring (care mode) runs");
-      expect(text, name).toContain("superflow_list_failing_checks");
-      expect(text, name).toContain("superflow_get_check_details");
-      expect(text, name).toContain('superflow_list_comments with author_type: ["agent"]');
-      expect(text, name).toContain("superflow_get_site_monitoring");
+    const runs = describe("superflow_list_runs");
+    expect(runs).toContain("superflow_set_schedule");
+    expect(runs).toContain("in the Superflow portal (manual)");
+    expect(runs).toContain("Always-on Monitoring");
+    expect(runs).toContain("Imports from superflow_import_findings are not runs and are not listed");
+    expect(runs).not.toContain("Not listed: runs started in the Superflow portal");
+    const findings = describe("superflow_list_findings");
+    expect(findings).toContain("portal and Always-on Monitoring runs included");
+    expect(findings).toContain("the run_id superflow_import_findings returned");
+  });
+
+  it("says deletes are permanent and tag rewrites stop at 500 a call", async () => {
+    const h = await connect();
+    const { tools: listed } = await h.client.listTools();
+    const describe = (name: string) => listed.find((t) => t.name === name)?.description ?? "";
+    expect(describe("superflow_delete_comment")).toContain("cannot be restored");
+    expect(describe("superflow_remove_page")).toContain("cannot be restored");
+    for (const name of ["superflow_update_tag", "superflow_delete_tag", "superflow_merge_tags"]) {
+      expect(describe(name), name).toContain("at most 500 comments");
+      expect(describe(name), name).toContain("complete: false");
+    }
+    expect(describe("superflow_push_comment")).toContain("already_linked: true");
+    expect(describe("superflow_set_schedule")).toContain("fixed when the schedule is saved");
+    expect(h.client.getInstructions()).toContain("Deleted comments cannot be restored");
+    for (const tool of listed) {
+      expect(tool.description ?? "", tool.name).not.toMatch(/restore_comment|update_integration|create_tag|#\d{3,}\b|comment number|SUPERFLOW_DEFAULT_PROJECT/);
     }
   });
 

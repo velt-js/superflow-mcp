@@ -7,7 +7,7 @@ export const PRIORITIES = ["none", "low", "medium", "high", "critical"] as const
 export const DEVICES = ["desktop", "mobile", "tablet"] as const;
 export const AUTHOR_TYPES = ["member", "guest", "agent"] as const;
 export const SOURCES = ["widget", "extension", "figma", "voice", "api", "agent"] as const;
-export const SORTS = ["updated_desc", "created_desc", "created_asc", "priority_desc", "page", "number"] as const;
+export const SORTS = ["updated_desc", "created_desc", "created_asc", "priority_desc", "page"] as const;
 export const GROUP_BY = [
   "status",
   "priority",
@@ -50,13 +50,13 @@ export const projectRefSchema = z
 export const commentRefSchema = z
   .string()
   .min(1)
-  .describe("Comment: its number (\"4821\" or \"#4821\") or id (cmt_...). Numbers need a project.");
+  .describe("Comment: its id (cmt_...) or its link (the url every comment carries), from a list call.");
 
-export const projectForNumberSchema = z
+export const commentProjectSchema = z
   .string()
   .min(1)
   .optional()
-  .describe("Project for a comment number (name, site URL or id). Not needed for cmt_ ids. Defaults to SUPERFLOW_DEFAULT_PROJECT when set.");
+  .describe("Project the comment is in (name, site URL or id). Optional: it narrows the lookup.");
 
 export const peopleListSchema = (what: string) =>
   z
@@ -109,7 +109,7 @@ export const filterShape = {
     .describe("Assignees: names, emails, ids, \"me\", or \"unassigned\" for comments with no assignee."),
   author: peopleListSchema("Authors"),
   author_type: z.array(z.enum(AUTHOR_TYPES)).optional().describe("One or more of member (your team), guest (clients and reviewers) and agent (AI review agents), as an array."),
-  tags: z.array(z.string().min(1)).optional().describe("Tag names or ids. See tags_match."),
+  tags: z.array(z.string().min(1)).optional().describe("Tag names (any case) or ids (tag_...). A tag no comment carries matches nothing. See tags_match."),
   tags_match: z.enum(["any", "all"]).optional().describe("any (default): a comment with any of the tags. all: every tag."),
   query: z.string().min(1).optional().describe("Case-insensitive text search over every message in the thread."),
   created_after: z.string().min(1).optional().describe(`Created at or after. ${DATE_DESCRIPTION}`),
@@ -131,7 +131,7 @@ export const filterShape = {
   has_external_link: z
     .boolean()
     .optional()
-    .describe("true: only comments pushed to a tracker (Jira, Asana, ClickUp, Monday) with superflow_push_comment. false: only comments without one."),
+    .describe("true: only comments linked to a tracker item (Jira, Asana, ClickUp, Monday), by superflow_push_comment or a workflow's sync. false: only comments without one."),
   unanswered: z
     .boolean()
     .optional()
@@ -143,7 +143,7 @@ export const filterShape = {
     .optional()
     .describe("Where the comment came from: widget (toolbar), agent, api, figma, voice, extension."),
   agent: z.string().min(1).optional().describe("AI review agent name or id (agt_...)."),
-  agent_run: z.string().min(1).optional().describe("Agent run id (run_... or the raw execution id)."),
+  agent_run: z.string().min(1).optional().describe("Agent run id (run_... or the raw execution id), or the run_id superflow_import_findings returned."),
   rule_key: z
     .array(z.string().min(1).max(64))
     .optional()
@@ -223,6 +223,17 @@ export const httpUrlSchema = z
 export const hexColorSchema = z
   .string()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex color like #605CEC");
+
+/** A tag to put on a comment: a name or tag_ id, or a new tag with its color. */
+export const tagInputSchema = z.union([
+  z.string().min(1).max(64).describe("Tag name or id (tag_...)."),
+  z
+    .object({
+      name: z.string().min(1).max(64).describe("Tag name, up to 64 characters."),
+      color: hexColorSchema.optional().describe("Hex color for a new tag, for example #b3261e. Default #605CEC."),
+    })
+    .describe("A tag by name, with the color it gets when it is new."),
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Phase 3 (agents, runs, schedules, integrations).

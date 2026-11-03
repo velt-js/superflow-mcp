@@ -93,7 +93,6 @@ async function runOne(entry: EvalPrompt): Promise<Outcome> {
     apiKey: process.env.SUPERFLOW_TEST_API_KEY ?? "",
     baseUrl: process.env.SUPERFLOW_API_BASE_URL,
     readOnly: entry.read_only ?? false,
-    ...(entry.default_project ? { defaultProject: entry.default_project } : {}),
   });
   const steps: Step[] = [];
   const failures: string[] = [];
@@ -101,7 +100,7 @@ async function runOne(entry: EvalPrompt): Promise<Outcome> {
   let finalText = "";
   try {
     const tools = toClaudeTools(session.tools);
-    const system = systemPrompt(session, entry.default_project);
+    const system = systemPrompt(session);
     const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: entry.prompt }];
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {

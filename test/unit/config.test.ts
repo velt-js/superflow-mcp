@@ -6,7 +6,6 @@ describe("loadConfig", () => {
     expect(loadConfig({ SUPERFLOW_API_KEY: "sf_pat_x" })).toEqual({
       apiKey: "sf_pat_x",
       baseUrl: DEFAULT_BASE_URL,
-      defaultProject: undefined,
       readOnly: false,
       logLevel: "info",
     });
@@ -17,14 +16,12 @@ describe("loadConfig", () => {
       loadConfig({
         SUPERFLOW_API_KEY: " sf_pat_x ",
         SUPERFLOW_API_BASE_URL: "https://api.staging.example.com/v1/",
-        SUPERFLOW_DEFAULT_PROJECT: "Acme Dental",
         SUPERFLOW_READ_ONLY: "TRUE",
         SUPERFLOW_LOG_LEVEL: "debug",
       }),
     ).toEqual({
       apiKey: "sf_pat_x",
       baseUrl: "https://api.staging.example.com/v1",
-      defaultProject: "Acme Dental",
       readOnly: true,
       logLevel: "debug",
     });

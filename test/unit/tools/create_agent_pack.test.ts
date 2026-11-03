@@ -12,7 +12,7 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, { name: "Pre-Launch", agents: ["Proofreader", "Legal footer"] });
     expect(data(result)).toEqual(agentPack);
-    expect(summaryOf(result)).toBe("Created agent pack Pre-Launch (2 agents, default for runs), id pck_pre.");
+    expect(summaryOf(result)).toBe("Created agent pack Pre-Launch (2 agents), id pck_pre.");
     expect(recorded[0]?.body).toEqual({ name: "Pre-Launch", agents: ["Proofreader", "Legal footer"], idempotency_key: expect.any(String) });
   });
 

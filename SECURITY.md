@@ -77,8 +77,7 @@ client with a valid key will not hit these limits in normal use.
 | `superflow_update_comment` | Changes a comment's text, status, priority, assignee or tags |
 | `superflow_resolve_comment`, `superflow_reopen_comment` | Changes status, and can post a note as a reply |
 | `superflow_add_reply`, `superflow_update_reply` | Posts or edits a reply, notifying anyone mentioned |
-| `superflow_delete_comment`, `superflow_delete_reply` | Deletes (comments can be restored for a limited time; replies cannot) |
-| `superflow_restore_comment` | Restores a deleted comment |
+| `superflow_delete_comment`, `superflow_delete_reply` | Deletes for good (neither can be restored) |
 | `superflow_bulk_update_comments` | Changes up to 200 comments at once |
 | `superflow_add_attachment` | Superflow downloads the file at the URL you give and attaches it |
 

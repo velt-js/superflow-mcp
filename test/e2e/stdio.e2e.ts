@@ -65,7 +65,7 @@ function expectWellFormed(name: string, result: CallToolResult): void {
 
 /** The tools the source registers, listed in process, to prove the bundle matches the source. */
 async function sourceTools(readOnly: boolean): Promise<string[]> {
-  const config = { apiKey: KEY, baseUrl: "https://api.superflow.test/v1", defaultProject: undefined, readOnly, logLevel: "silent" as const };
+  const config = { apiKey: KEY, baseUrl: "https://api.superflow.test/v1", readOnly, logLevel: "silent" as const };
   const mcp = createServer({ config, client: new ApiClient({ apiKey: KEY, baseUrl: config.baseUrl, logger: silentLogger }), logger: silentLogger });
   const client = new Client({ name: "source", version: "0.0.0" });
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -115,6 +115,11 @@ describe("handshake", () => {
 describe("tools/list", () => {
   it("the built bundle registers exactly the tools the source does", async () => {
     expect(tools.map((t) => t.name).sort()).toEqual((await sourceTools(false)).sort());
+  });
+
+  it("does not serve the tools whose API routes were dropped (restore, create tag, integration default project)", () => {
+    const names = tools.map((t) => t.name);
+    for (const gone of ["superflow_restore_comment", "superflow_create_tag", "superflow_update_integration"]) expect(names).not.toContain(gone);
   });
 
   it("has one entry per name, all prefixed superflow_", () => {
@@ -369,7 +374,7 @@ describe("hygiene", () => {
 
   it("debug logs on stderr never carry the key, a request body or comment text", async () => {
     const secretText = "E2E-PRIVATE-COMMENT-TEXT-7f3a";
-    api.answer("createComment", { status: 201, body: { id: "cmt_1", text: secretText, number: 1 } });
+    api.answer("createComment", { status: 201, body: { id: "cmt_1", text: secretText } });
     await server.call("superflow_create_comment", { project: "prj_1", page_url: "https://example.com/", text: secretText });
     await server.call("superflow_get_me");
     const logs = server.stderr();

@@ -175,7 +175,6 @@ export function echoLookups(args: Record<string, unknown>): FakeResponder {
     selector: v,
     key: v,
     rule_key: v,
-    number: i + 1,
     project: { id: v, name: v },
     mode: "watch",
     test_enabled: false,

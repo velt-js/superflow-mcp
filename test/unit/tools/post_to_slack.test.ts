@@ -62,9 +62,9 @@ describe(TOOL, () => {
   it("previews comment ids without reading them", async () => {
     on("get", "/integrations/:integration", ok(slackIntegration));
     const h = await connect();
-    const result = await h.call(TOOL, { integration: "Acme workspace", comments: ["cmt_8f3k2", "#4822"] });
+    const result = await h.call(TOOL, { integration: "Acme workspace", comments: [" cmt_8f3k2 ", "https://acme.com/?scommentId=9x"] });
     expect(summaryOf(result)).toBe("Would post to Slack #design-feedback (Acme workspace): 2 comments. Nothing was posted. Ask the user to confirm.");
-    expect((data(result).preview as { comments: string[] }).comments).toEqual(["cmt_8f3k2", "4822"]);
+    expect((data(result).preview as { comments: string[] }).comments).toEqual(["cmt_8f3k2", "https://acme.com/?scommentId=9x"]);
     expect(recorded.map((r) => r.operationId)).toEqual(["getIntegration"]);
     expect(writes()).toEqual([]);
   });
@@ -81,13 +81,13 @@ describe(TOOL, () => {
   it("posts with confirm: true, without sending confirm to the API", async () => {
     on("post", "/integrations/slack/post", ok(posted));
     const h = await connect();
-    const result = await h.call(TOOL, { integration: "int_1a2b3c", text: "Done.", comments: ["4821"], template: "summary", confirm: true });
+    const result = await h.call(TOOL, { integration: "int_1a2b3c", text: "Done.", comments: ["cmt_8f3k2"], template: "summary", confirm: true });
     expect(data(result)).toEqual(posted);
     expect(summaryOf(result)).toBe(
       "Posted the message to Slack #design-feedback with 1 comment. Link: https://example.slack.com/archives/C1/p123",
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["postToSlack"]);
-    expect(recorded[0]?.body).toEqual({ integration: "int_1a2b3c", text: "Done.", comments: ["4821"], template: "summary" });
+    expect(recorded[0]?.body).toEqual({ integration: "int_1a2b3c", text: "Done.", comments: ["cmt_8f3k2"], template: "summary" });
   });
 
   it("passes a refused post through as upstream and does not post it again", async () => {
@@ -103,7 +103,7 @@ describe(TOOL, () => {
 
   it("checks the input before any request", async () => {
     const h = await connect();
-    expect(errorOf(await h.call(TOOL, { integration: "int_1", comments: ["4821"], filter: { project: "Acme" } })).message).toBe(
+    expect(errorOf(await h.call(TOOL, { integration: "int_1", comments: ["cmt_8f3k2"], filter: { project: "Acme" } })).message).toBe(
       "Give comments or filter, not both.",
     );
     expect(errorOf(await h.call(TOOL, { integration: "int_1" })).message).toBe("Nothing to post. Give text, comments or filter.");

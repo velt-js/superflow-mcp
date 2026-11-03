@@ -220,17 +220,17 @@ describe("superflow_reject_comment", () => {
 
   it("without confirm only reads the finding and returns a preview: nothing is rejected", async () => {
     on("get", "/comments/:comment", ok(agentFinding));
-    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "wrong" }));
+    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1" }, reason: "wrong" }));
     const h = await connect();
     const result = await h.call(TOOL, { comment: "cmt_a1", reason: "wrong", note: "Decorative image." });
     expect(result.isError).toBeFalsy();
     expect(data(result)).toMatchObject({
       needs_confirmation: true,
-      preview: { comment: { id: "cmt_a1", number: 4821 }, reason: "wrong", note: "Decorative image." },
+      preview: { comment: { id: "cmt_a1" }, reason: "wrong", note: "Decorative image." },
       message: CONFIRM_REJECT_COMMENT_MESSAGE,
     });
     expect(summaryOf(result)).toBe(
-      `Finding #4821 in Acme Dental would be rejected as wrong. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${agentFinding.url}`,
+      `Finding cmt_a1 in Acme Dental would be rejected as wrong. Rejecting cannot be undone. Nothing was rejected. Ask the user to confirm. Link: ${agentFinding.url}`,
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["getComment"]);
     expect(writes()).toEqual([]);
@@ -246,23 +246,23 @@ describe("superflow_reject_comment", () => {
   });
 
   it("with confirm sends the reason and the note", async () => {
-    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "wrong" }));
+    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1" }, reason: "wrong" }));
     const h = await connect();
     const result = await h.call(TOOL, { comment: "cmt_a1", reason: "wrong", note: "Decorative image.", confirm: true });
     expect(recorded.map((r) => r.operationId)).toEqual(["rejectComment"]);
     expect(recorded[0]?.body).toEqual({ reason: "wrong", note: "Decorative image." });
-    expect(summaryOf(result)).toBe("Rejected #4821 as wrong.");
+    expect(summaryOf(result)).toBe("Rejected cmt_a1 as wrong.");
   });
 
-  it("a number needs its project", async () => {
+  it("passes the project through when given, on the preview and the reject", async () => {
     on("get", "/comments/:comment", ok(agentFinding));
-    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1", number: 4821 }, reason: "not_important" }));
+    on("post", "/comments/:comment/reject", ok({ comment: { id: "cmt_a1" }, reason: "not_important" }));
     const h = await connect();
-    await h.call(TOOL, { comment: "#4821", project: "Acme Dental", reason: "not_important" });
-    expect(recorded[0]?.path).toBe("/comments/4821");
+    await h.call(TOOL, { comment: "cmt_a1", project: "Acme Dental", reason: "not_important" });
+    expect(recorded[0]?.path).toBe("/comments/cmt_a1");
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "false" });
-    await h.call(TOOL, { comment: "#4821", project: "Acme Dental", reason: "not_important", confirm: true });
-    expect(recorded[1]?.path).toBe("/comments/4821/reject");
+    await h.call(TOOL, { comment: "cmt_a1", project: "Acme Dental", reason: "not_important", confirm: true });
+    expect(recorded[1]?.path).toBe("/comments/cmt_a1/reject");
     expect(recorded[1]?.body).toEqual({ project: "Acme Dental", reason: "not_important" });
   });
 

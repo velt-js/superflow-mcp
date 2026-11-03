@@ -11,7 +11,7 @@ const TOOL = "superflow_export_comments";
 const inline: ExportResponse = {
   format: "markdown",
   row_count: 2,
-  content: "| # | Text |\n|---|---|\n| 4821 | Button overlaps the nav |\n| 4822 | Typo in hero |",
+  content: "| Comment | Text |\n|---|---|\n| cmt_8f3k2 | Button overlaps the nav |\n| cmt_9x | Typo in hero |",
   download_url: null,
   expires_at: null,
   applied_filters: appliedProject,

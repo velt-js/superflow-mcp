@@ -245,7 +245,6 @@ export function toCompactComment(comment: CommentFull): CommentCompact {
   const author = comment.author ? `${comment.author.name} (${comment.author.type ?? "member"})` : "unknown";
   return {
     id: comment.id,
-    number: comment.number ?? null,
     project: comment.project?.name ?? "",
     project_id: comment.project?.id ?? "",
     page_url: comment.page?.url ?? null,
@@ -264,9 +263,4 @@ export function toCompactComment(comment: CommentFull): CommentCompact {
     suggested_fix: comment.agent?.suggested_fix ? truncateText(comment.agent.suggested_fix, 300) : null,
     url: comment.url,
   };
-}
-
-/** "#4821" when the comment has a number, else its id. */
-export function commentLabel(comment: { number?: number | null; id: string }): string {
-  return typeof comment.number === "number" ? `#${comment.number}` : comment.id;
 }

@@ -37,9 +37,7 @@ function instructions(readOnly: boolean, surface: "stdio" | "hosted", registered
   const lines = [
     "Superflow holds website feedback: comments pinned on live pages by your team (members), clients and reviewers (guests), and AI review agents.",
     "Find comments with superflow_list_comments. For counts and breakdowns use superflow_comment_stats, it is cheaper.",
-    surface === "hosted"
-      ? "Projects, people, statuses and tags can be given by name, URL, email or id. Comment numbers like #4821 need a project."
-      : "Projects, people, statuses and tags can be given by name, URL, email or id. Comment numbers like #4821 need a project unless SUPERFLOW_DEFAULT_PROJECT is set.",
+    "Projects, people, statuses and tags can be given by name, URL, email or id. A comment is given by its id (cmt_...) or its link.",
     "Admin tools manage projects, pages, members, guests, statuses, tags, review links, the workspace and your own notification settings.",
     has("superflow_run_agents")
       ? "AI review agents check sites and leave findings as comments. Price a run with superflow_estimate_run before superflow_run_agents, follow it with superflow_get_run (at most every 20 seconds) and read the results with superflow_list_findings."
@@ -56,7 +54,7 @@ function instructions(readOnly: boolean, surface: "stdio" | "hosted", registered
       ? surface === "hosted"
         ? "This connection is read-only: write tools are not available. To make changes, the user reconnects Superflow and allows the write permissions."
         : "This server is read-only: write tools are not available."
-      : "Ask the user before any write. Invites send real email. Bulk updates are dry runs until called with dry_run false and confirm true. Deletes, removals, merges and revokes need confirm true: without it they only return a preview. Agent runs spend AI credits: show the estimate and get a yes before calling superflow_run_agents with confirm true. Marking a check fixed, excluding a check, rejecting an agent finding, and creating or changing a schedule need confirm true too. Pushed issues and Slack posts land in the customer's own tools, where their team sees them: ask first.",
+      : "Ask the user before any write. Invites send real email. Bulk updates are dry runs until called with dry_run false and confirm true. Deletes, removals, merges and revokes need confirm true: without it they only return a preview. Deleted comments cannot be restored. Agent runs spend AI credits: show the estimate and get a yes before calling superflow_run_agents with confirm true. Marking a check fixed, excluding a check, rejecting an agent finding, and creating or changing a schedule need confirm true too. Pushed issues and Slack posts land in the customer's own tools, where their team sees them: ask first.",
   );
   return lines.join("\n");
 }

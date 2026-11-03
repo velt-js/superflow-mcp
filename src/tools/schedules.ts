@@ -28,8 +28,14 @@ function label(value: Schedule["project"] | Schedule["pack"]): string | undefine
   return value ? (value.name ?? value.id) : undefined;
 }
 
+/** How the newest run of a schedule went (last_run.status), in words. */
 const LAST_RUN_LABELS: Record<string, string> = {
+  started: "started",
+  in_progress: "in progress",
   skipped_insufficient_credits: "skipped (not enough AI credits)",
+  skipped_no_changes: "skipped (nothing changed since the last scan)",
+  skipped_creator_removed: "skipped (its creator no longer has access)",
+  skipped_no_agents: "skipped (no agents)",
   failed_to_start: "failed to start",
 };
 
@@ -83,7 +89,8 @@ export const setSchedule = defineTool({
   title: "Create or change a schedule",
   description: [
     "Schedule AI agent runs on a project with a cron expression, for example every Monday at 9:00. Without schedule this creates a new schedule; with schedule (a sch_ id) it changes only the fields you give.",
-    "Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm. When the balance is too low at run time, that run is skipped and last_run shows skipped_insufficient_credits (failed_to_start when the run could not start).",
+    "Every scheduled run spends AI credits, like superflow_run_agents. Without confirm: true nothing is created or changed: you get when it would run, which agents, and the price of one run (from the estimate) as a preview to show the user. Call again with confirm: true only after the user says yes. Pausing (enabled: false) and moving the time zone need no confirm.",
+    "The agents are fixed when the schedule is saved: the agents you name, the pack's members, or the default agents at that time. A pack changed with superflow_update_agent_pack updates its schedules; a pack changed in the portal, or a new default agent, is picked up the next time the schedule is saved. A skipped run spends nothing, and last_run.status says why: skipped_insufficient_credits, skipped_no_changes, skipped_creator_removed or skipped_no_agents; failed_to_start means it could not start. Its runs show in superflow_list_runs with trigger workflow.",
     "Runs at most once an hour: more frequent crons are refused. Delete with superflow_delete_schedule. For one run now use superflow_run_agents.",
     'Example: {"project": "Acme Dental", "cron": "0 9 * * 1", "timezone": "Europe/Berlin", "pack": "Pre-Launch"}',
   ].join("\n"),
@@ -178,8 +185,10 @@ export const setSchedule = defineTool({
     if (spendsMore && !isConfirmed(args.confirm)) {
       const current = await findSchedule(api, args.schedule.trim());
       if (!current) return scheduleNotFound(args.schedule.trim());
-      // The schedule as it would be after the change: given fields win, null clears.
-      const agents = args.agents === null ? undefined : (args.agents ?? (args.pack ? undefined : current.agents?.map((agent) => agent.id)));
+      // The schedule as it would be after the change: given fields win, null clears. Its agents
+      // are its pack's members when it has a pack, so the pack is priced, never both.
+      const currentAgents = current.pack ? undefined : current.agents?.map((agent) => agent.id);
+      const agents = args.agents === null ? undefined : (args.agents ?? (args.pack ? undefined : currentAgents));
       const pack = args.pack === null ? undefined : (args.pack ?? (args.agents ? undefined : current.pack?.id));
       const price = await pricePerRun(api, {
         project: args.project ?? current.project.id,
@@ -207,8 +216,8 @@ export const listSchedules = defineTool({
   name: "superflow_list_schedules",
   title: "List schedules",
   description: [
-    "List scheduled agent runs: project, cron and time zone, agents or pack, whether each is on, the next run time and how the last run went (including runs skipped for lack of credits).",
-    "Use it before creating, changing or deleting a schedule. For runs that already happened use superflow_list_runs.",
+    "List scheduled agent runs: project, cron and time zone, the agents every run uses (fixed when the schedule was saved) and the pack they came from, whether each is on, the next run time and how the newest run went (last_run.status: started, in_progress, failed_to_start, or skipped_insufficient_credits, skipped_no_changes, skipped_creator_removed or skipped_no_agents).",
+    "Use it before creating, changing or deleting a schedule. For runs that already happened use superflow_list_runs (a schedule's runs have trigger workflow).",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {

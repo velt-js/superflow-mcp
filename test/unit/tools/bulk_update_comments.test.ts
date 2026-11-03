@@ -86,19 +86,27 @@ describe(TOOL, () => {
     });
   });
 
-  it("selects by ids and injects the default project for numbers", async () => {
+  it("selects by ids and links, trimmed, with the project only when given", async () => {
     on("post", "/comments/bulk", ok(dryRun));
-    const h = await connect({ defaultProject: "Acme Dental" });
-    await h.call(TOOL, { comment_ids: ["#4821", "4822", "cmt_9x"], patch: { assignees: ["Jen"], priority: "high" } });
+    const h = await connect();
+    await h.call(TOOL, { comment_ids: [" cmt_8f3k2 ", "https://acme.com/?scommentId=9x"], patch: { assignees: ["Jen"], priority: "high" } });
     expect((recorded[0]?.body as { select: unknown }).select).toEqual({
-      comment_ids: ["4821", "4822", "cmt_9x"],
-      project: "Acme Dental",
+      comment_ids: ["cmt_8f3k2", "https://acme.com/?scommentId=9x"],
     });
+    await h.call(TOOL, { comment_ids: ["cmt_8f3k2"], project: "Acme Dental", patch: { priority: "high" } });
+    expect((recorded[1]?.body as { select: unknown }).select).toEqual({ comment_ids: ["cmt_8f3k2"], project: "Acme Dental" });
+  });
+
+  it("adds tags by name or as a new tag with a color", async () => {
+    on("post", "/comments/bulk", ok(dryRun));
+    const h = await connect();
+    await h.call(TOOL, { comment_ids: ["cmt_8f3k2"], patch: { add_tags: ["copy", { name: "launch blocker", color: "#b3261e" }] } });
+    expect((recorded[0]?.body as { patch: unknown }).patch).toEqual({ add_tags: ["copy", { name: "launch blocker", color: "#b3261e" }] });
   });
 
   it("sends project with a filter so the API can use it as the filter's project", async () => {
     on("post", "/comments/bulk", ok(dryRun));
-    const h = await connect({ defaultProject: "Other" });
+    const h = await connect();
     await h.call(TOOL, { project: "Acme Dental", filter: { tags: ["copy"] }, patch: { add_tags: ["done"] } });
     expect((recorded[0]?.body as { select: unknown }).select).toEqual({ filter: { tags: ["copy"] }, project: "Acme Dental" });
   });

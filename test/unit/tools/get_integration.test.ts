@@ -7,19 +7,22 @@ useMsw();
 const TOOL = "superflow_get_integration";
 
 describe(TOOL, () => {
-  it("returns one connection with its default project", async () => {
+  it("returns one connection, with no default project or settings", async () => {
     on("get", "/integrations/:integration", ok(jiraIntegration));
     const h = await connect();
     const result = await h.call(TOOL, { integration: "Acme Jira" });
     expect(data(result)).toEqual(jiraIntegration);
-    expect(summaryOf(result)).toBe("Jira: Acme Jira, example.atlassian.net (int_7g8h9i, connected). Default project: WEB:10001.");
+    expect(summaryOf(result)).toBe("Jira: Acme Jira, example.atlassian.net (int_7g8h9i, connected).");
+    expect(summaryOf(result)).not.toContain("efault project");
     expect(recorded[0]?.path).toBe("/integrations/Acme%20Jira");
   });
 
-  it("says when no default project is set", async () => {
-    on("get", "/integrations/:integration", ok(slackIntegration));
+  it("says when a connection needs reconnecting", async () => {
+    on("get", "/integrations/:integration", ok({ ...slackIntegration, status: "needs_reauth" }));
     const h = await connect();
-    expect(summaryOf(await h.call(TOOL, { integration: "int_1a2b3c" }))).toContain("No default project set.");
+    expect(summaryOf(await h.call(TOOL, { integration: "int_1a2b3c" }))).toBe(
+      "Slack: Acme workspace, #design-feedback (int_1a2b3c, needs reconnecting). It needs reconnecting: get a link with superflow_connect_integration.",
+    );
   });
 
   standardErrorCases({

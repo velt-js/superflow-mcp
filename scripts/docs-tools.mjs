@@ -14,7 +14,6 @@ const OUTPUT = fileURLToPath(new URL("../docs/tools.md", import.meta.url));
 const config = {
   apiKey: "sf_pat_docs",
   baseUrl: "https://api.usesuperflow.ai/v1",
-  defaultProject: undefined,
   readOnly: false,
   logLevel: "silent",
 };
@@ -60,7 +59,7 @@ const lines = [
     tools.filter((t) => t.annotations?.readOnlyHint).length
   } read-only tools are registered.`,
   "",
-  "Every id parameter also takes a name, URL, email or number: the API resolves it. Comment numbers need a project, or `SUPERFLOW_DEFAULT_PROJECT`.",
+  "Every id parameter also takes a name, URL or email: the API resolves it. A comment is given by its id (`cmt_...`) or its link.",
   "",
   "| Tool | Title | Read only | Destructive | Idempotent | Open world |",
   "|---|---|---|---|---|---|",

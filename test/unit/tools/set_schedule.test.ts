@@ -49,7 +49,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme Dental", cron: "0 9 * * 1", timezone: "Europe/Berlin", pack: "Pre-Launch", confirm: true });
     expect(data(result)).toEqual(schedule);
     expect(summaryOf(result)).toBe(
-      "Created schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run done. Each run spends AI credits.",
+      "Created schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run started. Each run spends AI credits.",
     );
     expect(recorded[0]?.operationId).toBe("createSchedule");
     expect(recorded[0]?.body).toEqual({
@@ -109,6 +109,30 @@ describe(TOOL, () => {
     expect(recorded[1]?.body).toEqual({ project: "prj_1a2b", scope: "site", pack: "Pre-Launch" });
   });
 
+  it("a pack schedule is priced with its pack, not with the pack's members it lists as agents", async () => {
+    on("get", "/schedules", ok({ items: [schedule], next_cursor: null }));
+    on("post", "/runs/estimate", ok(estimate));
+    const h = await connect();
+    await h.call(TOOL, { schedule: "sch_4d5e6f", cron: "0 8 * * 1" });
+    expect(recorded[1]?.body).toEqual({ project: "prj_1a2b", scope: "site", pack: "pck_pre" });
+    await h.call(TOOL, { schedule: "sch_4d5e6f", pack: null, cron: "0 8 * * 1" });
+    // Clearing the pack falls back to the default agents, as the API plans it.
+    expect(recorded[3]?.body).toEqual({ project: "prj_1a2b", scope: "site" });
+  });
+
+  it("names every way the newest run was skipped", async () => {
+    for (const [status, words] of [
+      ["skipped_no_changes", "last run skipped (nothing changed since the last scan)."],
+      ["skipped_creator_removed", "last run skipped (its creator no longer has access)."],
+      ["skipped_no_agents", "last run skipped (no agents)."],
+      ["in_progress", "last run in progress."],
+    ] as const) {
+      on("patch", "/schedules/:schedule", ok({ ...schedule, last_run: { run_id: null, at: "2026-10-05T07:00:00Z", status } }));
+      const h = await connect();
+      expect(summaryOf(await h.call(TOOL, { schedule: "sch_4d5e6f", timezone: "UTC" }))).toContain(words);
+    }
+  });
+
   it("previewing a change to an unknown schedule is not_found", async () => {
     on("get", "/schedules", ok({ items: [schedule], next_cursor: null }));
     const h = await connect();
@@ -128,7 +152,7 @@ describe(TOOL, () => {
     const h = await connect();
     const result = await h.call(TOOL, { schedule: "sch_4d5e6f", enabled: false });
     expect(summaryOf(result)).toBe(
-      "Updated schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, paused, last run done.",
+      "Updated schedule sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, paused, last run started.",
     );
     expect(recorded[0]?.path).toBe("/schedules/sch_4d5e6f");
     expect(recorded[0]?.body).toEqual({ enabled: false });

@@ -138,7 +138,6 @@ export interface Harness {
 
 export interface HarnessOptions {
   readOnly?: boolean;
-  defaultProject?: string;
   surface?: "stdio" | "hosted";
   renamedTools?: Record<string, string>;
   onToolCall?: (event: { tool: string; ok: boolean; durationMs: number }) => void;
@@ -148,7 +147,6 @@ export function testConfig(options: HarnessOptions = {}): Config {
   return {
     apiKey: TEST_KEY,
     baseUrl: BASE,
-    defaultProject: options.defaultProject,
     readOnly: options.readOnly ?? false,
     logLevel: "silent",
   };
@@ -257,13 +255,13 @@ export function standardErrorCases(options: StandardCaseOptions): void {
   });
 
   it("returns not_found as a tool error with the API hint", async () => {
-    on(method, path, fail(404, { code: "not_found", message: "No comment #4821 in project Acme Dental.", hint: "List comments first." }));
+    on(method, path, fail(404, { code: "not_found", message: 'No comment matches "cmt_nope".', hint: "List comments first." }));
     const h = await connect(options.harness);
     const result = await h.call(tool, args);
     const error = errorOf(result);
     expect(error).toEqual({
       code: "not_found",
-      message: "No comment #4821 in project Acme Dental.",
+      message: 'No comment matches "cmt_nope".',
       hint: "List comments first.",
       candidates: [],
     });

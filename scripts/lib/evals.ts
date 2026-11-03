@@ -35,7 +35,6 @@ export interface EvalPrompt {
   expect_tools_any_order?: string[];
   check?: Check[];
   read_only?: boolean;
-  default_project?: string;
 }
 
 export interface Placeholders {
@@ -50,7 +49,6 @@ export function loadPrompts(placeholders: Placeholders): EvalPrompt[] {
   return (JSON.parse(raw) as EvalPrompt[]).map((entry) => ({
     ...entry,
     prompt: fill(entry.prompt),
-    ...(entry.default_project ? { default_project: fill(entry.default_project) } : {}),
   }));
 }
 
@@ -70,12 +68,10 @@ export async function startServer(options: {
   apiKey: string;
   baseUrl?: string;
   readOnly?: boolean;
-  defaultProject?: string;
 }): Promise<McpSession> {
   const config: Config = {
     apiKey: options.apiKey,
     baseUrl: options.baseUrl ?? DEFAULT_BASE_URL,
-    defaultProject: options.defaultProject,
     readOnly: options.readOnly ?? false,
     logLevel: "silent",
   };
@@ -108,13 +104,12 @@ export function toClaudeTools(tools: Tool[]): Anthropic.Beta.BetaTool[] {
   });
 }
 
-export function systemPrompt(session: McpSession, defaultProject?: string): string {
+export function systemPrompt(session: McpSession): string {
   const lines = [
     "You are an assistant connected to the user's Superflow workspace through MCP tools.",
     "Use the tools to answer. Follow the server instructions below.",
     `Today is ${new Date().toISOString().slice(0, 10)}.`,
   ];
-  if (defaultProject) lines.push(`SUPERFLOW_DEFAULT_PROJECT is set to "${defaultProject}".`);
   lines.push("", "Server instructions:", session.instructions);
   return lines.join("\n");
 }

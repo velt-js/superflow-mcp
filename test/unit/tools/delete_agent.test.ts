@@ -9,7 +9,8 @@ const TOOL = "superflow_delete_agent";
 
 describe(TOOL, () => {
   it("without confirm, reads the agent and the schedules and returns a preview", async () => {
-    // A schedule that names the agent next to another agent keeps running without it.
+    // A schedule that runs the agent next to another agent keeps running without it. A pack's
+    // schedule lists the pack's members as its agents, so it runs the agent too.
     const shared = {
       ...agentSchedule,
       id: "sch_shared",
@@ -26,11 +27,11 @@ describe(TOOL, () => {
     expect(result.isError).toBeFalsy();
     expect(data(result)).toEqual({
       needs_confirmation: true,
-      preview: { agent: customAgentDetail, packs: customAgentDetail.packs, schedules_using: [agentSchedule, shared] },
+      preview: { agent: customAgentDetail, packs: customAgentDetail.packs, schedules_using: [schedule, agentSchedule, shared] },
       message: CONFIRM_DELETE_AGENT_MESSAGE,
     });
     expect(summaryOf(result)).toBe(
-      "Agent Legal footer (agt_legal1) would be deleted for good. It is in 1 pack: Pre-Launch. 2 schedules name it; 1 would have no agents left and would be turned off. Nothing was deleted. Ask the user to confirm.",
+      "Agent Legal footer (agt_legal1) would be deleted for good. It is in 1 pack: Pre-Launch. 3 schedules run it; 1 would have no agents left and would be turned off. Nothing was deleted. Ask the user to confirm.",
     );
     expect(recorded.map((r) => r.operationId)).toEqual(["getAgent", "listSchedules"]);
     expect(writes()).toEqual([]);

@@ -127,13 +127,12 @@ describe.skipIf(!enabled)("integration: comment lifecycle against the real API",
     data<CommentFull>(await call("superflow_get_comment", { comment: commentId }));
   });
 
-  it("deletes with confirm, restores, and deletes again", async () => {
+  it("deletes with confirm, for good", async () => {
     const removed = data<{ deleted: boolean }>(await call("superflow_delete_comment", { comment: commentId, confirm: true }));
     expect(removed.deleted).toBe(true);
-    const restored = data<CommentFull>(await call("superflow_restore_comment", { comment: commentId }));
-    expect(restored.id).toBe(commentId);
-    const again = data<{ deleted: boolean }>(await call("superflow_delete_comment", { comment: commentId, confirm: true }));
-    expect(again.deleted).toBe(true);
     deleted = true;
+    const gone = await call("superflow_get_comment", { comment: commentId });
+    expect(gone.isError).toBe(true);
+    expect((gone.structuredContent as { error?: { code?: string } }).error?.code).toBe("not_found");
   });
 }, 120_000);

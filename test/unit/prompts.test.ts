@@ -115,13 +115,12 @@ describe("prompts", () => {
 
   it("agent_findings_review picks the latest finished run when none is given", async () => {
     const text = await promptText("agent_findings_review", { project: "Acme Dental" });
-    expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","limit":5}');
-    expect(text).toContain("done or partial");
-    expect(text).toContain('3. Call superflow_get_run with {"run":"<the run id>"}');
-    // Portal and monitoring runs are not listed, so with no listed run it reviews the agent comments.
-    expect(text).toContain(
-      '2. If none is done or partial, say so: portal and Always-on Monitoring runs are not in that list. Review the open agent findings instead: call superflow_list_comments with {"project":"Acme Dental","author_type":["agent"],"status":["open"],"limit":100}',
-    );
+    // list_runs lists every run (the portal's and Always-on Monitoring's too), so there is no fallback.
+    expect(text).toContain('1. Call superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":1}');
+    expect(text).toContain("If there is none, say no run has finished yet and stop.");
+    expect(text).toContain('2. Call superflow_get_run with {"run":"<the run id>"}');
+    expect(text).not.toContain("superflow_list_comments");
+    expect(text).not.toContain("number");
   });
 
   it("agent_findings_review with a run id goes straight to the run", async () => {
@@ -136,6 +135,8 @@ describe("prompts", () => {
     expect(text.indexOf("superflow_estimate_run")).toBeLessThan(text.indexOf("superflow_run_agents"));
     expect(text).toContain("Only after a clear yes, call superflow_run_agents");
     expect(text).toContain("after a clear yes call superflow_push_comment");
+    expect(text).toContain('"project_key":"<KEY:12345>"');
+    expect(text).toContain("already_linked: true");
     expect(text).toContain("the default AI review agents");
     expect(text).not.toContain('"pack"');
   });
@@ -143,7 +144,8 @@ describe("prompts", () => {
   it("prelaunch_run in read-only mode estimates and reviews the last run, without running or pushing", async () => {
     const text = await promptText("prelaunch_run", { project: "Acme Dental", pack: "Pre-Launch" }, true);
     expect(text).toContain("superflow_estimate_run");
-    expect(text).toContain("superflow_list_runs");
+    expect(text).toContain('superflow_list_runs with {"project":"Acme Dental","status":["done","partial"],"limit":1}');
+    expect(text).not.toContain("superflow_list_failing_checks");
     expect(text).not.toContain("superflow_run_agents");
     expect(text).not.toContain("superflow_push_comment");
     expect(text).toContain("Writes are disabled on this server");

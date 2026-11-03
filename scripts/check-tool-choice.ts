@@ -35,11 +35,10 @@ const outcomes = await mapLimit(prompts, CONCURRENCY, async (entry): Promise<Out
   const session = await startServer({
     apiKey: "sf_pat_eval_tool_choice",
     readOnly: entry.read_only ?? false,
-    ...(entry.default_project ? { defaultProject: entry.default_project } : {}),
   });
   try {
     const message = await createMessage(anthropic, {
-      system: systemPrompt(session, entry.default_project),
+      system: systemPrompt(session),
       tools: toClaudeTools(session.tools),
       messages: [{ role: "user", content: entry.prompt }],
     });

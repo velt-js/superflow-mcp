@@ -13,7 +13,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { project: "Acme Dental" });
     expect(data(result)).toEqual(list([schedule, agentSchedule]));
     expect(summaryOf(result)).toBe(
-      "Found 2 schedules on Acme Dental. sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run done. sch_7g8h9i on Acme Dental: 0 9 * * 1 (Europe/Berlin), 1 agent, site scope, on, next run 2026-10-12T07:00:00Z, last run done. Agents: Legal footer.",
+      "Found 2 schedules on Acme Dental. sch_4d5e6f on Acme Dental: 0 9 * * 1 (Europe/Berlin), pack Pre-Launch, site scope, on, next run 2026-10-12T07:00:00Z, last run started. sch_7g8h9i on Acme Dental: 0 9 * * 1 (Europe/Berlin), 1 agent, site scope, on, next run 2026-10-12T07:00:00Z, last run started. Agents: Legal footer.",
     );
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental" });
   });

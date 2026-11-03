@@ -78,7 +78,7 @@ describe.skipIf(!enabled)("live: the built package against the real API", () => 
   const runId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   let server: Launched;
   let tools: Tool[] = [];
-  const created: { tag?: string } = {};
+  const created: { tag?: string; comment?: string } = {};
 
   beforeAll(async () => {
     server = await launch(env());
@@ -87,6 +87,7 @@ describe.skipIf(!enabled)("live: the built package against the real API", () => 
 
   afterAll(async () => {
     if (created.tag) await server.call("superflow_delete_tag", { tag: created.tag, confirm: true }).catch(() => undefined);
+    if (created.comment) await server.call("superflow_delete_comment", { comment: created.comment, confirm: true }).catch(() => undefined);
     await server?.close();
   });
 
@@ -135,21 +136,39 @@ describe.skipIf(!enabled)("live: the built package against the real API", () => 
     expect(second.items?.[0]?.id).not.toBe(first.items?.[0]?.id);
   }, 60_000);
 
-  it("a tag lifecycle: create, find, refuse to delete without confirm, delete", async () => {
+  it("a tag lifecycle: create by assigning, find, refuse to delete without confirm, delete", async () => {
     const name = `mcp-live-${runId}`;
-    data("create_tag", await server.call("superflow_create_tag", { name }));
+    const project = data<{ site_url?: string }>("get_project", await server.call("superflow_get_project", { project: PROJECT }));
+    expect(project.site_url, "the test project's site URL").toBeTruthy();
+    // A tag exists while a comment carries it: putting a new name on a comment creates it.
+    const comment = data<{ id: string; tags: string[] }>(
+      "create_comment",
+      await server.call("superflow_create_comment", {
+        project: PROJECT,
+        page_url: project.site_url,
+        text: `superflow-mcp live suite ${runId}`,
+        tags: [{ name, color: "#b3261e" }],
+      }),
+    );
+    created.comment = comment.id;
     created.tag = name;
-    expect(textOf(await server.call("superflow_list_tags", {}))).toContain(name);
+    expect(comment.tags).toContain(name);
+    expect(textOf(await server.call("superflow_list_tags", { project: PROJECT }))).toContain(name);
 
     const preview = await server.call("superflow_delete_tag", { tag: name });
     expect(preview.isError).toBeFalsy();
     expect(preview.structuredContent).toMatchObject({ needs_confirmation: true });
-    expect(textOf(await server.call("superflow_list_tags", {})), "still there after the preview").toContain(name);
+    expect(textOf(await server.call("superflow_list_tags", { project: PROJECT })), "still there after the preview").toContain(name);
 
-    data("delete_tag", await server.call("superflow_delete_tag", { tag: name, confirm: true }));
+    const result = data<{ removed_from: number; complete: boolean }>("delete_tag", await server.call("superflow_delete_tag", { tag: name, confirm: true }));
     created.tag = undefined;
-    expect(textOf(await server.call("superflow_list_tags", {}))).not.toContain(name);
-  }, 120_000);
+    expect(result.removed_from).toBe(1);
+    expect(result.complete).toBe(true);
+    expect(textOf(await server.call("superflow_list_tags", { project: PROJECT }))).not.toContain(name);
+
+    data("delete_comment", await server.call("superflow_delete_comment", { comment: comment.id, confirm: true }));
+    created.comment = undefined;
+  }, 180_000);
 
   it("a bulk change without dry_run: false only previews", async () => {
     const result = await server.call("superflow_bulk_update_comments", {
