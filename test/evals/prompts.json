@@ -1,0 +1,438 @@
+[
+  {
+    "id": "done-open-comments-on-page",
+    "prompt": "Show me open comments on usesuperflow.ai/pricing.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "status": ["open"] } }]
+  },
+  {
+    "id": "done-unresolved-per-page",
+    "prompt": "How many unresolved comments per page on the Acme project?",
+    "expect_first_tool": ["superflow_comment_stats", "superflow_list_projects"],
+    "expect_tools_any_order": ["superflow_comment_stats"],
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "page" } }]
+  },
+  {
+    "id": "done-guest-threads-no-reply",
+    "prompt": "Which comments from guests have had no reply from us in 3 days?",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "unanswered": true } }]
+  },
+  {
+    "id": "done-resolve-tag-on-homepage",
+    "prompt": "Resolve everything tagged copy on the homepage.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_comments", "superflow_list_projects", null],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "done-assign-high-mobile",
+    "prompt": "Assign all high priority mobile comments on Acme to Jen.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_members", "superflow_list_comments", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "done-agent-findings-last-run",
+    "prompt": "What did the agents find in the last run? Which ones look like false positives?",
+    "expect_first_tool": ["superflow_list_runs", "superflow_list_comments"],
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "done-reply-to-number",
+    "prompt": "Reply to comment 4821: fixed, please check.",
+    "default_project": "{project}",
+    "expect_first_tool": ["superflow_add_reply", "superflow_get_comment"]
+  },
+  {
+    "id": "done-client-update-week",
+    "prompt": "Draft a client update for Acme covering what was closed this week.",
+    "expect_first_tool": ["superflow_list_comments", "superflow_export_comments", "superflow_comment_stats", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "number-without-project",
+    "prompt": "Show me comment #4821.",
+    "expect_first_tool": ["superflow_get_comment", "superflow_list_projects", null]
+  },
+  {
+    "id": "relative-date-yesterday",
+    "prompt": "What feedback came in on {project} since yesterday?",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "created_after": "yesterday" } }]
+  },
+  {
+    "id": "stats-resolved-last-week-by-assignee",
+    "prompt": "How many comments did we resolve on {project} last week, broken down by assignee?",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "assignee" } }]
+  },
+  {
+    "id": "read-only-delete-refusal",
+    "prompt": "Delete comment 4821 on {project}.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_get_comment"],
+    "check": [{ "tool_not_called": "superflow_delete_comment" }]
+  },
+  {
+    "id": "read-only-bulk-refusal",
+    "prompt": "Resolve all comments tagged copy on {project}.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_list_comments", "superflow_comment_stats"],
+    "check": [{ "tool_not_called": "superflow_bulk_update_comments" }]
+  },
+  {
+    "id": "bulk-after-user-confirmed",
+    "prompt": "I reviewed the dry run you showed me and I approve it: set every open comment tagged legal on {project} to high priority now.",
+    "expect_first_tool": "superflow_bulk_update_comments",
+    "check": [{ "tool": "superflow_bulk_update_comments", "arg_includes": { "patch": { "priority": "high" } } }]
+  },
+  {
+    "id": "bulk-without-approval-is-dry-run",
+    "prompt": "Close every open comment from agents on {project}, they are all noise.",
+    "expect_first_tool": ["superflow_bulk_update_comments", "superflow_list_comments", "superflow_comment_stats"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "export-csv",
+    "prompt": "Export all resolved comments on {project} as a CSV.",
+    "expect_first_tool": "superflow_export_comments",
+    "check": [{ "tool": "superflow_export_comments", "arg_includes": { "format": "csv", "status": ["resolved"] } }]
+  },
+  {
+    "id": "stats-avg-resolve-by-week",
+    "prompt": "What is our average time to resolve comments on {project}, week by week?",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "group_by": "week", "metrics": ["avg_hours_to_resolve"] } }]
+  },
+  {
+    "id": "stats-median-first-reply",
+    "prompt": "How fast do we answer clients on {project}? I want the median time to first reply.",
+    "expect_first_tool": "superflow_comment_stats",
+    "check": [{ "tool": "superflow_comment_stats", "arg_includes": { "metrics": ["median_hours_to_first_reply"] } }]
+  },
+  {
+    "id": "reply-with-mention",
+    "prompt": "On comment 4821 in {project}, reply and loop in @Jen: can you check this on Safari?",
+    "expect_first_tool": ["superflow_add_reply", "superflow_get_comment", "superflow_list_members"]
+  },
+  {
+    "id": "who-can-be-assigned",
+    "prompt": "Who can I assign comments to on {project}?",
+    "expect_first_tool": "superflow_list_members",
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "pages-without-comments",
+    "prompt": "Which pages on {project} have no comments yet?",
+    "expect_first_tool": "superflow_list_pages",
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "most-used-tags",
+    "prompt": "Which tags do we use the most on {project}?",
+    "expect_first_tool": ["superflow_list_tags", "superflow_comment_stats"]
+  },
+  {
+    "id": "who-am-i",
+    "prompt": "Which Superflow account and workspace is this connected to?",
+    "expect_first_tool": "superflow_get_me",
+    "check": [{ "result_path_nonempty": "scopes" }]
+  },
+  {
+    "id": "projects-most-open",
+    "prompt": "Which of my sites has the most open comments?",
+    "expect_first_tool": ["superflow_list_projects", "superflow_comment_stats"],
+    "check": [{ "result_path_nonempty": "items" }]
+  },
+  {
+    "id": "reopen-number",
+    "prompt": "Reopen comment 4821 on {project}, the fix did not work on mobile.",
+    "expect_first_tool": ["superflow_reopen_comment", "superflow_get_comment"]
+  },
+  {
+    "id": "resolve-with-note",
+    "prompt": "Mark 4821 on {project} as resolved with a note saying the copy was updated.",
+    "expect_first_tool": ["superflow_resolve_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_resolve_comment", "arg_includes": { "comment": "4821" } }]
+  },
+  {
+    "id": "delete-needs-confirmation",
+    "prompt": "Delete comment 4821 on {project}.",
+    "expect_first_tool": ["superflow_delete_comment", "superflow_get_comment"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "create-comment-on-page",
+    "prompt": "Leave a comment on {page_url} in {project} saying the price table is cut off on mobile. Make it high priority.",
+    "expect_first_tool": "superflow_create_comment",
+    "check": [{ "tool": "superflow_create_comment", "arg_includes": { "priority": "high" } }]
+  },
+  {
+    "id": "search-text-everywhere",
+    "prompt": "Find comments that mention checkout, across all my projects.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "query": "checkout" } }]
+  },
+  {
+    "id": "attach-file",
+    "prompt": "Attach https://files.example.com/fix.png to comment 4821 on {project}.",
+    "expect_first_tool": ["superflow_add_attachment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_add_attachment", "arg_includes": { "url": "https://files.example.com/fix.png" } }]
+  },
+  {
+    "id": "p2-onboard-client",
+    "prompt": "Create a project for client Northwind at northwind-dental.com on Webflow, invite jen@agency.com, and give me the install snippet. You have my go-ahead for all of it.",
+    "expect_first_tool": ["superflow_create_project", "superflow_list_projects"],
+    "expect_tools_any_order": ["superflow_create_project"],
+    "check": [{ "tool": "superflow_create_project", "arg_includes": { "platform": "webflow" } }]
+  },
+  {
+    "id": "p2-install-snippet",
+    "prompt": "How do I install Superflow on {project}? The site runs on Shopify.",
+    "expect_first_tool": "superflow_get_install_snippet",
+    "check": [{ "tool": "superflow_get_install_snippet", "arg_includes": { "platform": "shopify" } }]
+  },
+  {
+    "id": "p2-verify-install",
+    "prompt": "I just added the Superflow script to the {project} site. Can you check that it is live?",
+    "expect_first_tool": ["superflow_verify_install", "superflow_get_project"]
+  },
+  {
+    "id": "p2-delete-project-needs-confirmation",
+    "prompt": "Delete the {project} project.",
+    "expect_first_tool": ["superflow_delete_project", "superflow_get_project", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p2-invite-reviewers-as-guests",
+    "prompt": "Invite dana@acme.com and lee@acme.com to review {project}.",
+    "expect_first_tool": ["superflow_invite_guest", "superflow_list_guests", null],
+    "check": [{ "tool_not_called": "superflow_invite_member" }]
+  },
+  {
+    "id": "p2-remove-member-reassign",
+    "prompt": "Remove jen@agency.com from our Superflow workspace and hand her open comments to Rakesh.",
+    "expect_first_tool": ["superflow_remove_member", "superflow_list_members"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p2-create-status",
+    "prompt": "Add an \"In review\" status to {project}.",
+    "expect_first_tool": ["superflow_create_status", "superflow_list_statuses"],
+    "check": [{ "tool": "superflow_create_status", "arg_includes": { "name": "In review" } }]
+  },
+  {
+    "id": "p2-credit-usage-by-agent",
+    "prompt": "Which agent used the most AI credits this month?",
+    "expect_first_tool": "superflow_get_credit_usage",
+    "check": [{ "tool": "superflow_get_credit_usage", "arg_includes": { "group_by": "agent" } }]
+  },
+  {
+    "id": "p2-seats-and-credits",
+    "prompt": "How many member seats do we have left, and how many AI credits?",
+    "expect_first_tool": "superflow_get_organization",
+    "check": [{ "result_path_nonempty": "seats" }]
+  },
+  {
+    "id": "p2-read-only-create-project-refusal",
+    "prompt": "Create a project for northwind-dental.com.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_list_projects"],
+    "check": [{ "tool_not_called": "superflow_create_project" }]
+  },
+  {
+    "id": "p3-estimate-then-run",
+    "prompt": "Estimate a full run of the Pre-Launch pack on Acme, then run it.",
+    "expect_first_tool": "superflow_estimate_run",
+    "check": [
+      { "tool": "superflow_estimate_run", "arg_includes": { "pack": "Pre-Launch" } },
+      { "tool_before": "superflow_estimate_run", "then": "superflow_run_agents" },
+      { "no_confirmed_writes": true }
+    ]
+  },
+  {
+    "id": "p3-last-run-findings-by-severity",
+    "prompt": "What did the agents find in the last run on {project}? Group the findings by severity.",
+    "expect_first_tool": "superflow_list_runs",
+    "expect_tools_any_order": ["superflow_list_findings"]
+  },
+  {
+    "id": "p3-run-status",
+    "prompt": "Is agent run run_8f3k2 finished yet?",
+    "expect_first_tool": "superflow_get_run",
+    "check": [{ "tool": "superflow_get_run", "arg_includes": { "run": "run_8f3k2" } }]
+  },
+  {
+    "id": "p3-create-agent",
+    "prompt": "Create a custom agent called Legal footer that checks every page footer has the copyright line and a link to the privacy policy. You have my go-ahead.",
+    "expect_first_tool": ["superflow_create_agent", "superflow_list_agents"],
+    "check": [{ "tool": "superflow_create_agent", "arg_includes": { "name": "Legal footer" } }]
+  },
+  {
+    "id": "p3-weekly-schedule",
+    "prompt": "Run the Pre-Launch pack on {project} every Monday at 9am Berlin time. The cost is fine, go ahead.",
+    "expect_first_tool": ["superflow_estimate_run", "superflow_set_schedule", "superflow_list_schedules", "superflow_list_agent_packs"],
+    "check": [{ "tool": "superflow_set_schedule", "arg_includes": { "cron": "0 9 * * 1", "timezone": "Europe/Berlin" } }]
+  },
+  {
+    "id": "p3-push-comment-to-jira",
+    "prompt": "Push comment 4821 on {project} to our Jira, project WEB.",
+    "expect_first_tool": ["superflow_list_integrations", "superflow_push_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_push_comment", "arg_includes": { "project_key": "WEB" } }]
+  },
+  {
+    "id": "p3-slack-post-needs-confirmation",
+    "prompt": "Post a summary of the open critical comments on {project} to our #design-feedback Slack channel.",
+    "expect_first_tool": ["superflow_list_integrations", "superflow_list_comments", "superflow_comment_stats", "superflow_post_to_slack"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "p3-connect-jira",
+    "prompt": "Connect our Jira to Superflow.",
+    "expect_first_tool": ["superflow_connect_integration", "superflow_list_integrations"],
+    "check": [{ "tool": "superflow_connect_integration", "arg_includes": { "type": "jira" } }]
+  },
+  {
+    "id": "p3-read-only-run-refusal",
+    "prompt": "Run the AI agents on {project} now.",
+    "read_only": true,
+    "expect_first_tool": [null, "superflow_estimate_run", "superflow_list_agents", "superflow_list_agent_packs"],
+    "check": [{ "tool_not_called": "superflow_run_agents" }]
+  },
+  {
+    "id": "add-rule-key-alt",
+    "prompt": "Which images on {project} are missing alt text? Show me the suggested fixes.",
+    "expect_first_tool": "superflow_list_comments",
+    "check": [{ "tool": "superflow_list_comments", "arg_includes": { "rule_key": ["image-alt"] } }]
+  },
+  {
+    "id": "add-attach-human-comment",
+    "prompt": "Comment #4821 on {project} is the client saying the Book now button is dead. It is the same problem as the link-broken check. Attach it to that check.",
+    "expect_first_tool": ["superflow_update_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_update_comment", "arg_includes": { "rule_key": "link-broken" } }]
+  },
+  {
+    "id": "add-playbook-whats-broken",
+    "prompt": "What's broken on {project}?",
+    "expect_first_tool": "superflow_use_playbook",
+    "check": [{ "tool": "superflow_use_playbook", "arg_includes": { "name": "triage" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-playbook-fix-critical",
+    "prompt": "Fix the critical issues on {project}.",
+    "expect_first_tool": "superflow_use_playbook",
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_list_failing_checks" }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-push-my-review",
+    "prompt": "I just ran our own review of {project} in Claude Code and saved 3 findings: the hero image on /about has no alt text, the footer Book now link is dead, and the cookie banner covers the menu on phones. Push these into Superflow as stache-review.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_list_projects", "superflow_get_project"],
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_import_findings" }]
+  },
+  {
+    "id": "add-import-bad-batch",
+    "prompt": "Push this finding from our review into {project} as stache-review: page https://other-site.example/about, missing alt text on the hero image, high, content fix.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_import_findings", "superflow_get_project", "superflow_list_projects"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-analytics-week",
+    "prompt": "How busy was our team in Superflow over the last week?",
+    "read_only": true,
+    "expect_first_tool": ["superflow_get_team_analytics", "superflow_comment_stats"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-api-key-for-ci",
+    "prompt": "Make me a read-only Superflow key for our GitHub Actions.",
+    "read_only": false,
+    "expect_first_tool": ["superflow_create_api_key", "superflow_get_me", "superflow_list_api_keys"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "add-upgrade-plan",
+    "prompt": "We need more seats in Superflow, how do I upgrade?",
+    "read_only": true,
+    "expect_first_tool": ["superflow_get_payment_link", "superflow_get_billing", "superflow_get_organization"],
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-failing",
+    "prompt": "Which checks are failing on {project}, worst first?",
+    "read_only": true,
+    "expect_first_tool": "superflow_list_failing_checks",
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-site-score",
+    "prompt": "What is the site score of {project}, and which page scores lowest?",
+    "read_only": true,
+    "expect_first_tool": "superflow_get_site_score",
+    "check": [{ "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-mark-fixed-needs-confirmation",
+    "prompt": "I fixed every broken link on {project}. Mark the link-broken check fixed.",
+    "expect_first_tool": ["superflow_mark_check_fixed", "superflow_get_check_details"],
+    "check": [{ "tool": "superflow_mark_check_fixed", "arg_includes": { "rule_key": "link-broken" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-exclude-needs-confirmation",
+    "prompt": "The mobile-overflow check does not apply to {project}: it only runs on kiosk screens. Turn it off.",
+    "expect_first_tool": ["superflow_exclude_check", "superflow_get_check_details", "superflow_list_failing_checks"],
+    "check": [{ "tool": "superflow_exclude_check", "arg_includes": { "rule_key": "mobile-overflow" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "chk-reject-wrong",
+    "prompt": "Comment #4821 on {project} is wrong: that image is decorative and needs no alt text. Reject it.",
+    "expect_first_tool": ["superflow_reject_comment", "superflow_get_comment"],
+    "check": [{ "tool": "superflow_reject_comment", "arg_includes": { "reason": "wrong" } }]
+  },
+  {
+    "id": "chk-default-owner",
+    "prompt": "Make me the default owner of dev checks on {project}.",
+    "expect_first_tool": ["superflow_set_default_owners", "superflow_get_check_settings", "superflow_get_me"],
+    "check": [{ "tool": "superflow_set_default_owners", "arg_includes": { "dev": "me" } }]
+  },
+  {
+    "id": "set-site-care",
+    "prompt": "Put {project} on care, weekly checks.",
+    "expect_first_tool": ["superflow_set_site_mode", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_mode", "arg_includes": { "mode": "care", "cadence": "weekly" } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "set-site-watch",
+    "prompt": "Stop running agents on {project}, just keep the version history.",
+    "expect_first_tool": ["superflow_set_site_mode", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_mode", "arg_includes": { "mode": "watch" } }]
+  },
+  {
+    "id": "set-site-timezone",
+    "prompt": "The client for {project} is in Chicago. Run its checks on their time.",
+    "expect_first_tool": ["superflow_set_site_timezone", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_timezone", "arg_includes": { "timezone": "America/Chicago" } }]
+  },
+  {
+    "id": "list-forms",
+    "prompt": "Which forms on {project} are being tested?",
+    "expect_first_tool": "superflow_list_forms"
+  },
+  {
+    "id": "set-form-testing",
+    "prompt": "Start testing the contact form on {project} every day.",
+    "expect_first_tool": ["superflow_list_forms", "superflow_set_form_testing"],
+    "expect_tools_any_order": ["superflow_set_form_testing"],
+    "check": [{ "tool": "superflow_set_form_testing", "arg_includes": { "enabled": true, "daily_test": true } }, { "no_confirmed_writes": true }]
+  },
+  {
+    "id": "get-invoices",
+    "prompt": "Send me our last three invoices.",
+    "expect_first_tool": "superflow_get_invoices",
+    "check": [{ "tool": "superflow_get_invoices", "arg_includes": { "limit": 3 } }]
+  },
+  {
+    "id": "set-onboard-agency",
+    "prompt": "I just signed up. Set up Superflow for my client acme-dental.com, they are in Chicago.",
+    "expect_first_tool": ["superflow_use_playbook", "superflow_get_me", "superflow_get_billing"],
+    "check": [{ "tool_before": "superflow_use_playbook", "then": "superflow_set_site_mode" }, { "no_confirmed_writes": true }]
+  }
+]

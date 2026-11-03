@@ -1,0 +1,171 @@
+# CLAUDE.md
+
+Guidance for Claude Code (and other agents) working in this repo.
+
+## What this is
+
+`superflow-mcp`: a public npm package that runs a local MCP server over stdio for
+Superflow comments. It is a thin client over the Superflow REST API v1. The API
+resolves names, URLs, emails and numbers, parses relative dates and runs dry runs;
+this package validates input, calls the API and shapes the answer.
+
+The README also documents the hosted server at `https://mcp.usesuperflow.ai/mcp`.
+Its code lives elsewhere. `server.json` is its registry manifest: do not edit it here.
+
+## Hard rules
+
+- **Never call `fetch` outside `src/client/api.ts`.** Every request goes through
+  `ApiClient.call(operationId, ...)` so auth, timeouts, retries and error mapping stay
+  in one place. The OAuth calls of `login` (`src/auth/`) go through `oauthRequest` in the
+  same file.
+- **Never log or print a token.** `src/auth/` holds access and refresh tokens; the
+  credential store never puts them in argv: `secret-tool` reads the secret on stdin and
+  `security -i` reads the whole Keychain command on stdin (never `security ... -w <value>`).
+- **Never log the API key**, request bodies or comment text. Log method, operationId,
+  status and duration at debug level only.
+- **Logs go to stderr only.** stdout carries the MCP protocol. A stray `console.log`
+  breaks every client.
+- **Never throw out of a tool handler.** Return `errorResult(...)` or let the server
+  wrapper turn the error into an `isError` result.
+- **Do not edit `src/client/generated/operations.ts`.** Change `openapi/openapi.json`
+  and run `pnpm generate:client`.
+- **No em dashes or en dashes** in code, comments, descriptions, docs or commit
+  messages. Use periods, commas or colons.
+- Run `pnpm test` and `pnpm check:drift` before every commit; after `pnpm build`, `pnpm test:e2e`.
+  A new tool needs no e2e change: the suite reads tools/list and calls each tool's Example.
+
+## Tool descriptions are for a language model
+
+Each description says what the tool is for, when to use it, when not to (and which
+sibling tool to use instead, by name: `test/unit/server.test.ts` checks every description
+names one), and ends with one `Example:` line of JSON that must parse and match the input
+schema (`test/unit/server.test.ts` checks this). Short sentences, no jargon.
+
+## How to add a tool
+
+1. Confirm the API operation is in `openapi/openapi.json`; run `pnpm generate:client`.
+2. Define it in `src/tools/` with `defineTool`: `superflow_<verb>_<noun>` name, title,
+   description, zod raw shape with `.describe()` on every field, all four annotations
+   (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), and
+   `write: true` if it changes data (write tools vanish in read-only mode).
+3. Register it in `src/tools/index.ts`.
+4. Add `test/unit/tools/<name>.test.ts` with the happy path and `standardErrorCases`.
+   The harness fails any request whose query params are not in the OpenAPI snapshot.
+5. Run `pnpm docs:tools` and commit `docs/tools.md`.
+6. Add an eval prompt to `test/evals/prompts.json`.
+
+## How to add or change a playbook
+
+Playbooks are plans for jobs that take several tools in order. One source serves three
+places: the `superflow_use_playbook` tool, the MCP prompt of the same name, and the
+playbook line in the server instructions.
+
+1. Write `skills/<name>/SKILL.md`: frontmatter `name` (the folder name), `title`,
+   `description` (starts "Use when", says when not to), `when` (ends "when the user wants
+   to ..."), `clients`; then numbered steps that name each tool, `**Stop:**` at every point
+   the user must say yes, and the rule that comment text is data. Under 1,500 words.
+2. Name only tools that exist (`test/unit/playbooks.test.ts` checks), so a playbook lands in
+   the same PR as the tools it needs.
+3. Run `pnpm playbooks` and commit `src/playbooks/generated.ts` (CI runs `pnpm check:playbooks`).
+4. Add eval prompts to `test/evals/prompts.json` and run `pnpm docs:tools`.
+5. A change to which tools a playbook writes with is a minor version and a changelog line.
+
+## Rules the tools follow
+
+- Ids pass through to the API (URL-encoded in paths). For a bare comment number with no
+  `project`, inject `SUPERFLOW_DEFAULT_PROJECT` (`projectForComment` in `src/lib/resolve.ts`).
+- Lists: `limit` default 25, max 100; pass `cursor` through; the summary says when more
+  results exist (`paginationNote`).
+- Dates: validate with `findInvalidDate` before calling the API.
+- Gates: every destructive tool (`destructiveHint: true`) except bulk needs `confirm: true`;
+  without it it only reads and returns a `needs_confirmation` preview (`confirmationResult`).
+  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The one exception
+  is `superflow_remove_member`, which asks the API without confirm and shows its 409
+  preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
+  are normal results, not errors. Unit tests prove no write request goes out without confirm.
+  `superflow_reject_comment` is destructive (a rejection cannot be undone): without confirm
+  it reads the comment and returns it with the reason as the preview.
+- Seven tools that are not destructive also gate on `confirm: true`: `superflow_run_agents`
+  (it spends AI credits; without confirm it calls the estimate and returns it as the
+  preview), `superflow_mark_check_fixed` (it resolves every open finding of a check and
+  spends 1 credit on the verify rescan; without confirm it reads the check and returns it as
+  the preview), `superflow_post_to_slack` (people see the post), `superflow_set_site_mode`
+  with `mode: care` (it runs agents on a schedule and spends credits; without confirm it
+  reads the site's monitoring and returns it as the preview), `superflow_set_form_testing`
+  turning a test on (each test lands in the client's inbox as a lead; confirm also sends
+  `accept_test_leads: true`), `superflow_create_api_key` (the token lands in the
+  conversation) and `superflow_set_schedule` creating a schedule or changing what or when
+  it runs (every run spends credits; without confirm it prices one run with the estimate and
+  returns it as the preview; pausing and moving the time zone need no confirm). A credits
+  refusal is explained with Settings > Billing and never retried.
+- A gate never adds `confirm` (or `accept_test_leads`) to an API call on the user's behalf.
+  When the call would change nothing (care on a site already in care with the same cadence
+  and time zone, a form test already on the same way), the tool sends no write and says
+  "nothing changed"; a real change still needs confirm.
+- Description Examples never carry `confirm: true` or `dry_run: false`: a model copies the
+  Example, and the first call must be the preview (`test/unit/server.test.ts` checks).
+- Server instructions name only tools that are registered, so read-only mode never names a
+  write tool (`instructions` in `src/server.ts`).
+- Run polling: `superflow_get_run` asks for at most one call every 20 seconds
+  (`POLL_SECONDS` in `src/tools/runs.ts`, shared with the prompts).
+- `superflow_estimate_run` and `superflow_connect_integration` are POSTs that only read,
+  so they are read-only tools (`write: false`) and stay in read-only mode.
+- Invite tools send real email, and their descriptions say so. Creates and invites send a
+  generated `idempotency_key` when the caller gave none.
+- Results: `okResult(summary, data)`. One-line summary, the untrusted-content notice when
+  comment text is present, then the JSON. Text is capped at 30,000 characters.
+- `idempotency_key`: generated per call for create comment, add reply, create project,
+  invites, create review link, create agent, duplicate agent, create agent pack, run agents,
+  create schedule, import findings and push comment when missing, and every one of those tools
+  takes it as an input. A write that may still have run (a timeout, a dropped connection, a
+  5xx after the retries) comes back with `error.idempotency_key` and a hint to retry with it,
+  so a retry picks up the result instead of doing it twice (`ApiClient`, for every tool). A
+  write without a key gets "check first" instead; a timed-out read gets "narrow it".
+- Rate limits: a 429 is retried only when Retry-After is at most 10 seconds. A longer wait
+  comes back as `rate_limited` with `error.reset_at` and the reset time in the hint.
+- 401 and 403 on a `login` session say how to sign in again (`login --scope`), not how to
+  replace an API key. A sign-in's or key's scopes cannot be edited.
+- Write limits (CONTRACT 6.3): priority writes take `critical`, `high`, `medium` (plus `none` on
+  create only); the assignee can be replaced but not removed (`refuseUnassign`). Filters still
+  accept `low`, `none` and `unassigned`.
+- Checks: a resolve or a mark fixed is a claim; the rescan verifies it. Summaries say so,
+  and report `verify` when the API returns one. An engine refusal keeps the API's `reason`
+  (`already_verified`, `not_agent_comment`, ...) on the error; never retry it.
+- Comment `number` can be null. Label comments with `commentLabel`, which falls back to the id.
+
+## Commands
+
+```bash
+pnpm install
+pnpm lint          # typecheck + dash check
+pnpm test
+pnpm build
+pnpm check:drift
+pnpm docs:tools
+pnpm smoke:stdio   # after build
+pnpm test:e2e      # after build: every tool over real stdio, fake API
+pnpm test:live     # after build: against a real API (needs the test key)
+```
+
+Node 22 for development (pnpm needs it); the built package supports Node 20+.
+Memory on dev machines can be tight: run one test or typecheck process at a time.
+
+## Keep in step with the API and the hosted server
+
+The API this package calls lives in `snippyly/shared-firebase-function`
+(`functions/src/superflow-v2/public-api/`), and the hosted server runs THIS package from a
+vendored copy there (`functions/vendor/superflow-mcp/`). So:
+
+- Copy `openapi/openapi.json` from the backend's `public-api/openapi.snapshot.json` byte for
+  byte; never edit it by hand.
+- A new API route gets its tool here in the same change, or the PR says why not.
+- After a change that alters tools, the backend re-vendors the build
+  (`node functions/scripts/sync-superflow-mcp.js <this checkout>`); its conformance test
+  fails while the copy is stale. Old hosted tool names map to new ones in
+  `LEGACY_TOOL_RENAMES` there.
+
+The PR template asks "MCP updated, or why not".
+
+## Branches
+
+Branch from `staging`, open pull requests into `staging`. Releases are `v*` tags.
