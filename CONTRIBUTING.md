@@ -27,7 +27,8 @@ origin: the cloudfunctions.net one fails the OAuth resource check). To run the t
 this checkout in the process instead (direct mode, for development), set
 `SUPERFLOW_API_BASE_URL` to a REST API: staging's is
 `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1` (the MCP function serves `/mcp`,
-OAuth and `/v1`), or a local one.
+OAuth and `/v1`), or a local one. Set `SUPERFLOW_MCP_URL` to the same origin (`.../mcp`):
+direct mode refuses an API on another origin than the MCP server the key is for.
 
 ## Scripts
 

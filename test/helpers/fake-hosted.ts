@@ -30,14 +30,18 @@ export interface FakeHosted {
   count(rpc: string): number;
   /** Answer the next POST of this JSON-RPC method with this HTTP status, once. */
   failNext(rpc: string, status: number): void;
+  /** Hold the next POST of this JSON-RPC method this long before answering it, once (a cold start). */
+  delayNext(rpc: string, ms: number): void;
+  /** The instructions the next servers answer initialize with. */
+  instructions: string;
   close(): Promise<void>;
 }
 
 const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const WRITE = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false };
 
-function buildServer(): McpServer {
-  const server = new McpServer({ name: "superflow-mcp", title: "Superflow", version: "9.9.9" }, { instructions: FAKE_INSTRUCTIONS });
+function buildServer(instructions: string): McpServer {
+  const server = new McpServer({ name: "superflow-mcp", title: "Superflow", version: "9.9.9" }, { instructions });
   const text = (value: string) => [{ type: "text" as const, text: value }];
   server.registerTool(
     "superflow_list_projects",
@@ -92,6 +96,8 @@ export async function startFakeHosted(tokens: string[]): Promise<FakeHosted> {
   const validTokens = new Set(tokens);
   const requests: RecordedRequest[] = [];
   const failures = new Map<string, number>();
+  const delays = new Map<string, number>();
+  const state = { instructions: FAKE_INSTRUCTIONS };
 
   const http = createHttpServer(async (req, res) => {
     const chunks: Buffer[] = [];
@@ -125,8 +131,14 @@ export async function startFakeHosted(tokens: string[]): Promise<FakeHosted> {
       json(forced, { error: "internal", message: "The MCP server had a problem." });
       return;
     }
+    const delay = rpc ? delays.get(rpc) : undefined;
+    if (rpc && delay) {
+      delays.delete(rpc);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      if (res.destroyed || req.destroyed) return;
+    }
     // Per request and stateless, like the real handler (src/superflow-v2/mcp/transport.ts).
-    const server = buildServer();
+    const server = buildServer(state.instructions);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {
       void transport.close();
@@ -144,6 +156,13 @@ export async function startFakeHosted(tokens: string[]): Promise<FakeHosted> {
     requests,
     count: (rpc) => requests.filter((request) => request.method === "POST" && request.rpc === rpc).length,
     failNext: (rpc, status) => void failures.set(rpc, status),
+    delayNext: (rpc, ms) => void delays.set(rpc, ms),
+    get instructions() {
+      return state.instructions;
+    },
+    set instructions(value: string) {
+      state.instructions = value;
+    },
     close: () =>
       new Promise<void>((resolve) => {
         http.closeAllConnections?.();

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, DEFAULT_BASE_URL, DEFAULT_MCP_URL, configWarnings, isDirectMode, loadBridgeConfig, loadConfig } from "../../src/config.ts";
+import {
+  ConfigError,
+  DEFAULT_BASE_URL,
+  DEFAULT_MCP_URL,
+  configWarnings,
+  directModeConflict,
+  isDirectMode,
+  loadBridgeConfig,
+  loadConfig,
+  resolveApiBaseUrl,
+  resolveMcpUrl,
+} from "../../src/config.ts";
 
 describe("loadConfig", () => {
   it("applies defaults", () => {
@@ -101,5 +112,33 @@ describe("isDirectMode", () => {
     expect(isDirectMode({ SUPERFLOW_API_KEY: "k" })).toBe(false);
     expect(isDirectMode({ SUPERFLOW_API_BASE_URL: "  " })).toBe(false);
     expect(isDirectMode({ SUPERFLOW_API_BASE_URL: "http://localhost:5001/v1" })).toBe(true);
+  });
+});
+
+describe("resolveMcpUrl and resolveApiBaseUrl (what login checks before it sends a fresh token)", () => {
+  it("accept https and localhost http, and refuse the rest", () => {
+    expect(resolveMcpUrl({})).toBe(DEFAULT_MCP_URL);
+    expect(resolveMcpUrl({}, "https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp")).toBe("https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp");
+    expect(() => resolveMcpUrl({ SUPERFLOW_MCP_URL: "http://evil.example.com/mcp" })).toThrow(ConfigError);
+    expect(() => resolveMcpUrl({ SUPERFLOW_MCP_URL: "https://mcp.usesuperflow.ai/mcp#x" })).toThrow(/fragment/);
+    expect(resolveApiBaseUrl("http://localhost:5001/v1")).toBe("http://localhost:5001/v1");
+    expect(() => resolveApiBaseUrl("http://api.example.com/v1")).toThrow(/SUPERFLOW_API_BASE_URL must use https/);
+    expect(DEFAULT_BASE_URL).toBe("https://mcp.usesuperflow.ai/v1");
+  });
+});
+
+describe("directModeConflict", () => {
+  it("allows an API on the MCP server's origin", () => {
+    expect(directModeConflict(DEFAULT_BASE_URL, DEFAULT_MCP_URL, "the default")).toBeUndefined();
+    const staging = "https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app";
+    expect(directModeConflict(`${staging}/v1`, `${staging}/mcp`, "from SUPERFLOW_MCP_URL")).toBeUndefined();
+  });
+
+  it("refuses an API on another origin, saying where the MCP URL came from and how to fix it", () => {
+    const message = directModeConflict("https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1", DEFAULT_MCP_URL, "from your saved sign-in");
+    expect(message).toBe(
+      "SUPERFLOW_API_BASE_URL (https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app) and the MCP server the key or sign-in is for (https://mcp.usesuperflow.ai, from your saved sign-in) are different servers, so the key could go to the wrong one. Unset SUPERFLOW_API_BASE_URL to use the hosted server, or set SUPERFLOW_MCP_URL=https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp to run the tools here against https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app.",
+    );
+    expect(directModeConflict("http://localhost:5001/v1", "http://localhost:5002/mcp", "the default")).toContain("different servers");
   });
 });

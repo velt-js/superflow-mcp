@@ -12,6 +12,7 @@ const dryRun = {
   would_update: 44,
   already_in_state: 3,
   sample: [compactComment],
+  failed: [] as Array<{ id: string; error: string }>,
   applied_filters: { ...appliedProject, tags: [{ id: "tag_copy", name: "copy" }] },
   scan: { scanned: 312, complete: true },
 };
@@ -36,6 +37,18 @@ describe(TOOL, () => {
       dry_run: true,
       confirm: false,
     });
+  });
+
+  it("shows the comments a dry run would not write (failed), apart from would_update", async () => {
+    const failed = [
+      { id: "cmt_a1", error: "Its tags could not be read." },
+      { id: "cmt_a2", error: "Its tags could not be read." },
+    ];
+    on("post", "/comments/bulk", ok({ ...dryRun, would_update: 42, failed }));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, filterArgs))).toBe(
+      "Dry run. Would change 42 comments in Acme Dental (tags: copy). 3 already match. 2 would not be written (not counted above): cmt_a1 (Its tags could not be read), cmt_a2 (Its tags could not be read). Nothing was written. To apply it, ask the user, then call again with dry_run: false and confirm: true.",
+    );
   });
 
   it("says there is nothing to apply when every comment already matches", async () => {
@@ -75,7 +88,7 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, { ...filterArgs, dry_run: false, confirm: true, idempotency_key: "k-1" });
     expect(result.isError).toBeFalsy();
     expect(summaryOf(result)).toBe(
-      "Updated 43 comments. 3 already matched and were skipped. 1 failed: cmt_x (Velt could not reach this comment.).",
+      "Updated 43 comments. 3 already matched and were skipped. 1 failed: cmt_x (Velt could not reach this comment).",
     );
     expect(recorded[0]?.body).toEqual({
       select: { filter: filterArgs.filter },

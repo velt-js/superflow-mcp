@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { SuperflowApiError } from "../client/api.ts";
 import type { ApiClient } from "../client/api.ts";
-import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Schedule } from "../client/types.ts";
+import type { DeleteScheduleResponse, ListEnvelope, RunEstimate, Scan, Schedule } from "../client/types.ts";
 import { CONFIRM_DELETE_SCHEDULE_MESSAGE, CONFIRM_SET_SCHEDULE_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, count, join, nameList } from "./helpers.ts";
-import { estimateLine } from "./runs.ts";
+import { PAGES_NEED_LIST, estimateLine } from "./runs.ts";
 import {
   agentListSchema,
   confirmSchema,
@@ -53,20 +53,30 @@ export function scheduleLine(schedule: Schedule): string {
   );
 }
 
-/** Finds a schedule by id (sch_ prefix optional) in the list, or null. */
-async function findSchedule(api: ApiClient, ref: string): Promise<Schedule | null> {
+/**
+ * Finds a schedule by id (sch_ prefix optional) in the list, with the scan the list was read from
+ * (the API reads at most 10,000 workflow definitions).
+ */
+async function findSchedule(api: ApiClient, ref: string): Promise<{ schedule: Schedule | null; scan: Scan | undefined }> {
   const list = await api.call<ListEnvelope<Schedule>>("listSchedules");
   const raw = ref.replace(/^sch_/, "");
-  return (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw) ?? null;
+  const schedule = (list.items ?? []).find((item) => item.id === ref || item.id.replace(/^sch_/, "") === raw) ?? null;
+  return { schedule, scan: list.scan };
 }
 
-function scheduleNotFound(ref: string) {
+/** A schedule not in the list: gone, or, when the list's scan stopped early, possibly past it. */
+function scheduleNotFound(ref: string, scan: Scan | undefined) {
+  const partial = scan?.complete === false;
   return errorResult(
     new SuperflowApiError({
       status: 404,
       code: "not_found",
-      message: `No schedule ${ref}.`,
-      hint: "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
+      message: partial
+        ? `No schedule ${ref} in the ${count(scan.scanned)} schedule definitions the API read. It stopped before the last, so the schedule may be past what it read.`
+        : `No schedule ${ref}.`,
+      hint: partial
+        ? "Tell the user the schedule could not be read, and to check it in Superflow. Do not treat it as deleted."
+        : "List the schedules with superflow_list_schedules. A deleted schedule is already gone.",
     }),
   );
 }
@@ -119,7 +129,7 @@ export const setSchedule = defineTool({
       .optional()
       .describe("Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it."),
     scope: runScopeSchema,
-    pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, for scope list. On a change, null clears them."),
+    pages: runPagesSchema.nullable().describe("Page URLs to review, at most 500, with scope list only (the API refuses pages with scope page or site; for one page, scope list and that one URL). On a change, null clears them."),
     enabled: z.boolean().optional().describe("false pauses the schedule, true turns it back on. New schedules start on."),
     confirm: confirmSchema("create the schedule or change what or when it runs; every run spends AI credits"),
     idempotency_key: idempotencySchema.describe(
@@ -152,6 +162,7 @@ export const setSchedule = defineTool({
         return invalidInput("A new schedule needs project and cron.", "To change an existing schedule, pass its id as schedule.");
       }
       if (args.scope === "list" && !args.pages) return invalidInput("scope list needs pages: the page URLs to review.");
+      if (args.pages && args.scope !== "list") return invalidInput(PAGES_NEED_LIST);
       // A new schedule has nothing to clear, so null means "not given".
       const body = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null));
       if (!isConfirmed(args.confirm)) {
@@ -182,11 +193,12 @@ export const setSchedule = defineTool({
     if (Object.keys(fields).length === 0) {
       return invalidInput("Nothing to change. Give cron, timezone, agents, pack, scope, pages, enabled or project.");
     }
+    if (args.pages && args.scope !== undefined && args.scope !== "list") return invalidInput(PAGES_NEED_LIST);
     // Pausing and moving the time zone cannot raise what the schedule spends: no confirm.
     const spendsMore = Object.keys(fields).some((key) => key !== "timezone" && !(key === "enabled" && fields.enabled === false));
     if (spendsMore && !isConfirmed(args.confirm)) {
-      const current = await findSchedule(api, args.schedule.trim());
-      if (!current) return scheduleNotFound(args.schedule.trim());
+      const { schedule: current, scan } = await findSchedule(api, args.schedule.trim());
+      if (!current) return scheduleNotFound(args.schedule.trim(), scan);
       // The schedule as it would be after the change: given fields win, null clears. Its agents
       // are its pack's members when it has a pack, so the pack is priced, never both.
       const currentAgents = current.pack ? undefined : current.agents?.map((agent) => agent.id);
@@ -269,8 +281,8 @@ export const deleteSchedule = defineTool({
       return okResult(`Deleted schedule ${result.id ?? ref}. No more runs start from it.`, asData(result));
     }
     // Preview: one read. Nothing that could delete is sent without confirm.
-    const schedule = await findSchedule(api, ref);
-    if (!schedule) return scheduleNotFound(ref);
+    const { schedule, scan } = await findSchedule(api, ref);
+    if (!schedule) return scheduleNotFound(ref, scan);
     return confirmationResult(
       `Schedule ${scheduleLine(schedule)} It would be deleted. Nothing was deleted. Ask the user to confirm.`,
       { preview: schedule, message: CONFIRM_DELETE_SCHEDULE_MESSAGE },

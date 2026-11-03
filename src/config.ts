@@ -122,6 +122,35 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   };
 }
 
+/** SUPERFLOW_MCP_URL, else `fallback`, checked as the bridge checks it. Throws ConfigError. */
+export function resolveMcpUrl(env: Record<string, string | undefined> = process.env, fallback: string = DEFAULT_MCP_URL): string {
+  return readUrl("SUPERFLOW_MCP_URL", env.SUPERFLOW_MCP_URL, fallback);
+}
+
+/** An API base URL (SUPERFLOW_API_BASE_URL, or a saved sign-in's), checked like loadConfig checks it. Throws ConfigError. */
+export function resolveApiBaseUrl(raw: string | undefined): string {
+  return readBaseUrl(raw);
+}
+
+/**
+ * Direct mode sends the key to SUPERFLOW_API_BASE_URL, but the key (or sign-in) was meant for the
+ * MCP server the bridge would use. An inherited SUPERFLOW_API_BASE_URL could send a staging key to
+ * prod or the other way round, so the two must share an origin. The message when they do not,
+ * else undefined.
+ * @param baseUrl The checked API base.
+ * @param mcpUrl The checked MCP endpoint (SUPERFLOW_MCP_URL, the saved sign-in's, or the default).
+ * @param source Where mcpUrl came from, in words.
+ */
+export function directModeConflict(baseUrl: string, mcpUrl: string, source: string): string | undefined {
+  const base = new URL(baseUrl).origin;
+  const mcp = new URL(mcpUrl).origin;
+  if (base === mcp) return undefined;
+  return (
+    `SUPERFLOW_API_BASE_URL (${base}) and the MCP server the key or sign-in is for (${mcp}, ${source}) are different servers, so the key could go to the wrong one. ` +
+    `Unset SUPERFLOW_API_BASE_URL to use the hosted server, or set SUPERFLOW_MCP_URL=${base}/mcp to run the tools here against ${base}.`
+  );
+}
+
 /**
  * Reads the bridge's configuration. The endpoint is SUPERFLOW_MCP_URL, else `fallbackMcpUrl`
  * (the server a saved sign-in came from), else the hosted server. Throws ConfigError with a
@@ -130,7 +159,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 export function loadBridgeConfig(env: Record<string, string | undefined> = process.env, fallbackMcpUrl: string = DEFAULT_MCP_URL): BridgeConfig {
   return {
     apiKey: readApiKey(env),
-    mcpUrl: readUrl("SUPERFLOW_MCP_URL", env.SUPERFLOW_MCP_URL, fallbackMcpUrl),
+    mcpUrl: resolveMcpUrl(env, fallbackMcpUrl),
     readOnly: readBoolean("SUPERFLOW_READ_ONLY", env.SUPERFLOW_READ_ONLY, false),
     logLevel: readLogLevel(env.SUPERFLOW_LOG_LEVEL),
   };

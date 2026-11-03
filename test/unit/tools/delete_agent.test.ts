@@ -37,6 +37,15 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
+  it("says the schedule count may be low when the API's schedule scan stopped early", async () => {
+    on("get", "/agents/:agent", ok(customAgentDetail));
+    on("get", "/schedules", ok(list([agentSchedule], { scan: { scanned: 10000, complete: false } })));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, { agent: "Legal footer" }))).toContain(
+      "1 schedule runs it; 1 would have no agents left and would be turned off. The schedule count may be low: the API read 10,000 schedule definitions and stopped before the last.",
+    );
+  });
+
   it("refuses to preview deleting a built-in agent and sends no write", async () => {
     on("get", "/agents/:agent", ok(builtInAgent));
     const h = await connect();

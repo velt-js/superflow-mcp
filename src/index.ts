@@ -12,7 +12,18 @@ import { chooseCredentialStore, type CredentialStore, type StoredSession } from 
 import { SessionTokenProvider } from "./auth/token-provider.ts";
 import { BridgeError, callHostedTool, staticToken, startBridge } from "./bridge.ts";
 import { ApiClient, SuperflowApiError } from "./client/api.ts";
-import { ConfigError, DEFAULT_BASE_URL, DEFAULT_MCP_URL, configWarnings, isDirectMode, loadBridgeConfig, loadConfig } from "./config.ts";
+import {
+  ConfigError,
+  DEFAULT_BASE_URL,
+  DEFAULT_MCP_URL,
+  configWarnings,
+  directModeConflict,
+  isDirectMode,
+  loadBridgeConfig,
+  loadConfig,
+  resolveApiBaseUrl,
+  resolveMcpUrl,
+} from "./config.ts";
 import { createLogger, type Logger, redact } from "./lib/logger.ts";
 import { createServer } from "./server.ts";
 import { toolsFor } from "./tools/index.ts";
@@ -145,11 +156,17 @@ async function runDirect(session: StoredSession | null, store: Store | null): Pr
     : process.env;
 
   let config;
+  let mcpUrl;
   try {
     config = loadConfig(env);
+    mcpUrl = resolveMcpUrl(process.env, sessionMcpUrl(session));
   } catch (error) {
     exitWith(error instanceof ConfigError ? error.message : String(error));
   }
+  // The key belongs to one server: refuse a SUPERFLOW_API_BASE_URL on another (an inherited one).
+  const source = process.env.SUPERFLOW_MCP_URL?.trim() ? "from SUPERFLOW_MCP_URL" : session ? "from your saved sign-in" : "the default";
+  const conflict = directModeConflict(config.baseUrl, mcpUrl, source);
+  if (conflict) exitWith(conflict);
 
   let tokenProvider: SessionTokenProvider | undefined;
   const startSecrets = session ? [session.accessToken, session.refreshToken] : [config.apiKey];
@@ -207,11 +224,19 @@ async function runLogin(args: string[]): Promise<void> {
 async function whoSignedIn(session: StoredSession): Promise<string> {
   type Me = { member?: { email?: string }; organization?: { name?: string } };
   let me: Me | undefined;
+  // The fresh token goes only to a URL checked like the server checks it (https, or http on
+  // localhost; no query string or fragment). A bad one skips the lookup with a note.
+  let url: string;
+  try {
+    url = isDirectMode(process.env) ? resolveApiBaseUrl(session.apiBaseUrl) : resolveMcpUrl(process.env, sessionMcpUrl(session));
+  } catch (error) {
+    print(`Could not say who signed in: ${error instanceof ConfigError ? error.message : String(error)}`);
+    return "";
+  }
   try {
     if (isDirectMode(process.env)) {
-      me = await new ApiClient({ apiKey: session.accessToken, baseUrl: session.apiBaseUrl }).call<Me>("getMe");
+      me = await new ApiClient({ apiKey: session.accessToken, baseUrl: url }).call<Me>("getMe");
     } else {
-      const url = process.env.SUPERFLOW_MCP_URL?.trim() || sessionMcpUrl(session);
       const result = await callHostedTool({ url, tokens: staticToken(session.accessToken), requestTimeoutMs: 30_000 }, "superflow_get_me");
       if (result && !result.isError) me = result.structuredContent as Me | undefined;
     }

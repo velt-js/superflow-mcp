@@ -5,7 +5,18 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Bridge, BridgeError, type BridgeOptions, isReadTool, startBridge, staticToken } from "../../src/bridge.ts";
+import {
+  type Bridge,
+  BridgeError,
+  type BridgeOptions,
+  READ_ONLY_CHOICE,
+  READ_ONLY_LINE,
+  READ_ONLY_RECONNECT,
+  bridgeInstructions,
+  isReadTool,
+  startBridge,
+  staticToken,
+} from "../../src/bridge.ts";
 import { SESSION_ENDED_MESSAGE, type TokenProvider, UNAUTHORIZED_MESSAGE } from "../../src/client/api.ts";
 import { USER_AGENT } from "../../src/version.ts";
 import { FAKE_INSTRUCTIONS, FAKE_ME, FAKE_PROJECTS, type FakeHosted, startFakeHosted } from "../helpers/fake-hosted.ts";
@@ -224,6 +235,28 @@ describe("bridge failures and timeouts", () => {
     expect(hosted.count("initialize")).toBe(2);
   });
 
+  it("gives the hosted initialize a short timeout and one more try after it times out (a cold start)", async () => {
+    const hosted = await fake();
+    hosted.delayNext("initialize", 1500);
+    const started = Date.now();
+    const { client } = await bridged(hosted, { initializeTimeoutMs: 300 });
+    expect(client.getInstructions()).toBe(FAKE_INSTRUCTIONS);
+    expect(hosted.count("initialize")).toBe(2);
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+
+  it("gives up after the second initialize times out, and says so", async () => {
+    const hosted = await fake();
+    hosted.delayNext("initialize", 1500);
+    const first = startBridge({ url: hosted.url, tokens: staticToken(KEY), signedIn: false, readOnly: false, initializeTimeoutMs: 200 });
+    // The second try is held too.
+    setTimeout(() => hosted.delayNext("initialize", 1500), 50);
+    const error = await rejection(first);
+    expect(error).toBeInstanceOf(BridgeError);
+    expect(error.message).toContain("did not answer within");
+    expect(hosted.count("initialize")).toBe(2);
+  });
+
   it("a tool call past the timeout comes back as an error that says it may have gone through", async () => {
     const hosted = await fake();
     const { client } = await bridged(hosted, { toolTimeoutMs: 300 });
@@ -250,8 +283,28 @@ describe("bridge read-only mode", () => {
     const { client } = await bridged(hosted, { readOnly: true });
     const names = (await client.listTools()).tools.map((tool) => tool.name).sort();
     expect(names).toEqual(["custom_read_tool", "superflow_failing", "superflow_get_me", "superflow_list_projects", "superflow_slow"]);
-    expect(client.getInstructions()).toBe(`${FAKE_INSTRUCTIONS}\nThis server is read-only: write tools are not available.`);
+    expect(client.getInstructions()).toBe(`${FAKE_INSTRUCTIONS}\n${READ_ONLY_LINE}\n${READ_ONLY_CHOICE}`);
+    expect(READ_ONLY_CHOICE).toContain("SUPERFLOW_READ_ONLY=true");
     for (const request of hosted.requests.filter((r) => r.method === "POST")) expect(request.headers["x-superflow-read-only"]).toBe("true");
+  });
+
+  it("with the hosted server's stdio wording (X-Superflow-Read-Only), adds its note once, without repeating the read-only line", async () => {
+    const hosted = await fake();
+    hosted.instructions = `Superflow holds website feedback.\n${READ_ONLY_LINE}`;
+    const { client } = await bridged(hosted, { readOnly: true });
+    const text = client.getInstructions() ?? "";
+    expect(text).toBe(`Superflow holds website feedback.\n${READ_ONLY_LINE}\n${READ_ONLY_CHOICE}`);
+    expect(text.split(READ_ONLY_LINE)).toHaveLength(2);
+    expect(text).not.toMatch(/reconnect/i);
+  });
+
+  it("agrees with a hosted 'reconnect' wording (a key that can only read) instead of contradicting it", () => {
+    const hosted =
+      "This connection is read-only: write tools are not available. To make changes, the user reconnects Superflow and allows the write permissions.";
+    expect(bridgeInstructions(hosted, true)).toBe(`${hosted}\n${READ_ONLY_CHOICE}\n${READ_ONLY_RECONNECT}`);
+    expect(bridgeInstructions(hosted, true)).not.toMatch(/ignore/i);
+    expect(bridgeInstructions(undefined, true)).toBe(`${READ_ONLY_LINE}\n${READ_ONLY_CHOICE}`);
+    expect(bridgeInstructions("Hosted text.", false)).toBe("Hosted text.");
   });
 
   it("refuses a write tool without sending it, a known one and one only the hosted server knows", async () => {

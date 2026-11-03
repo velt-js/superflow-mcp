@@ -33,6 +33,9 @@ const POLL_NOTE = `Check again with superflow_get_run in ${POLL_SECONDS} seconds
 
 const TOKEN_NOTE = "This workspace is billed by model usage, so runs cannot be priced in advance.";
 
+/** The API takes pages with scope list only (one page too: scope list with that one URL). */
+export const PAGES_NEED_LIST = "pages can only be sent with scope list. To review one page, send scope list and that one URL.";
+
 /** The input shared by superflow_estimate_run and superflow_run_agents (CONTRACT-P3 section 4). */
 const runShape = {
   project: projectRefSchema,
@@ -54,6 +57,7 @@ interface RunInput {
 function checkRunInput(args: RunInput): CallToolResult | undefined {
   if (args.agents && args.pack) return invalidInput("Give agents or pack, not both.");
   if (args.scope === "list" && !args.pages) return invalidInput("scope list needs pages: the page URLs to review.");
+  if (args.pages && args.scope !== "list") return invalidInput(PAGES_NEED_LIST);
   return undefined;
 }
 
@@ -153,7 +157,7 @@ export const runAgents = defineTool({
   name: "superflow_run_agents",
   title: "Run agents",
   description: [
-    "Start an AI agent run: one scan of the project's site (or one page, or a list of pages) by the agents you pick, a pack, or the default agents. It spends AI credits and the agents leave their findings as comments on the pages.",
+    "Start an AI agent run: one scan of the project's site (or only its own site URL with scope page, or the pages you list with scope list) by the agents you pick, a pack, or the default agents. It spends AI credits and the agents leave their findings as comments on the pages.",
     "Always call superflow_estimate_run first and show the user the credits. Without confirm: true nothing is started: this tool returns the estimate as a preview so you can ask. Call again with confirm: true only after the user says yes.",
     `When the balance is too low the run is refused: tell the user the balance and to add credits in Superflow under Settings > Billing. Do not retry. After starting, follow it with superflow_get_run no more often than every ${POLL_SECONDS} seconds. At most 25 agents per run. A run cannot be cancelled.`,
     'Example: {"project": "Acme Dental", "scope": "site", "pack": "Pre-Launch"}',

@@ -5,7 +5,7 @@ import type { Agent, AgentPack, DeleteAgentResponse, IdName, ListEnvelope, Sched
 import { CONFIRM_DELETE_AGENT_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
-import { asData, compact, join, nameList } from "./helpers.ts";
+import { asData, compact, count, join, nameList } from "./helpers.ts";
 import { agentRefSchema, confirmSchema, idempotencySchema, packRefSchema } from "./schemas.ts";
 
 const KIND_LABELS: Record<string, string> = { built_in: "built-in", custom: "custom" };
@@ -222,6 +222,8 @@ export const deleteAgent = defineTool({
         using.length > 0
           ? `${plural(using.length, "schedule")} ${using.length === 1 ? "runs" : "run"} it${lonely > 0 ? `; ${lonely} would have no agents left and would be turned off` : ""}.`
           : "No schedule runs it.",
+        schedules.scan?.complete === false &&
+          `The schedule count may be low: the API read ${count(schedules.scan.scanned)} schedule definitions and stopped before the last.`,
         "Nothing was deleted. Ask the user to confirm.",
       ),
       { preview: { agent, packs, schedules_using: using }, message: CONFIRM_DELETE_AGENT_MESSAGE },

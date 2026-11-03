@@ -41,7 +41,8 @@ const CORE_READ_ARGS: Record<string, Record<string, unknown>> = {
 function env(extra: Record<string, string> = {}): Record<string, string> {
   return {
     SUPERFLOW_API_KEY: KEY,
-    ...(BASE_URL ? { SUPERFLOW_API_BASE_URL: BASE_URL } : {}),
+    // Direct mode needs the MCP URL on the same origin as the API (the CLI refuses otherwise).
+    ...(BASE_URL ? { SUPERFLOW_API_BASE_URL: BASE_URL, SUPERFLOW_MCP_URL: `${new URL(BASE_URL).origin}/mcp` } : {}),
     SUPERFLOW_LOG_LEVEL: "error",
     ...extra,
   };

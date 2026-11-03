@@ -32,15 +32,21 @@ const NON_DESTRUCTIVE_GATED = [
   "superflow_create_api_key",
   "superflow_set_schedule",
 ];
-/** Destructive tools with their own preview rule: remove_member asks the API (409 preview); bulk is a dry run. */
-const OWN_PREVIEW_RULE = new Set(["superflow_remove_member", "superflow_bulk_update_comments"]);
+/**
+ * Destructive tools with their own preview rule: remove_member, delete_tag and merge_tags ask the
+ * API without confirm (its 409 is the preview); bulk is a dry run.
+ */
+const OWN_PREVIEW_RULE = new Set(["superflow_remove_member", "superflow_delete_tag", "superflow_merge_tags", "superflow_bulk_update_comments"]);
+/** The tools whose preview is the API's own answer to the unconfirmed call. */
+const API_PREVIEWS = ["superflow_remove_member", "superflow_delete_tag", "superflow_merge_tags"];
 
 const api = new FakeSuperflowApi(KEY);
 let server: Launched;
 let tools: Tool[] = [];
 
 function baseEnv(extra: Record<string, string> = {}): Record<string, string> {
-  return { SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: api.baseUrl, SUPERFLOW_LOG_LEVEL: "debug", ...extra };
+  // Direct mode: the MCP URL shares the fake API's origin, as the CLI requires.
+  return { SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: api.baseUrl, SUPERFLOW_MCP_URL: `${new URL(api.baseUrl).origin}/mcp`, SUPERFLOW_LOG_LEVEL: "debug", ...extra };
 }
 
 function withoutConfirm(args: Record<string, unknown>): Record<string, unknown> {
@@ -268,6 +274,19 @@ describe("confirmation gates over stdio", () => {
     expect(wrote.length, `wrote with confirm: ${wrote.join(", ")}`).toBeGreaterThanOrEqual(Math.ceil(gated().length * 0.6));
   }, 120_000);
 
+  it("the tools whose preview is the API's never send confirm without confirm: true", async () => {
+    for (const name of API_PREVIEWS) {
+      const tool = tools.find((t) => t.name === name)!;
+      api.reset();
+      await server.call(name, withoutConfirm(exampleOf(tool.description)));
+      expect(api.requests.length, name).toBeGreaterThan(0);
+      for (const request of api.requests) {
+        expect(request.query.confirm, `${name} sent confirm in the query`).toBeUndefined();
+        expect((request.body as { confirm?: unknown } | undefined)?.confirm, `${name} sent confirm in the body`).toBeUndefined();
+      }
+    }
+  });
+
   it("bulk update is a dry run unless dry_run is false and confirm is true", async () => {
     const bulk = tools.find((t) => t.name === "superflow_bulk_update_comments")!;
     await server.call(bulk.name, withoutConfirm(exampleOf(bulk.description)));
@@ -428,6 +447,14 @@ describe("startup", () => {
     expect(out.code).not.toBe(0);
     expect(out.stdout).toBe("");
     expect(out.stderr).toContain("https");
+  });
+
+  it("in direct mode, refuses an API on another origin than the MCP server the key is for", async () => {
+    const out = await run({ SUPERFLOW_API_KEY: KEY, SUPERFLOW_API_BASE_URL: "http://127.0.0.1:9/v1" });
+    expect(out.code).not.toBe(0);
+    expect(out.stdout).toBe("");
+    expect(out.stderr).toContain("SUPERFLOW_API_BASE_URL (http://127.0.0.1:9) and the MCP server the key or sign-in is for (https://mcp.usesuperflow.ai, the default) are different servers");
+    expect(out.stderr).not.toContain(KEY);
   });
 
   it("refuses a plain-http MCP URL outside localhost before going over the network", async () => {

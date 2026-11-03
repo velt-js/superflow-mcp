@@ -44,10 +44,28 @@ import { PACKAGE_NAME, USER_AGENT, VERSION } from "./version.ts";
  * adds a few seconds. The hosted function itself stops at 300 s.
  */
 export const TOOL_CALL_TIMEOUT_MS = 150_000;
-/** Every other request (initialize, lists, reads, prompts, completions). */
+/** Every other request (lists, reads, prompts, completions). */
 export const REQUEST_TIMEOUT_MS = 60_000;
+/**
+ * The hosted initialize, tried twice at most, before stdio connects. 20 s each keeps a cold start
+ * inside the start-up timeouts of MCP clients (30 s and more): staging measured 17.5 s cold, prod
+ * keeps a warm instance, and a first try that timed out leaves the instance warm for the second.
+ */
+export const INITIALIZE_TIMEOUT_MS = 20_000;
 
-const READ_ONLY_NOTE = "This server is read-only: write tools are not available.";
+/** The package's own read-only line (src/server.ts); the hosted server uses it when it sees X-Superflow-Read-Only. */
+export const READ_ONLY_LINE = "This server is read-only: write tools are not available.";
+
+/** What the bridge always adds in read-only mode: whose choice it is, and how to make a change. */
+export const READ_ONLY_CHOICE =
+  "Read-only mode is on in this machine's settings (SUPERFLOW_READ_ONLY=true): to make a change, the user turns it off, or makes the change in Superflow.";
+
+/**
+ * Added when the hosted text tells the user to reconnect (it does when the key or sign-in itself
+ * cannot write): then both steps are needed, and the note says so instead of contradicting it.
+ */
+export const READ_ONLY_RECONNECT =
+  "The key or sign-in can only read as well: for changes the user also needs one that may write (a key with write scopes, or npx superflow-mcp login again allowing the write permissions).";
 
 export interface BridgeOptions {
   /** The hosted MCP endpoint, for example https://mcp.usesuperflow.ai/mcp. */
@@ -63,6 +81,8 @@ export interface BridgeOptions {
   fetch?: typeof fetch;
   toolTimeoutMs?: number;
   requestTimeoutMs?: number;
+  /** Override for tests. Defaults to INITIALIZE_TIMEOUT_MS. */
+  initializeTimeoutMs?: number;
 }
 
 /** A token provider for an API key: the same token every time, nothing to refresh. */
@@ -251,8 +271,8 @@ class Hosted {
         "User-Agent": USER_AGENT,
         // Tells the hosted server this is the npm package's bridge (its analytics and logs).
         "X-Superflow-Client": USER_AGENT,
-        // Asks the hosted server for its read-only tool set. It does not read this yet, so the
-        // bridge filters the tools itself either way.
+        // Tells the hosted server the user chose read-only mode. Whatever it does with it, the
+        // bridge filters the tool list and refuses write tools itself.
         ...(this.options.readOnly ? { "X-Superflow-Read-Only": "true" } : {}),
       },
       ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
@@ -260,24 +280,29 @@ class Hosted {
     });
   }
 
-  /** Connects (initialize) once; the first failure that may be a cold start or a blip is tried once more. */
+  /**
+   * Connects (initialize), 20 s a try. A first try that timed out (a cold start), hit the
+   * network or a 5xx is tried once more; a refused key or sign-in is not.
+   */
   async connect(): Promise<Client> {
+    const timeout = this.initializeTimeoutMs;
     try {
       return await this.connectOnce();
     } catch (error) {
-      const failure = bridgeFailure(error, this.options, this.requestTimeoutMs);
-      if (!failure?.retryable) throw failure ?? error;
+      const failure = bridgeFailure(error, this.options, timeout);
+      const timedOut = error instanceof McpError && error.code === ErrorCode.RequestTimeout;
+      if (!failure || !(failure.retryable || timedOut)) throw failure ?? error;
       this.logger.debug("bridge: connecting again after a failed first try", { reason: failure.message });
       try {
         return await this.connectOnce();
       } catch (again) {
-        throw bridgeFailure(again, this.options, this.requestTimeoutMs) ?? again;
+        throw bridgeFailure(again, this.options, timeout) ?? again;
       }
     }
   }
 
-  private get requestTimeoutMs(): number {
-    return this.options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+  private get initializeTimeoutMs(): number {
+    return this.options.initializeTimeoutMs ?? INITIALIZE_TIMEOUT_MS;
   }
 
   private async connectOnce(): Promise<Client> {
@@ -290,7 +315,13 @@ class Hosted {
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => this.onListChanged?.("tools"));
     client.setNotificationHandler(PromptListChangedNotificationSchema, async () => this.onListChanged?.("prompts"));
     client.setNotificationHandler(ResourceListChangedNotificationSchema, async () => this.onListChanged?.("resources"));
-    await client.connect(transport, { timeout: this.requestTimeoutMs });
+    try {
+      await client.connect(transport, { timeout: this.initializeTimeoutMs });
+    } catch (error) {
+      // Abort the request still in flight (a timeout) before a second try.
+      await client.close().catch(() => undefined);
+      throw error;
+    }
     this.client = client;
     return client;
   }
@@ -341,11 +372,22 @@ function mirrorCapabilities(upstream: ServerCapabilities | undefined): ServerCap
   return capabilities;
 }
 
-/** The hosted server's instructions; in read-only mode they also say so, unless they already do. */
-function bridgeInstructions(upstream: string | undefined, readOnly: boolean): string | undefined {
+/**
+ * The hosted server's instructions; in read-only mode the bridge's own note always follows them,
+ * without repeating the read-only line the hosted text already has, and agreeing with any advice
+ * there to reconnect (that advice means the key or sign-in itself is read-only too).
+ */
+export function bridgeInstructions(upstream: string | undefined, readOnly: boolean): string | undefined {
   if (!readOnly) return upstream;
-  if (upstream && /read-only/i.test(upstream)) return upstream;
-  return upstream ? `${upstream}\n${READ_ONLY_NOTE}` : READ_ONLY_NOTE;
+  const text = upstream ?? "";
+  const lines = [
+    text,
+    // The hosted text says it already, in stdio wording or in its own ("This connection is ...").
+    !/read-only: write tools are not available/i.test(text) && READ_ONLY_LINE,
+    READ_ONLY_CHOICE,
+    /reconnect/i.test(text) && READ_ONLY_RECONNECT,
+  ];
+  return lines.filter((line): line is string => typeof line === "string" && line !== "").join("\n");
 }
 
 /** The refusal of a write tool in read-only mode, worded like the package's own (src/server.ts). */

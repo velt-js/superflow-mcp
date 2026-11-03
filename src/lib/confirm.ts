@@ -27,7 +27,7 @@ export const CONFIRM_DELETE_REPLY_MESSAGE =
   "Nothing was deleted. Show this reply to the user and ask whether to delete it. If they say yes, call superflow_delete_reply again with confirm: true. Deleted replies cannot be restored.";
 
 export const CONFIRM_BULK_MESSAGE =
-  "Nothing was changed. This was a dry run. Show the user how many comments would change and the sample, and ask whether to apply it. If they say yes, call superflow_bulk_update_comments again with the same selection and patch, dry_run: false and confirm: true.";
+  "Nothing was changed. This was a dry run. Show the user how many comments would change, the sample, and any it would not write (failed), and ask whether to apply it. If they say yes, call superflow_bulk_update_comments again with the same selection and patch, dry_run: false and confirm: true.";
 
 // Phase 2 destructive tools. Each message tells the model what was NOT done, what to show
 // the user, what the real call does, and how to make it.
@@ -54,12 +54,16 @@ export const TAG_REWRITE_UPDATED_NOTE =
 /** Why a tag rewrite reports failed comments, and why calling again cannot change them. */
 export const TAG_REWRITE_WINDOW_REASON = "on a project with more than 1,000 comments, only the newest 1,000 can be changed";
 
-/** How a confirmed delete or merge goes on after one call, and when it stops. */
-const TAG_REWRITE_CURSOR_STEPS = `One call rewrites at most 500 comments: while the result has a next_cursor, call again with confirm: true and cursor set to that next_cursor. When next_cursor is null it is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (${TAG_REWRITE_WINDOW_REASON}); when a call changes nothing, tell the user and stop.`;
+/**
+ * How a tag rewrite job goes on and ends (the descriptions of update_tag, delete_tag and
+ * merge_tags, and the delete and merge confirm messages): a pass follows next_cursor to the end,
+ * and at most ONE retry pass follows it, so a job can never loop.
+ */
+export const TAG_REWRITE_STEPS = `One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same arguments and cursor set to next_cursor, even when a call changed nothing. When next_cursor is null the pass is done, and the answer says so. If a call could not rewrite some comments while it changed others, the finished pass offers one retry pass: the same call without a cursor and with retry: true. A retry pass never offers another: when it ends, tell the user what could not change and stop. Comments outside Velt's update window never change (${TAG_REWRITE_WINDOW_REASON}).`;
 
-export const CONFIRM_DELETE_TAG_MESSAGE = `Nothing was deleted. Show the user the tag and how many comments carry it, and ask whether to delete it. Deleting takes the tag off every comment that carries it, in every project; the comments stay. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_delete_tag again with confirm: true. ${TAG_REWRITE_CURSOR_STEPS}`;
+export const CONFIRM_DELETE_TAG_MESSAGE = `Nothing was deleted. Show the user the tag and how many comments carry it, and ask whether to delete it. Deleting takes the tag off every comment that carries it, in every project; the comments stay. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_delete_tag again with confirm: true and no cursor, so the job starts at the first comment (a cursor with confirm deletes only from that point on: use it only when the user wants just the rest). ${TAG_REWRITE_STEPS} Keep confirm: true on every call of the job.`;
 
-export const CONFIRM_MERGE_TAGS_MESSAGE = `Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one instead, in every project, and the first tag is gone. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_merge_tags again with confirm: true. ${TAG_REWRITE_CURSOR_STEPS}`;
+export const CONFIRM_MERGE_TAGS_MESSAGE = `Nothing was merged. Show the user both tags and how many comments would change, and ask whether to merge them. Every comment with the first tag gets the second one instead, in every project, and the first tag is gone. ${TAG_REWRITE_UPDATED_NOTE} If the user says yes, call superflow_merge_tags again with confirm: true and no cursor, so the job starts at the first comment (a cursor with confirm merges only from that point on: use it only when the user wants just the rest). ${TAG_REWRITE_STEPS} Keep confirm: true on every call of the job.`;
 
 export const CONFIRM_CREATE_API_KEY_MESSAGE =
   "Nothing was created. Show the user the label, scopes and expiry, and ask whether to create the key. Its token will appear once, in this conversation. If the user says yes, call superflow_create_api_key again with confirm: true.";

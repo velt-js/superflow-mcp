@@ -94,9 +94,12 @@ playbook line in the server instructions.
 - Dates: validate with `findInvalidDate` before calling the API.
 - Gates: every destructive tool (`destructiveHint: true`) except bulk needs `confirm: true`;
   without it it only reads and returns a `needs_confirmation` preview (`confirmationResult`).
-  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The one exception
-  is `superflow_remove_member`, which asks the API without confirm and shows its 409
-  preview. Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
+  Find the item to preview in a list with `findOne` (`src/lib/match.ts`). The exceptions
+  ask the API without confirm and show its 409 preview: `superflow_remove_member`,
+  `superflow_delete_tag` and `superflow_merge_tags` (the API reads the tag's comments itself, one
+  window a page: the preview pages with its `next_cursor` and adds the counts up in `counted`,
+  and after a paged preview the job is confirmed WITHOUT a cursor, since a cursor with confirm
+  rewrites only from that point on). Bulk is a dry run unless `dry_run: false` and `confirm: true`. These previews
   are normal results, not errors. Unit tests prove no write request goes out without confirm.
   `superflow_reject_comment` is destructive (a rejection cannot be undone): without confirm
   it reads the comment and returns it with the reason as the preview.
@@ -148,8 +151,12 @@ playbook line in the server instructions.
   (`already_verified`, `not_agent_comment`, ...) on the error; never retry it.
 - Label a comment by its id. Deleting a comment (or a page's comments) is permanent: the
   descriptions and previews say so. Tag rewrites change at most 500 comments a call and go
-  on from the answer's `next_cursor` (passed back as `cursor`); a null `next_cursor` ends
-  them, and comments still in `failed` are reported, never retried.
+  on from the answer's `next_cursor` (passed back as `cursor`, a rename too); a null
+  `next_cursor` ends the pass, and the answer says it is done. Comments a call could not
+  rewrite while it changed others get ONE retry pass (no cursor, `retry: true`, a flag the
+  package keeps and never sends); a retry pass never offers another, so a job is at most two
+  passes. Text and tests: `rewriteNote` in `src/tools/tags.ts`, `TAG_REWRITE_STEPS` in
+  `src/lib/confirm.ts`.
 
 ## Commands
 

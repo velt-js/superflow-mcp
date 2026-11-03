@@ -178,7 +178,7 @@ own.
 | `SUPERFLOW_CREDENTIALS_STORE` | no | `auto` | `auto` (Keychain or Secret Service, else a file) or `file`. |
 | `SUPERFLOW_CREDENTIALS_FILE` | no | `~/.config/superflow-mcp/credentials.json` | Where the file store keeps the sign-in. |
 | `SUPERFLOW_MCP_URL` | no | `https://mcp.usesuperflow.ai/mcp` | The hosted MCP server the bridge forwards to. Must be https (http only for localhost). A saved sign-in uses the server it signed in with. Staging: `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp` (use the run.app origin: the cloudfunctions.net one fails the OAuth resource check). |
-| `SUPERFLOW_API_BASE_URL` | no | | Development only. When set, the tools run in the process against this REST API instead of the hosted server (direct mode). The API is served by the same function as the hosted MCP server: `https://mcp.usesuperflow.ai/v1`, staging `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1`. Must be https (http only for localhost). |
+| `SUPERFLOW_API_BASE_URL` | no | | Development only. When set, the tools run in the process against this REST API instead of the hosted server (direct mode). The API is served by the same function as the hosted MCP server: `https://mcp.usesuperflow.ai/v1`, staging `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/v1`. Must be https (http only for localhost), and on the same origin as the MCP server the key or sign-in is for (`SUPERFLOW_MCP_URL`, the saved sign-in's, or the default), or the server refuses to start. |
 | `SUPERFLOW_READ_ONLY` | no | `false` | `true` hides every write tool. |
 | `SUPERFLOW_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn`, `error` or `silent`. Logs go to stderr. |
 
@@ -288,7 +288,7 @@ Resolving or marking a check fixed is a claim: a rescan verifies it, and a probl
 | `superflow_get_notification_settings` | Your own digest, inbox and email settings. |
 | `superflow_update_notification_settings` | Change your own notification settings. |
 
-Tags are workspace-wide and live on the comments: a tag exists while some comment carries it, and putting a new name on a comment creates it. Give tags by name; a `tag_` id works only for a tag already on the comment, and a color given with a name colors that comment's copy only, so one tag can show two colors. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. Renaming, recoloring, deleting or merging a tag rewrites at most 500 comments a call: the assistant goes on with the `next_cursor` of each answer until it is null. Comments counted in `failed` then could not be changed (on a project with more than 1,000 comments, only the newest 1,000 can be), and the rewritten comments show as just updated.
+Tags are workspace-wide and live on the comments: a tag exists while some comment carries it, and putting a new name on a comment creates it. Give tags by name; a `tag_` id works only for a tag already on the comment, and a color given with a name colors that comment's copy only, so one tag can show two colors. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. `superflow_list_tags` reads up to 10,000 comments a page and pages on with `next_cursor`; a tag can show on several pages. Renaming, recoloring, deleting or merging a tag rewrites at most 500 comments a call: the assistant goes on with the `next_cursor` of each answer until it is null, and makes at most one retry pass for comments that could not be rewritten. The delete and merge previews count with the same paging, and the change itself starts from the first comment. Comments counted in `failed` then could not be changed (on a project with more than 1,000 comments, only the newest 1,000 can be), and the rewritten comments show as just updated.
 
 #### Agents, runs and schedules
 
@@ -366,7 +366,7 @@ Analytics are computed once a day. When `is_stale` is true the numbers are not a
 
 | Tool | What it does |
 |---|---|
-| `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
+| `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. They are not checks: the failing checks and the fix list do not include them. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
 
 In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix`, `/triage`, `/push_my_review` and `/onboard_agency`.
 

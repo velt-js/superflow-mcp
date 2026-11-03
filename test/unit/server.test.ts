@@ -319,8 +319,11 @@ describe("tool registration", () => {
       expect(describe(name), name).toContain("at most 500 comments");
       // Each call goes on from next_cursor, and a null next_cursor ends it: never "the same arguments" alone.
       expect(describe(name), name).toContain("cursor set to next_cursor");
-      expect(describe(name), name).toContain("When next_cursor is null the job is done");
-      expect(describe(name), name).toContain("when a call changes nothing, tell the user and stop");
+      expect(describe(name), name).toContain("even when a call changed nothing");
+      expect(describe(name), name).toContain("When next_cursor is null the pass is done");
+      // At most one retry pass: the descriptions say so, and the retry flag is an input.
+      expect(describe(name), name).toContain("A retry pass never offers another");
+      expect(Object.keys(listed.find((t) => t.name === name)?.inputSchema.properties ?? {}), name).toContain("retry");
       expect(describe(name), name).toContain("Rewritten comments show as just updated");
       expect(describe(name), name).not.toMatch(/call again with the same arguments to finish/);
     }

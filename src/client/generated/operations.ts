@@ -408,7 +408,7 @@ export const operations = {
     method: "GET",
     path: "/projects/{project}/tags",
     pathParams: ["project"],
-    queryParams: [],
+    queryParams: ["cursor"],
   },
   listProjects: {
     method: "GET",
@@ -456,7 +456,7 @@ export const operations = {
     method: "GET",
     path: "/tags",
     pathParams: [],
-    queryParams: ["project"],
+    queryParams: ["cursor", "project"],
   },
   mergeTags: {
     method: "POST",
@@ -644,7 +644,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "cabd28733698b174a8008ea8cd665ad09ec51a98eaa536f46c391cecd21912a2";
+export const OPENAPI_SHA256 = "2e12380f263e1cf61fa8c132c05b353af3e52e696d2f4ac524fbfc63ddf2fcea";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

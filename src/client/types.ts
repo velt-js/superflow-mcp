@@ -309,6 +309,8 @@ export interface BulkDryRunResponse extends BulkPreview {
   dry_run: true;
   /** Selected comments already in the target state (skipped). */
   already_in_state: number;
+  /** Comments the run would not write, with why (a tag change on a comment whose tags could not be read). Not in would_update. */
+  failed?: Array<{ id: string; error: string }>;
   applied_filters?: Record<string, unknown>;
   scan?: Scan;
 }

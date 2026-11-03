@@ -143,6 +143,23 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
+  it("previewing a change to a schedule past the API's schedule scan says it may be past it", async () => {
+    on("get", "/schedules", ok({ items: [schedule], next_cursor: null, scan: { scanned: 10000, complete: false } }));
+    const h = await connect();
+    const error = errorOf(await h.call(TOOL, { schedule: "sch_missing", enabled: true }));
+    expect(error.message).toContain("may be past what it read");
+    expect(writes()).toEqual([]);
+  });
+
+  it("refuses pages without scope list, on a new schedule and on a change, before calling the API", async () => {
+    const h = await connect();
+    const created = errorOf(await h.call(TOOL, { project: "Acme Dental", cron: "0 9 * * 1", scope: "page", pages: ["https://acme.com/pricing"] }));
+    expect(created.message).toBe("pages can only be sent with scope list. To review one page, send scope list and that one URL.");
+    const changed = errorOf(await h.call(TOOL, { schedule: "sch_4d5e6f", scope: "site", pages: ["https://acme.com/pricing"] }));
+    expect(changed.code).toBe("invalid");
+    expect(recorded).toHaveLength(0);
+  });
+
   it("moving the time zone needs no confirm", async () => {
     on("patch", "/schedules/:schedule", ok({ ...schedule, timezone: "UTC" }));
     const h = await connect();

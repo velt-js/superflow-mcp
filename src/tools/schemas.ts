@@ -293,12 +293,12 @@ export const agentListSchema = (what: string) =>
 export const runScopeSchema = z
   .enum(RUN_SCOPES)
   .optional()
-  .describe("What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages).");
+  .describe("What to review: site (default, the pages Superflow finds on the site), page (the project's own site URL only, no pages) or list (the URLs in pages). To review one other page, use list with that one URL.");
 
 export const runPagesSchema = z
   .array(z.string().min(1))
   .min(1)
   .max(MAX_RUN_PAGES)
   .optional()
-  .describe(`Page URLs to review, at most ${MAX_RUN_PAGES}. Needed for scope list; for scope page give the one page.`);
+  .describe(`Page URLs to review, at most ${MAX_RUN_PAGES}, with scope list only: the API refuses pages with scope page or site. For one page, send scope list and that one URL.`);
 

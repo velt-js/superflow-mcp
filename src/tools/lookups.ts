@@ -162,28 +162,36 @@ export const listTags = defineTool({
   title: "List tags",
   description: [
     "List the tags on comments with how many comments carry each: the workspace's, or one project's. Tags are workspace-wide: a tag exists while some comment carries it, and tagging a comment with a new name creates it.",
+    "One page reads up to 10,000 comments. When the answer has next_cursor, more comments remain: call again with the same project and cursor for the next page. A page lists the tags of its own comments, so the same tag can show on several pages: add up usage_count by tag id across pages, or say the counts cover only the pages read.",
     "Use it to find exact tag names before filtering, tagging, bulk updating or merging by tag.",
     "To count comments per tag under other filters use superflow_comment_stats with group_by tag.",
     'Example: {"project": "Acme Dental"}',
   ].join("\n"),
   inputSchema: {
     project: optionalProject.describe("Only the tags on this project's comments (name, site URL or id). Omit for the whole workspace."),
+    cursor: cursorSchema.describe("The next_cursor of the previous page of this same list (same project). Leave it out for the first page."),
   },
   annotations: READ_HINTS,
   write: false,
   async run(args, { api }) {
+    const query = { cursor: args.cursor };
     const list = args.project
-      ? await api.call<ListEnvelope<Tag>>("listProjectTags", { path: { project: args.project } })
-      : await api.call<ListEnvelope<Tag>>("listTags");
+      ? await api.call<ListEnvelope<Tag>>("listProjectTags", { path: { project: args.project }, query })
+      : await api.call<ListEnvelope<Tag>>("listTags", { query });
     const items = list.items ?? [];
     const top = [...items]
       .sort((a, b) => (b.usage_count ?? 0) - (a.usage_count ?? 0))
       .slice(0, 8)
       .map((t) => (typeof t.usage_count === "number" ? `${t.name} (${t.usage_count})` : t.name));
+    const scanned = list.scan ? count(list.scan.scanned) : "the";
+    const next = list.next_cursor
+      ? `This page read ${scanned} comments and more remain: call superflow_list_tags again with ${JSON.stringify({ ...(args.project ? { project: args.project } : {}), cursor: list.next_cursor })} for the next page. A tag can show on several pages: add up usage_count by tag id, or say these counts cover only the pages read.`
+      : list.scan?.complete === false &&
+        `The tag scan stopped after ${scanned} comments, so some tags or counts may be missing.${args.project ? "" : " Give a project for a full answer on one site."}`;
     const summary = join(
-      `${plural(items.length, "tag")}${top.length ? `: ${top.join(", ")}${items.length > 8 ? ", ..." : ""}` : ""}.`,
-      list.scan?.complete === false &&
-        `The tag scan stopped after ${count(list.scan.scanned)} comments, so some tags or counts may be missing.${args.project ? "" : " Give a project for a full answer on one site."}`,
+      `${plural(items.length, "tag")}${top.length ? `: ${top.join(", ")}${items.length > 8 ? ", ..." : ""}` : ""}${args.cursor ? " on this page" : ""}.`,
+      next,
+      args.cursor && !list.next_cursor && "This was the last page.",
     );
     return okResult(summary, list as unknown as Record<string, unknown>);
   },

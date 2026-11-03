@@ -24,6 +24,18 @@ describe(TOOL, () => {
     );
   });
 
+  it("says how to page on with next_cursor, and to add counts up by tag id across pages", async () => {
+    on("get", "/projects/:project/tags", ok(list(tags, { scan: { scanned: 10000, complete: false }, next_cursor: "t2" })), ok(list([tags[0]], { scan: { scanned: 300, complete: true } })));
+    const h = await connect();
+    const first = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(first).toBe(
+      '2 tags: copy (12), mobile (5). This page read 10,000 comments and more remain: call superflow_list_tags again with {"project":"Acme Dental","cursor":"t2"} for the next page. A tag can show on several pages: add up usage_count by tag id, or say these counts cover only the pages read.',
+    );
+    const last = summaryOf(await h.call(TOOL, { project: "Acme Dental", cursor: "t2" }));
+    expect(last).toBe("1 tag: copy (12) on this page. This was the last page.");
+    expect(recorded.map((r) => r.query)).toEqual([{}, { cursor: "t2" }]);
+  });
+
   it("uses the project route when a project is given", async () => {
     on("get", "/projects/:project/tags", ok(list(tags)));
     const h = await connect();

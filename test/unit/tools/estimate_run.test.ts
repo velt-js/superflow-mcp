@@ -50,6 +50,12 @@ describe(TOOL, () => {
       "Give agents or pack, not both.",
     );
     expect(errorOf(await h.call(TOOL, { project: "Acme", scope: "list" })).message).toContain("scope list needs pages");
+    // The API takes pages with scope list only: one page is scope list with that one URL.
+    for (const scope of ["page", "site", undefined]) {
+      expect(errorOf(await h.call(TOOL, { project: "Acme", ...(scope ? { scope } : {}), pages: ["https://acme.com/pricing"] })).message).toBe(
+        "pages can only be sent with scope list. To review one page, send scope list and that one URL.",
+      );
+    }
     expect(errorOf(await h.call(TOOL, { project: "Acme", agents: Array.from({ length: 26 }, (_, i) => `a${i}`) })).code).toBe("invalid");
     expect(recorded).toHaveLength(0);
   });

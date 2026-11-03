@@ -31,6 +31,19 @@ describe(TOOL, () => {
     expect(writes()).toEqual([]);
   });
 
+  it("when the API's schedule scan stopped early, says the schedule may be past it, not gone", async () => {
+    on("get", "/schedules", ok(list([schedule], { scan: { scanned: 10000, complete: false } })));
+    const h = await connect();
+    const error = errorOf(await h.call(TOOL, { schedule: "sch_nope" }));
+    expect(error.code).toBe("not_found");
+    expect(error.message).toBe(
+      "No schedule sch_nope in the 10,000 schedule definitions the API read. It stopped before the last, so the schedule may be past what it read.",
+    );
+    expect(error.hint).toContain("Do not treat it as deleted.");
+    expect(error.hint).not.toContain("already gone");
+    expect(writes()).toEqual([]);
+  });
+
   it("deletes with confirm: true", async () => {
     on("delete", "/schedules/:schedule", ok({ deleted: true, id: "sch_4d5e6f" }));
     const h = await connect();

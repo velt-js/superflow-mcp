@@ -596,14 +596,24 @@ const bulkPatchSchema = z
   })
   .describe("The change to apply to every selected comment. At least one field.");
 
-/** "Would change 44 comments in Acme Dental (tags: copy). 3 already match." */
+/** "3 failed: cmt_1 (why), ..." for the comments a bulk run did not (or would not) write. */
+function failedList(failed: ReadonlyArray<{ id: string; error: string }>, lead: string): string {
+  if (failed.length === 0) return "";
+  const shown = failed
+    .slice(0, 3)
+    .map((f) => `${f.id} (${f.error.replace(/\.$/, "")})`)
+    .join(", ");
+  return `${failed.length} ${lead}: ${shown}${failed.length > 3 ? ", ..." : ""}.`;
+}
+
+/** "Would change 44 comments in Acme Dental (tags: copy). 3 already match. 2 would not be written: ..." */
 function dryRunCounts(preview: BulkDryRunResponse): string {
   const filters = describeFilters(preview.applied_filters);
   const where = filters ? ` ${filters}` : "";
   const would = preview.would_update ?? 0;
   const already = preview.already_in_state ?? 0;
   const head = would === 0 ? `No comments${where} would change.` : `Would change ${plural(would, "comment")}${where}.`;
-  return already > 0 ? `${head} ${already} already match.` : head;
+  return join(head, already > 0 && `${already} already match.`, failedList(preview.failed ?? [], "would not be written (not counted above)"));
 }
 
 export const bulkUpdateComments = defineTool({
@@ -613,7 +623,7 @@ export const bulkUpdateComments = defineTool({
     "Change many comments at once (up to 200): set status, priority or assignee, add or remove tags, or resolve or reopen with an optional note.",
     `${PRIORITY_NOTE} Clearing the priority or removing the assignee is not supported yet.`,
     "Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments). A filter that matches more comments than the API can scan is refused: narrow it, for example by project or date.",
-    "It is a dry run by default: you get how many comments would change, how many already match, and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.",
+    "It is a dry run by default: you get how many comments would change, how many already match, the ones it would not write (failed, with why, for example a tag change on a comment whose tags could not be read), and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.",
     "For one comment use superflow_update_comment or superflow_resolve_comment.",
     'Example: {"filter": {"project": "Acme Dental", "tags": ["copy"], "page_url": "acme.com/", "status": ["open"]}, "patch": {"resolve": true, "note": "Copy updated."}}',
   ].join("\n"),
@@ -697,16 +707,11 @@ export const bulkUpdateComments = defineTool({
       const result = await api.call<BulkRunResponse>("bulkUpdateComments", {
         body: compact({ select, patch, dry_run: false, confirm: true, idempotency_key: args.idempotency_key }),
       });
-      const failed = result.failed ?? [];
       const unchanged = result.unchanged ?? 0;
       const summary = join(
         `Updated ${plural(result.updated ?? 0, "comment")}.`,
         unchanged > 0 && `${unchanged} already matched and were skipped.`,
-        failed.length > 0 &&
-          `${failed.length} failed: ${failed
-            .slice(0, 3)
-            .map((f) => `${f.id} (${f.error})`)
-            .join(", ")}${failed.length > 3 ? ", ..." : ""}.`,
+        failedList(result.failed ?? [], "failed"),
       );
       return okResult(summary, asData(result));
     } catch (error) {

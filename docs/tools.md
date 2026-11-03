@@ -230,12 +230,14 @@ Example:
 **List tags**
 
 List the tags on comments with how many comments carry each: the workspace's, or one project's. Tags are workspace-wide: a tag exists while some comment carries it, and tagging a comment with a new name creates it.
+One page reads up to 10,000 comments. When the answer has next_cursor, more comments remain: call again with the same project and cursor for the next page. A page lists the tags of its own comments, so the same tag can show on several pages: add up usage_count by tag id across pages, or say the counts cover only the pages read.
 Use it to find exact tag names before filtering, tagging, bulk updating or merging by tag.
 To count comments per tag under other filters use superflow_comment_stats with group_by tag.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | no | Only the tags on this project's comments (name, site URL or id). Omit for the whole workspace. |
+| `cursor` | string | no | The next_cursor of the previous page of this same list (same project). Leave it out for the first page. |
 
 Example:
 
@@ -593,7 +595,7 @@ Example:
 Change many comments at once (up to 200): set status, priority or assignee, add or remove tags, or resolve or reopen with an optional note.
 Superflow has three priorities: critical (P0), high (P1) and medium (P2). Clearing the priority or removing the assignee is not supported yet.
 Select comments either by comment_ids or by a filter (the same filters as superflow_list_comments). A filter that matches more comments than the API can scan is refused: narrow it, for example by project or date.
-It is a dry run by default: you get how many comments would change, how many already match, and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.
+It is a dry run by default: you get how many comments would change, how many already match, the ones it would not write (failed, with why, for example a tag change on a comment whose tags could not be read), and a sample. Nothing is written. Show that to the user. Only after they say yes, call again with dry_run: false and confirm: true.
 For one comment use superflow_update_comment or superflow_resolve_comment.
 
 | Parameter | Type | Required | Description |
@@ -1351,7 +1353,7 @@ Example:
 
 Rename or recolor a tag on every comment that carries it, in every project. Tags are workspace-wide. A rename gives the tag the new name's id (one id per name); a new color, or the same name in other letter case, keeps the id.
 A name another tag already has is refused: fold the tag into that one with superflow_merge_tags instead.
-One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false). For a new color or a change of letter case, call again with the same arguments and cursor set to next_cursor. A real rename that stopped early is finished with superflow_merge_tags from the old name into the new one (a second rename is refused, since the new name is now in use). When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same arguments and cursor set to next_cursor, even when a call changed nothing. When next_cursor is null the pass is done, and the answer says so. If a call could not rewrite some comments while it changed others, the finished pass offers one retry pass: the same call without a cursor and with retry: true. A retry pass never offers another: when it ends, tell the user what could not change and stop. Comments outside Velt's update window never change (on a project with more than 1,000 comments, only the newest 1,000 can be changed). A rename goes on with the cursor like a recolor (the cursor keeps the tag the job started with). Its retry pass is superflow_merge_tags from the old name into the new one, since a new rename without a cursor is refused once the new name is in use.
 Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags.
 To find tag names and ids use superflow_list_tags.
 
@@ -1360,7 +1362,8 @@ To find tag names and ids use superflow_list_tags.
 | `tag` | string | yes | Tag: its name ("copy") or id (tag_...), as superflow_list_tags shows it. |
 | `name` | string | no | New name, up to 64 characters. |
 | `color` | string | no | Hex color, for example #b3261e. |
-| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change (or of a not_found that said to look further). Leave it out on the first call. |
+| `retry` | boolean | no | true only on the one retry pass, when a finished pass said to make it. Never set it otherwise; a retry pass is never followed by another. |
 
 Example:
 
@@ -1373,8 +1376,8 @@ Example:
 **Delete a tag**
 
 Take a tag off every comment that carries it, in every project. The comments stay; the tag is gone once no comment carries it.
-Without confirm: true nothing changes: you get the tag and how many comments carry it as a preview. Call again with confirm: true only after the user says yes.
-One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same tag, confirm: true and cursor set to next_cursor. When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+Without confirm: true nothing changes: the API answers with the tag and how many comments carry it, as a preview, reading up to 10,000 comments a page. When it stops before the last comment, the preview says how to page on with cursor and counted for the full count (still without confirm). Call again with confirm: true only after the user says yes, and without a cursor: a cursor with confirm deletes only from that point on.
+One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same arguments and cursor set to next_cursor, even when a call changed nothing. When next_cursor is null the pass is done, and the answer says so. If a call could not rewrite some comments while it changed others, the finished pass offers one retry pass: the same call without a cursor and with retry: true. A retry pass never offers another: when it ends, tell the user what could not change and stop. Comments outside Velt's update window never change (on a project with more than 1,000 comments, only the newest 1,000 can be changed). Keep confirm: true on every call of the job.
 Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match.
 To fold a tag into another one instead use superflow_merge_tags.
 
@@ -1382,7 +1385,9 @@ To fold a tag into another one instead use superflow_merge_tags.
 |---|---|---|---|
 | `tag` | string | yes | Tag: its name ("copy") or id (tag_...), as superflow_list_tags shows it. |
 | `confirm` | boolean | no | Must be true to delete the tag. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
-| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change (or of a not_found that said to look further). Leave it out on the first call. |
+| `counted` | integer | no | Preview paging only: the count so far from earlier preview pages, as the last preview said to send. Leave it out on the first call. |
+| `retry` | boolean | no | true only on the one retry pass, when a finished pass said to make it. Never set it otherwise; a retry pass is never followed by another. |
 
 Example:
 
@@ -1394,9 +1399,9 @@ Example:
 
 **Merge tags**
 
-Merge one tag into another: every comment that carries tag gets into instead, in every project, and tag is gone. into is a tag some comment carries, or a new name (the new tag keeps tag's color). Use it to clean up near-duplicates such as "Copy text" and "copy", or to finish a rename that stopped early.
-Without confirm: true nothing changes: you get both tags and how many comments would change as a preview. Call again with confirm: true only after the user says yes.
-One call rewrites at most 500 comments and returns next_cursor while more may carry tag (complete: false): call again with the same tag, into, confirm: true and cursor set to next_cursor. When next_cursor is null the job is done. Comments counted in failed were not rewritten: one more call without a cursor retries them, but those it cannot change stay as they are (on a project with more than 1,000 comments, only the newest 1,000 can be changed); when a call changes nothing, tell the user and stop.
+Merge one tag into another: every comment that carries tag gets into instead, in every project, and tag is gone. into is a tag some comment carries, or a new name (the new tag keeps tag's color). Use it to clean up near-duplicates such as "Copy text" and "copy", or as the retry pass of a rename.
+Without confirm: true nothing changes: the API answers with both tags and how many comments would change, as a preview, reading up to 10,000 comments a page. When it stops before the last comment, the preview says how to page on with cursor and counted for the full count (still without confirm). Call again with confirm: true only after the user says yes, and without a cursor: a cursor with confirm merges only from that point on.
+One call rewrites at most 500 comments and returns next_cursor while more may carry the tag (complete: false): call again with the same arguments and cursor set to next_cursor, even when a call changed nothing. When next_cursor is null the pass is done, and the answer says so. If a call could not rewrite some comments while it changed others, the finished pass offers one retry pass: the same call without a cursor and with retry: true. A retry pass never offers another: when it ends, tell the user what could not change and stop. Comments outside Velt's update window never change (on a project with more than 1,000 comments, only the newest 1,000 can be changed). Keep confirm: true on every call of the job.
 Rewritten comments show as just updated, which changes their place in the default updated sort and what updated_after and stale_days match. Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags.
 To just rename or recolor a tag use superflow_update_tag.
 
@@ -1405,7 +1410,9 @@ To just rename or recolor a tag use superflow_update_tag.
 | `tag` | string | yes | The tag to merge away (name or tag_ id). It is gone after the merge. |
 | `into` | string | yes | The tag to keep (name or tag_ id), or a new name. |
 | `confirm` | boolean | no | Must be true to merge the tags. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
-| `cursor` | string | no | The next_cursor of the previous call of this same change, to go on where it stopped. Leave it out on the first call. |
+| `cursor` | string | no | The next_cursor of the previous call of this same change (or of a not_found that said to look further). Leave it out on the first call. |
+| `counted` | integer | no | Preview paging only: the count so far from earlier preview pages, as the last preview said to send. Leave it out on the first call. |
+| `retry` | boolean | no | true only on the one retry pass, when a finished pass said to make it. Never set it otherwise; a retry pass is never followed by another. |
 
 Example:
 
@@ -1921,8 +1928,8 @@ Exact in scan pricing; an estimate in flat pricing; workspaces billed by model u
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
-| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
-| `pages` | array of string | no | Page URLs to review, at most 500. Needed for scope list; for scope page give the one page. |
+| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (the project's own site URL only, no pages) or list (the URLs in pages). To review one other page, use list with that one URL. |
+| `pages` | array of string | no | Page URLs to review, at most 500, with scope list only: the API refuses pages with scope page or site. For one page, send scope list and that one URL. |
 | `agents` | array of string | no | Agents to run: agent names or ids (agt_...), at most 25. Give agents or pack, not both. Leave both out for the default agents. |
 | `pack` | string | no | Run every agent in this pack (name or pck_ id) instead of naming agents. Give agents or pack, not both. |
 
@@ -1936,15 +1943,15 @@ Example:
 
 **Run agents**
 
-Start an AI agent run: one scan of the project's site (or one page, or a list of pages) by the agents you pick, a pack, or the default agents. It spends AI credits and the agents leave their findings as comments on the pages.
+Start an AI agent run: one scan of the project's site (or only its own site URL with scope page, or the pages you list with scope list) by the agents you pick, a pack, or the default agents. It spends AI credits and the agents leave their findings as comments on the pages.
 Always call superflow_estimate_run first and show the user the credits. Without confirm: true nothing is started: this tool returns the estimate as a preview so you can ask. Call again with confirm: true only after the user says yes.
 When the balance is too low the run is refused: tell the user the balance and to add credits in Superflow under Settings > Billing. Do not retry. After starting, follow it with superflow_get_run no more often than every 20 seconds. At most 25 agents per run. A run cannot be cancelled.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
-| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
-| `pages` | array of string | no | Page URLs to review, at most 500. Needed for scope list; for scope page give the one page. |
+| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (the project's own site URL only, no pages) or list (the URLs in pages). To review one other page, use list with that one URL. |
+| `pages` | array of string | no | Page URLs to review, at most 500, with scope list only: the API refuses pages with scope page or site. For one page, send scope list and that one URL. |
 | `agents` | array of string | no | Agents to run: agent names or ids (agt_...), at most 25. Give agents or pack, not both. Leave both out for the default agents. |
 | `pack` | string | no | Run every agent in this pack (name or pck_ id) instead of naming agents. Give agents or pack, not both. |
 | `confirm` | boolean | no | Must be true to start the run and spend the credits. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
@@ -2022,8 +2029,8 @@ Example:
 
 **Import findings from your own agent**
 
-Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments, the fix list and reports like Superflow's own findings.
-Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it is grouped under the same check as Superflow's own findings. It sits beside them and merges only with your own earlier imports of the same finding. Up to 500 findings per call, 5,000 per project per day.
+Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments and in superflow_list_findings with the run_id the import returns. Imported findings are agent comments, not checks: superflow_list_failing_checks and the fix list (the triage playbook) do not include them.
+Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it carries the same key as Superflow's own findings of that kind. It merges only with your own earlier imports of the same finding, never with Superflow's. Up to 500 findings per call, 5,000 per project per day.
 It only creates or merges, never deletes. The same finding sent again merges into its comment. If one finding is invalid nothing is imported and the error lists every problem by index (findings[3].page_url): fix them all and send the whole batch again.
 Not for one comment a person writes: use superflow_create_comment. Not for running Superflow's agents: use superflow_run_agents.
 
@@ -2059,8 +2066,8 @@ Runs at most once an hour: more frequent crons are refused. Delete with superflo
 | `timezone` | string | no | IANA time zone for the cron, for example Europe/Berlin or America/New_York. Default UTC. |
 | `agents` | any or array of string or null | no | Agents to run: names or ids (agt_...), at most 25. Give agents or pack, not both. On a change, null clears them (then the pack or the default agents run). |
 | `pack` | string or null | no | Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it. |
-| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (one page) or list (the URLs in pages). |
-| `pages` | any or array of string or null | no | Page URLs to review, at most 500, for scope list. On a change, null clears them. |
+| `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (the project's own site URL only, no pages) or list (the URLs in pages). To review one other page, use list with that one URL. |
+| `pages` | any or array of string or null | no | Page URLs to review, at most 500, with scope list only (the API refuses pages with scope page or site; for one page, scope list and that one URL). On a change, null clears them. |
 | `enabled` | boolean | no | false pauses the schedule, true turns it back on. New schedules start on. |
 | `confirm` | boolean | no | Must be true to create the schedule or change what or when it runs; every run spends AI credits. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 | `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned. |
