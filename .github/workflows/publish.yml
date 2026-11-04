@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       # The same Node as ci.yml: pnpm 11 needs Node 22 (the package itself runs on Node 20+).
       - uses: actions/setup-node@v5
@@ -83,7 +83,7 @@ jobs:
             *,required_reviewers,*) echo "npm-prod requires a reviewer" ;;
             *) echo "::error::Add a required reviewer to the npm-prod environment (Settings > Environments) before publishing. Nothing was published."; exit 1 ;;
           esac
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:

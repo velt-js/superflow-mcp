@@ -17,7 +17,7 @@ jobs:
     name: Lint, typecheck, test, build, drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -47,7 +47,7 @@ jobs:
     name: Built CLI runs on Node 20
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       # pnpm itself needs Node 22, so install and build there, then run on Node 20.
       - uses: actions/setup-node@v5
