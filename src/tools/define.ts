@@ -27,7 +27,7 @@ export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
   annotations: ToolHints;
   /** Write tools are not registered when SUPERFLOW_READ_ONLY is true. */
   write: boolean;
-  run(args: z.objectOutputType<Shape, z.ZodTypeAny>, ctx: ToolContext): Promise<CallToolResult>;
+  run(args: z.output<z.ZodObject<Shape>>, ctx: ToolContext): Promise<CallToolResult>;
 }
 
 export function defineTool<Shape extends z.ZodRawShape>(definition: ToolDefinition<Shape>): ToolDefinition<Shape> {
