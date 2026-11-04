@@ -146,6 +146,14 @@ describe("superflow_mark_check_fixed", () => {
     expect(summaryOf(result)).toContain("a problem that is still there comes back as an open finding");
   });
 
+  it("on an ext- check of imported findings it promises no rescan and no charge", async () => {
+    on("post", "/projects/:project/checks/:rule_key/resolve", ok({ project: PROJECT, rule_key: "ext-cookie-banner", resolved: 2, already_pending: 0, verify_run_ids: [], truncated: false, note: "" }));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental", rule_key: "ext-cookie-banner", confirm: true });
+    expect(summaryOf(result)).toContain("Marked ext-cookie-banner fixed: 2 findings resolved, no rescan and nothing charged (imported ext- findings no scan can recheck).");
+    expect(summaryOf(result)).not.toContain("comes back as an open finding");
+  });
+
   it("an engine refusal keeps its reason", async () => {
     on("post", "/projects/:project/checks/:rule_key/resolve", fail(400, { code: "invalid", message: "A scan already verified this comment.", hint: "Nothing to undo.", candidates: [], reason: "already_verified" }));
     const h = await connect();

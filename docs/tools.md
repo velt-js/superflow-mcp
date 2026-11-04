@@ -726,7 +726,7 @@ Example:
 **Mark a check fixed**
 
 Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.
-Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).
+Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit; an ext- check (imported findings no scan can recheck) is only resolved, with no rescan and no charge. Call again with confirm: true only after the user says yes (an approved fix list counts).
 Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every 20 seconds. For one finding use superflow_resolve_comment, which verifies the same way.
 
 | Parameter | Type | Required | Description |

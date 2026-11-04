@@ -206,7 +206,7 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 | `superflow_get_check_details` | One check: its fix guide and its open findings with their pages and links, 20 at a time. |
 | `superflow_get_site_score` | The site score, the runs before it, and the lowest scoring pages. |
 | `superflow_get_finding_source` | The line of stored HTML a finding points at, to find it in the code. |
-| `superflow_mark_check_fixed` | Resolves every open finding of a check and has a rescan verify it (1 credit). Needs `confirm: true`; without it the tool shows what it would resolve. |
+| `superflow_mark_check_fixed` | Resolves every open finding of a check and has a rescan verify it (1 credit; an `ext-` check of imported findings is only resolved, at no charge). Needs `confirm: true`; without it the tool shows what it would resolve. |
 | `superflow_exclude_check` | Turns a check off for a site, with a reason. Needs `confirm: true`. |
 | `superflow_include_check` | Turns an excluded check back on. |
 | `superflow_assign_check_owner` | Sets who owns a check, or back to the default owner. |
