@@ -1,0 +1,253 @@
+import { chmod, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  KEYCHAIN_LINE_LIMIT,
+  chooseCredentialStore,
+  defaultCredentialsFile,
+  fileStore,
+  keychainWriteCommand,
+  withFileFallback,
+  type CredentialStore,
+  type Runner,
+  type StoredSession,
+} from "../../../src/auth/store.ts";
+
+const SESSION: StoredSession = {
+  version: 1,
+  authUrl: "https://auth.example.test",
+  apiBaseUrl: "https://api.example.test/v1",
+  clientId: "client-123",
+  tokenEndpoint: "https://auth.example.test/oauth/token",
+  revocationEndpoint: undefined,
+  accessToken: "sf_at_1",
+  refreshToken: "sf_rt_1",
+  expiresAt: 123,
+  scope: "comments:read",
+};
+
+describe("file store", () => {
+  it("round-trips a session in a file only the user can read", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "nested", "credentials.json");
+    const store = fileStore(path);
+    expect(await store.read()).toBeNull();
+    await store.write(SESSION);
+    expect(await store.read()).toEqual(SESSION);
+    if (process.platform !== "win32") expect((await stat(path)).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(await readFile(path, "utf8")).refreshToken).toBe("sf_rt_1");
+    await store.clear();
+    expect(await store.read()).toBeNull();
+  });
+
+  it("replaces the file in one step: no temp file is left, and a reader never sees half a file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const store = fileStore(path);
+    await store.write(SESSION);
+    // Another process writes while this one reads: every read is a whole session.
+    const reads: Array<StoredSession | null> = [];
+    await Promise.all(
+      Array.from({ length: 40 }, (_, i) =>
+        i % 2 === 0
+          ? store.write({ ...SESSION, accessToken: `sf_at_${i}`, refreshToken: `sf_rt_${i}`.padEnd(2000, "x") })
+          : store.read().then((session) => void reads.push(session)),
+      ),
+    );
+    expect(reads.every((session) => session !== null)).toBe(true);
+    expect((await readdir(dir)).filter((name) => name !== "credentials.json")).toEqual([]);
+  });
+
+  it("keeps the file readable only by the user when it replaces a looser one", async () => {
+    if (process.platform === "win32") return;
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    await writeFile(path, "{}");
+    await chmod(path, 0o644);
+    await fileStore(path).write(SESSION);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+  });
+
+  it("ignores a file that is not a session", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const store = fileStore(join(dir, "c.json"));
+    await (await import("node:fs/promises")).writeFile(join(dir, "c.json"), "{\"version\":2}");
+    expect(await store.read()).toBeNull();
+  });
+
+  it("puts the file under XDG_CONFIG_HOME, APPDATA, or SUPERFLOW_CREDENTIALS_FILE", () => {
+    expect(defaultCredentialsFile({ XDG_CONFIG_HOME: "/x" }, "linux")).toBe(join("/x", "superflow-mcp", "credentials.json"));
+    expect(defaultCredentialsFile({ APPDATA: "C:\\\\A" }, "win32")).toContain("superflow-mcp");
+    expect(defaultCredentialsFile({ SUPERFLOW_CREDENTIALS_FILE: "/tmp/c.json" }, "linux")).toBe("/tmp/c.json");
+  });
+});
+
+describe("chooseCredentialStore", () => {
+  const runner = (codes: Record<string, number>, calls: string[][] = []): Runner => async (command, args, input) => {
+    calls.push([command, ...args, ...(input ? [`<stdin:${input.length}>`] : [])]);
+    return { code: codes[command] ?? 127, stdout: "" };
+  };
+
+  it("uses the Keychain on macOS", async () => {
+    const { store, warning } = await chooseCredentialStore({ env: {}, platform: "darwin", run: runner({ security: 0 }) });
+    expect(store.kind).toBe("keychain");
+    expect(warning).toBeUndefined();
+  });
+
+  it("writes the Keychain through stdin (security -i), so no argument carries a token", async () => {
+    const calls: Array<{ command: string; args: string[]; input: string | undefined }> = [];
+    const run: Runner = async (command, args, input) => {
+      calls.push({ command, args, input });
+      return { code: 0, stdout: "" };
+    };
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: join(dir, "c.json") }, platform: "darwin", run });
+    await store.write(SESSION);
+    const hex = (value: string) => Buffer.from(value, "utf8").toString("hex");
+    for (const call of calls) {
+      const argv = [call.command, ...call.args].join(" ");
+      for (const secret of [SESSION.accessToken, SESSION.refreshToken, hex(SESSION.accessToken), hex(SESSION.refreshToken)]) {
+        expect(argv, `${call.command} ${call.args[0]}`).not.toContain(secret);
+      }
+    }
+    const write = calls.find((call) => call.args[0] === "-i")!;
+    expect(write.command).toBe("security");
+    expect(write.args).toEqual(["-i"]);
+    expect(write.input).toBe(keychainWriteCommand(SESSION));
+    const value = /-X ([0-9a-f]+)\n$/.exec(write.input ?? "")?.[1] ?? "";
+    expect(JSON.parse(Buffer.from(value, "hex").toString("utf8"))).toEqual(SESSION);
+  });
+
+  it("saves a session too long for one Keychain command to the file instead of cutting it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const calls: string[][] = [];
+    const run: Runner = async (command, args) => {
+      calls.push([command, ...args]);
+      return { code: 0, stdout: "" };
+    };
+    const long = { ...SESSION, scope: "comments:read ".repeat(200).trim() };
+    expect(keychainWriteCommand(long).length).toBeGreaterThan(KEYCHAIN_LINE_LIMIT);
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run });
+    await store.write(long);
+    expect(calls.some((call) => call[1] === "-i")).toBe(false);
+    expect(await fileStore(path).read()).toEqual(long);
+    expect(store.location).toBe(path);
+  });
+
+  it("uses the Secret Service on Linux when secret-tool answers, and sends the secret on stdin", async () => {
+    const calls: string[][] = [];
+    const { store } = await chooseCredentialStore({ env: {}, platform: "linux", run: runner({ "secret-tool": 0 }, calls) });
+    expect(store.kind).toBe("secret-service");
+    await store.write(SESSION);
+    const write = calls.find((call) => call[1] === "store")!;
+    expect(write.join(" ")).not.toContain("sf_rt_1");
+    expect(write.at(-1)).toMatch(/^<stdin:\d+>$/);
+  });
+
+  it("falls back to the file with a warning when there is no keyring", async () => {
+    const { store, warning } = await chooseCredentialStore({ env: { XDG_CONFIG_HOME: "/x" }, platform: "linux", run: runner({}) });
+    expect(store.kind).toBe("file");
+    expect(warning).toContain("readable only by you");
+  });
+
+  it("reads back a sign-in that login saved to the file because the keyring refused it, and logout clears it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    // The Keychain answers the probe but holds nothing (and would refuse a write).
+    const keychain: Runner = async (command, args) => ({ code: command === "security" && args[0] === "-h" ? 0 : 44, stdout: "" });
+    await fileStore(path).write(SESSION);
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    expect(store.kind).toBe("keychain");
+    expect(await store.read()).toEqual(SESSION);
+    expect(store.location).toBe(path);
+    await store.clear();
+    expect(await fileStore(path).read()).toBeNull();
+  });
+
+  it("writes to the file when the keyring refuses, and says where it went", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    const keychain: Runner = async (command, args) => ({ code: command === "security" && args[0] === "-h" ? 0 : 51, stdout: "" });
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    await store.write(SESSION);
+    expect(await fileStore(path).read()).toEqual(SESSION);
+    expect(store.location).toBe(path);
+  });
+
+  it("on a tie, prefers the keyring's sign-in over the file's", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sf-store-"));
+    const path = join(dir, "credentials.json");
+    await fileStore(path).write({ ...SESSION, accessToken: "sf_at_old" });
+    const keychain: Runner = async (_command, args) =>
+      args[0] === "find-generic-password" ? { code: 0, stdout: JSON.stringify(SESSION) } : { code: 0, stdout: "" };
+    const { store } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_FILE: path }, platform: "darwin", run: keychain });
+    expect((await store.read())?.accessToken).toBe("sf_at_1");
+    expect(store.location).toBe("the macOS Keychain");
+  });
+
+  it("SUPERFLOW_CREDENTIALS_STORE=file forces the file without a warning", async () => {
+    const { store, warning } = await chooseCredentialStore({ env: { SUPERFLOW_CREDENTIALS_STORE: "file" }, platform: "darwin", run: runner({ security: 0 }) });
+    expect(store.kind).toBe("file");
+    expect(warning).toBeUndefined();
+  });
+});
+
+describe("withFileFallback", () => {
+  function memory(kind: CredentialStore["kind"], options: { refuseWrites?: boolean } = {}): CredentialStore & { held: StoredSession | null; clears: number } {
+    const store = {
+      kind,
+      location: kind,
+      held: null as StoredSession | null,
+      clears: 0,
+      async read() {
+        return store.held;
+      },
+      async write(session: StoredSession) {
+        if (options.refuseWrites) throw new Error("locked");
+        store.held = session;
+      },
+      async clear() {
+        store.clears += 1;
+        store.held = null;
+      },
+    };
+    return store;
+  }
+
+  it("after the keyring refuses a refreshed sign-in, reads the newer one from the file and drops the stale keyring copy", async () => {
+    const keyring = memory("keychain", { refuseWrites: true });
+    keyring.held = { ...SESSION, accessToken: "sf_at_stale", expiresAt: 1_000 };
+    const file = memory("file");
+    const store = withFileFallback(keyring, file);
+    await store.write({ ...SESSION, accessToken: "sf_at_fresh", expiresAt: 2_000 });
+    expect(file.held?.accessToken).toBe("sf_at_fresh");
+    expect(keyring.clears).toBe(1);
+    expect((await store.read())?.accessToken).toBe("sf_at_fresh");
+    expect(store.location).toBe("file");
+  });
+
+  it("prefers the session that expires later when the keyring could not be cleared", async () => {
+    const keyring = memory("keychain");
+    keyring.held = { ...SESSION, accessToken: "sf_at_stale", expiresAt: 1_000 };
+    const file = memory("file");
+    file.held = { ...SESSION, accessToken: "sf_at_fresh", expiresAt: 2_000 };
+    const store = withFileFallback(keyring, file);
+    expect((await store.read())?.accessToken).toBe("sf_at_fresh");
+    expect(store.location).toBe("file");
+    keyring.held = { ...SESSION, accessToken: "sf_at_newest", expiresAt: 3_000 };
+    expect((await store.read())?.accessToken).toBe("sf_at_newest");
+    expect(store.location).toBe("keychain");
+  });
+
+  it("a keyring write removes an older copy left in the file", async () => {
+    const keyring = memory("keychain");
+    const file = memory("file");
+    file.held = { ...SESSION, accessToken: "sf_at_old", expiresAt: 1_000 };
+    const store = withFileFallback(keyring, file);
+    await store.write({ ...SESSION, accessToken: "sf_at_new", expiresAt: 2_000 });
+    expect(keyring.held?.accessToken).toBe("sf_at_new");
+    expect(file.held).toBeNull();
+  });
+});
