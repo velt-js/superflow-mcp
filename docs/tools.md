@@ -474,7 +474,7 @@ Example:
 
 Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).
 On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.
-An imported finding (from superflow_import_findings) is only resolved: Superflow cannot rerun an outside agent, so no rescan is queued and no credit is spent.
+An imported finding (from superflow_import_findings) with one of Superflow's rule keys is rescanned by Superflow's own agents like any finding. One with an ext- key is only resolved: Superflow cannot rerun the outside agent and none of its agents checks that kind, so no rescan is queued and no credit is spent.
 Safe to repeat: if it is already resolved nothing changes and the note is not posted.
 To resolve many comments at once use superflow_bulk_update_comments with patch {"resolve": true}. To undo use superflow_reopen_comment.
 
