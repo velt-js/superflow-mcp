@@ -28,6 +28,9 @@ jobs:
   publish:
     name: Publish the prod package
     runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.publish.outputs.name }}
+      version: ${{ steps.publish.outputs.version }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -60,3 +63,15 @@ jobs:
         run: |
           if [ "$DRY_RUN" = "true" ]; then verb="Dry run, not published"; else verb="Published"; fi
           echo "$verb: $NAME@$VERSION" >> "$GITHUB_STEP_SUMMARY"
+
+  # After a real publish (not a dry run): the harness installs this version and verifies it.
+  verify:
+    needs: publish
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+    uses: ./.github/workflows/trigger-harness.yml
+    with:
+      package: ${{ needs.publish.outputs.name }}
+      version: ${{ needs.publish.outputs.version }}
+      environment: PROD
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}

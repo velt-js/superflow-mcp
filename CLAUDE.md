@@ -225,3 +225,8 @@ fallback for source runs):
   package.json's version only for a minor or major release.
 - CI needs the repo secret `NPM_AUTH_TOKEN` (publish rights on the `@usesuperflow` scope).
   The workflows run lint, test, check:drift, check:playbooks and build before publishing.
+- After a real publish (not a dry run) each workflow calls `trigger-harness.yml`, which sends
+  `verify-mcp-package` to snippyly/superflow-mcp-test-harness (repo secret `PAT_TOKEN`, a token
+  that may dispatch there). The harness installs that version from npm and runs its full suite
+  against staging; for `@usesuperflow/mcp` it also runs a read-only smoke against prod. Results
+  are in the harness repo's "Verify the published MCP package" runs.
