@@ -104,7 +104,9 @@ hand for a normal change.
 ## Releases
 
 CI publishes on every push: `staging` publishes `@usesuperflow/mcp-staging` (private to the
-usesuperflow npm org), `main` publishes `@usesuperflow/mcp` (public, with provenance). The
+usesuperflow npm org), `main` publishes `@usesuperflow/mcp` (public, with provenance) after a person approves the
+run's publish job (the `npm-prod` environment). Each publish tags its commit `v<version>` or
+`staging-v<version>`. The
 version is the latest published patch + 1, or package.json's version when that is higher (and
 package.json's version for the very first publish), so raise package.json's version only for
 a minor or major release. To see what a release would ship without publishing:

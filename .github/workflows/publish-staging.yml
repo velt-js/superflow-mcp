@@ -1,7 +1,8 @@
 name: Publish @usesuperflow/mcp-staging
 
 # A push to staging builds the staging target and publishes it to npm (scripts/publish.mjs picks
-# the version: the latest published patch + 1, or package.json's version when that is higher).
+# the version: the latest published patch + 1, or package.json's version when that is higher),
+# then tags the commit staging-v<version> and asks the test harness to verify it.
 # Run it by hand with dry_run to see the tarball without publishing.
 
 on:
@@ -26,6 +27,8 @@ jobs:
   publish:
     name: Publish the staging package
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # the staging-v<version> tag
     outputs:
       name: ${{ steps.publish.outputs.name }}
       version: ${{ steps.publish.outputs.version }}
@@ -53,6 +56,13 @@ jobs:
         run: node scripts/publish.mjs staging ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      # The git record of the release: staging-v<version> on the published commit.
+      - name: Tag the commit
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: staging-v${{ steps.publish.outputs.version }}
+        run: node scripts/tag-release.mjs "$TAG" "$GITHUB_SHA"
       - name: Summary
         env:
           NAME: ${{ steps.publish.outputs.name }}

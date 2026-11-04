@@ -1,7 +1,9 @@
 name: Publish @usesuperflow/mcp
 
-# A push to main builds the prod target and publishes it to npm (scripts/publish.mjs picks
-# the version: the latest published patch + 1, or package.json's version when that is higher).
+# A push to main runs the gates and a dry run, then waits for a person to approve the publish
+# (the npm-prod environment, which must have a required reviewer), then publishes the prod target
+# (scripts/publish.mjs picks the version: the latest published patch + 1, or package.json's
+# version when that is higher), tags the commit v<version> and asks the test harness to verify it.
 # Run it by hand with dry_run to see the tarball without publishing.
 
 on:
@@ -16,8 +18,6 @@ on:
 
 permissions:
   contents: read
-  # Provenance: npm signs the package with the GitHub OIDC token.
-  id-token: write
 
 # One publish at a time, and never cancel one halfway.
 concurrency:
@@ -25,12 +25,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish the prod package
+  checks:
+    name: Gates and a dry run
     runs-on: ubuntu-latest
-    outputs:
-      name: ${{ steps.publish.outputs.name }}
-      version: ${{ steps.publish.outputs.version }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -49,25 +46,71 @@ jobs:
       - run: pnpm test
       - run: pnpm check:drift
       - run: pnpm check:playbooks
-      - run: pnpm build
+      - name: Dry run
+        id: dry
+        run: node scripts/publish.mjs prod --dry-run
+      - name: Summary
+        env:
+          NAME: ${{ steps.dry.outputs.name }}
+          VERSION: ${{ steps.dry.outputs.version }}
+        run: |
+          echo "Dry run passed: $NAME@$VERSION would be published" >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish the prod package (needs approval)
+    needs: checks
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    # The approval gate: the environment's required reviewer approves each publish.
+    environment: npm-prod
+    permissions:
+      contents: write   # the v<version> tag
+      id-token: write   # provenance: npm signs the package with the GitHub OIDC token
+      actions: read     # read the environment's protection rules
+    outputs:
+      name: ${{ steps.publish.outputs.name }}
+      version: ${{ steps.publish.outputs.version }}
+    timeout-minutes: 20
+    steps:
+      # GitHub creates a missing environment on first use with no protection, which would let a
+      # push publish with no approval. Refuse to publish unless npm-prod has a required reviewer.
+      - name: The npm-prod environment has a required reviewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rules=$(gh api "repos/$GITHUB_REPOSITORY/environments/npm-prod" --jq '[.protection_rules[]?.type] | join(",")')
+          case ",$rules," in
+            *,required_reviewers,*) echo "npm-prod requires a reviewer" ;;
+            *) echo "::error::Add a required reviewer to the npm-prod environment (Settings > Environments) before publishing. Nothing was published."; exit 1 ;;
+          esac
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
       - name: Publish
         id: publish
-        run: node scripts/publish.mjs prod ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+        run: node scripts/publish.mjs prod
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      # The git record of the release: v<version> on the published commit.
+      - name: Tag the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.publish.outputs.version }}
+        run: node scripts/tag-release.mjs "$TAG" "$GITHUB_SHA"
       - name: Summary
         env:
           NAME: ${{ steps.publish.outputs.name }}
           VERSION: ${{ steps.publish.outputs.version }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-        run: |
-          if [ "$DRY_RUN" = "true" ]; then verb="Dry run, not published"; else verb="Published"; fi
-          echo "$verb: $NAME@$VERSION" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "Published $NAME@$VERSION, tagged v$VERSION" >> "$GITHUB_STEP_SUMMARY"
 
-  # After a real publish (not a dry run): the harness installs this version and verifies it.
+  # After a real publish: the harness installs this version and verifies it.
   verify:
     needs: publish
-    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
     uses: ./.github/workflows/trigger-harness.yml
     with:
       package: ${{ needs.publish.outputs.name }}

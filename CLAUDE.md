@@ -209,7 +209,7 @@ fallback for source runs):
 
 | Target | Package | npm access | Default origin | Published on |
 |---|---|---|---|---|
-| prod | `@usesuperflow/mcp` | public, with provenance | `https://mcp.usesuperflow.ai` | push to `main` (`.github/workflows/publish.yml`) |
+| prod | `@usesuperflow/mcp` | public, with provenance | `https://mcp.usesuperflow.ai` | push to `main`, after a person approves it (`.github/workflows/publish.yml`) |
 | staging | `@usesuperflow/mcp-staging` | restricted (the usesuperflow org) | `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app` | push to `staging` (`.github/workflows/publish-staging.yml`) |
 
 - Never hard-code a package name or origin in user-facing text: use `NPX_COMMAND`,
@@ -225,6 +225,14 @@ fallback for source runs):
   package.json's version only for a minor or major release.
 - CI needs the repo secret `NPM_AUTH_TOKEN` (publish rights on the `@usesuperflow` scope).
   The workflows run lint, test, check:drift, check:playbooks and build before publishing.
+- Prod needs an approval: a push to `main` runs the gates and a dry run, then the publish job
+  waits on the `npm-prod` environment. That environment must have a required reviewer
+  (Settings > Environments, deployment branch `main`): the job refuses to publish when it has
+  none, because GitHub creates a missing environment unprotected. A Dependabot merge to `main`
+  therefore waits for a person too. Staging publishes on every push with no approval.
+- Each real publish tags its commit: `v<version>` for prod, `staging-v<version>` for staging
+  (`scripts/tag-release.mjs`; a rerun passes when the tag is already on that commit, and an
+  existing tag is never moved). The tag is the git record of what each npm version was built from.
 - After a real publish (not a dry run) each workflow calls `trigger-harness.yml`, which sends
   `verify-mcp-package` to snippyly/superflow-mcp-test-harness (repo secret `PAT_TOKEN`, a token
   that may dispatch there). The harness installs that version from npm and runs its full suite

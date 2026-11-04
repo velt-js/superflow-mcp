@@ -23,7 +23,9 @@ The npm package is published from CI, under the `@usesuperflow` scope.
   `usesuperflow` npm org). It points at staging by default and keeps its sign-in apart
   (`superflow-mcp-staging` in the Keychain, Secret Service and config folder).
 - Publishing: a push to `staging` publishes `@usesuperflow/mcp-staging`, a push to `main`
-  publishes `@usesuperflow/mcp` with provenance (`scripts/publish.mjs`). The version is
+  publishes `@usesuperflow/mcp` with provenance once a person approves it (the `npm-prod`
+  environment), and each publish tags its commit `v<version>` or `staging-v<version>`
+  (`scripts/publish.mjs`, `scripts/tag-release.mjs`). The version is
   package.json's when nothing is published yet, else the higher of package.json's and the
   latest published patch + 1. Both workflows also run by hand with `dry_run`.
 
