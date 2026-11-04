@@ -3,9 +3,32 @@
 All notable changes to the Superflow MCP servers are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-There are two release lines: the `superflow-mcp` npm package (local stdio server,
-versions 0.x) and the hosted server at `https://mcp.usesuperflow.ai/mcp`
-(versions 1.x).
+There are two release lines: the `@usesuperflow/mcp` npm package (local stdio server,
+versions 0.x; named `superflow-mcp` in the entries before it was published) and the hosted
+server at `https://mcp.usesuperflow.ai/mcp` (versions 1.x).
+
+## [Unreleased]
+
+The npm package is published from CI, under the `@usesuperflow` scope.
+
+### Changed
+- The package is `@usesuperflow/mcp`: run it with `npx -y @usesuperflow/mcp` (and
+  `npx -y @usesuperflow/mcp login`). The library entry is `@usesuperflow/mcp/server`. The bin
+  stays `superflow-mcp`, and the User-Agent and `X-Superflow-Client` stay `superflow-mcp/<version>`.
+- Every command the package prints (help, login usage, hints and errors, the API key tool
+  descriptions) names the package of the build it is in.
+
+### Added
+- `@usesuperflow/mcp-staging`: the same package built for Superflow staging (private to the
+  `usesuperflow` npm org). It points at staging by default and keeps its sign-in apart
+  (`superflow-mcp-staging` in the Keychain, Secret Service and config folder).
+- Publishing: a push to `staging` publishes `@usesuperflow/mcp-staging`, a push to `main`
+  publishes `@usesuperflow/mcp` with provenance (`scripts/publish.mjs`). The version is
+  package.json's when nothing is published yet, else the higher of package.json's and the
+  latest published patch + 1. Both workflows also run by hand with `dry_run`.
+
+### Removed
+- The tag-based release workflow (`release.yml`). Releases are no longer `v*` tags.
 
 ## [0.4.0] - Unreleased
 

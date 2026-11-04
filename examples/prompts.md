@@ -1,6 +1,6 @@
 # Example prompts
 
-Things to ask your assistant once `superflow-mcp` is connected. Names, domains,
+Things to ask your assistant once `@usesuperflow/mcp` is connected. Names, domains,
 emails and comment links all work: the server resolves them.
 
 ## The basics

@@ -4,7 +4,7 @@ Guidance for Claude Code (and other agents) working in this repo.
 
 ## What this is
 
-`superflow-mcp`: a public npm package that runs a local MCP server over stdio for
+`@usesuperflow/mcp` (bin `superflow-mcp`): a public npm package that runs a local MCP server over stdio for
 Superflow comments. By default it is a bridge (`src/bridge.ts`): it forwards every MCP
 request to the hosted server (`SUPERFLOW_MCP_URL`, default `https://mcp.usesuperflow.ai/mcp`,
 the backend's `superflowmcphandler`) with the user's key or sign-in, and passes results
@@ -198,4 +198,30 @@ The PR template asks "MCP updated, or why not".
 
 ## Branches
 
-Branch from `staging`, open pull requests into `staging`. Releases are `v*` tags.
+Branch from `staging`, open pull requests into `staging`.
+
+## Publishing
+
+Two npm packages come from one source. The build target (`SUPERFLOW_MCP_TARGET`, default
+`prod`) picks the package name, the default origin and the credential store name
+(`scripts/lib/targets.mjs`; `src/target.ts` reads them, with the prod values as the
+fallback for source runs):
+
+| Target | Package | npm access | Default origin | Published on |
+|---|---|---|---|---|
+| prod | `@usesuperflow/mcp` | public, with provenance | `https://mcp.usesuperflow.ai` | push to `main` (`.github/workflows/publish.yml`) |
+| staging | `@usesuperflow/mcp-staging` | restricted (the usesuperflow org) | `https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app` | push to `staging` (`.github/workflows/publish-staging.yml`) |
+
+- Never hard-code a package name or origin in user-facing text: use `NPX_COMMAND`,
+  `NPM_PACKAGE` or `DEFAULT_ORIGIN` from `src/target.ts`. Comments can say `@usesuperflow/mcp`.
+- Keep `USER_AGENT` (`superflow-mcp/<version>`) and the bin name the same in both builds:
+  the backend classifies MCP traffic by the `superflow-mcp/` prefix.
+- `node scripts/publish.mjs <prod|staging> [--dry-run]` does a release: version (nothing
+  published yet: package.json's; else the higher of package.json's and the latest published
+  patch + 1), name, publishConfig and description into package.json, the build, a check that
+  dist holds only its own origin, then `npm publish`. It puts package.json back afterwards.
+  The pure parts are in `scripts/lib/release.mjs` (tested in `test/unit/release.test.ts`).
+- Do not bump the version for a normal change: every push publishes the next patch. Raise
+  package.json's version only for a minor or major release.
+- CI needs the repo secret `NPM_AUTH_TOKEN` (publish rights on the `@usesuperflow` scope).
+  The workflows run lint, test, check:drift, check:playbooks and build before publishing.
