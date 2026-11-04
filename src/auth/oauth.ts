@@ -1,11 +1,13 @@
-// The OAuth 2.1 calls `superflow-mcp login` makes against Superflow's authorization server
+// The OAuth 2.1 calls `npx -y @usesuperflow/mcp login` makes against Superflow's authorization server
 // (the MCP host): discovery (RFC 8414), dynamic client registration (RFC 7591), the code
 // exchange with PKCE, refresh and revoke. Every request goes through `oauthRequest` in
 // src/client/api.ts. Codes and tokens are never logged.
 import { oauthRequest } from "../client/api.ts";
+import { DEFAULT_ORIGIN } from "../target.ts";
 import { USER_AGENT } from "../version.ts";
 
-export const DEFAULT_AUTH_URL = "https://mcp.usesuperflow.ai";
+/** The sign-in server: the MCP origin of this build. */
+export const DEFAULT_AUTH_URL = DEFAULT_ORIGIN;
 
 /** A login or refresh problem. The message is one line, safe to print. */
 export class AuthError extends Error {

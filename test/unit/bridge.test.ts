@@ -188,7 +188,7 @@ describe("bridge auth", () => {
     hosted.validTokens.clear();
     const result = (await client.callTool({ name: "superflow_get_me", arguments: {} })) as CallToolResult;
     expect(errorOf(result)).toMatchObject({ code: "unauthorized", message: UNAUTHORIZED_MESSAGE });
-    expect(errorOf(result).hint).toContain("npx superflow-mcp login");
+    expect(errorOf(result).hint).toContain("npx -y @usesuperflow/mcp login");
     expect(hosted.count("tools/call")).toBe(1);
     const listError = await rejection(client.listTools());
     expect(listError.message).toContain("API key was rejected");

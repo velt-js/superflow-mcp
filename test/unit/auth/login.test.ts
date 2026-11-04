@@ -56,7 +56,7 @@ function browser(server: ReturnType<typeof fakeOAuthServer>, mode: "approve" | "
 
 const base = { authUrl: AUTH, apiBaseUrl: "https://api.example.test/v1", print: () => undefined, env: {} };
 
-describe("superflow-mcp login", () => {
+describe("@usesuperflow/mcp login", () => {
   it("signs in through the browser with PKCE and saves the session", async () => {
     const server = fakeOAuthServer();
     const store = memoryStore();

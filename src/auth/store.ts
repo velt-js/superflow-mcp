@@ -1,4 +1,4 @@
-// Where `superflow-mcp login` keeps the sign-in: the macOS Keychain, the Linux Secret
+// Where `npx -y @usesuperflow/mcp login` keeps the sign-in: the macOS Keychain, the Linux Secret
 // Service (secret-tool), or, when neither is available, a file only the user can read.
 // SUPERFLOW_CREDENTIALS_STORE=file forces the file; SUPERFLOW_CREDENTIALS_FILE moves it.
 import { spawn } from "node:child_process";
@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { CREDENTIAL_STORE_NAME } from "../target.ts";
 
 /** One signed-in session. Holds secrets: never log it. */
 export interface StoredSession {
@@ -50,7 +51,8 @@ export const runProgram: Runner = (command, args, input) =>
     }
   });
 
-const SERVICE = "superflow-mcp";
+// superflow-mcp for prod, superflow-mcp-staging for staging: the two sign-ins never mix.
+const SERVICE = CREDENTIAL_STORE_NAME;
 const ACCOUNT = "default";
 
 function parseSession(raw: string): StoredSession | null {
@@ -71,7 +73,7 @@ export function defaultCredentialsFile(env: NodeJS.ProcessEnv, platform: NodeJS.
     platform === "win32"
       ? env.APPDATA?.trim() || join(homedir(), "AppData", "Roaming")
       : env.XDG_CONFIG_HOME?.trim() || join(homedir(), ".config");
-  return join(base, "superflow-mcp", "credentials.json");
+  return join(base, CREDENTIAL_STORE_NAME, "credentials.json");
 }
 
 export function fileStore(path: string): CredentialStore {
