@@ -38,6 +38,11 @@ function escapeCell(text) {
 
 function typeOf(schema) {
   if (!schema || typeof schema !== "object") return "any";
+  // zod 4 emits a union of literals as anyOf of consts; show it like an enum.
+  if (Array.isArray(schema.anyOf) && schema.anyOf.length && schema.anyOf.every((s) => s && "const" in s)) {
+    return schema.anyOf.map((s) => `\`${s.const}\``).join(", ");
+  }
+  if ("const" in schema) return `\`${schema.const}\``;
   if (Array.isArray(schema.anyOf)) return schema.anyOf.map(typeOf).join(" or ");
   if (Array.isArray(schema.enum)) return schema.enum.map((v) => `\`${v}\``).join(", ");
   if (schema.type === "array") return `array of ${typeOf(schema.items)}`;

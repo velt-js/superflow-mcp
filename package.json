@@ -64,15 +64,15 @@
     "smoke:lib": "node scripts/smoke-lib.cjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.1",
-    "zod": "^3.25.76"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@types/node": "^20.19.43",
     "msw": "^2.15.0",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
 }

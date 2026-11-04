@@ -456,7 +456,7 @@ Ask the user before changing comments they did not ask about.
 | `assignees` | array of string | no | The new assignee: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
 | `add_assignees` | array of string | no | Same as assignees: one name, email or id, or "me". It replaces the current assignee, since a comment has one. Removing the assignee is not supported yet: tell the user to unassign in the Superflow toolbar. |
 | `tags` | array of string or object (name, color) | no | Replace all tags with these. [] removes every tag. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
-| `add_tags` | array of any | no | Tags to add. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
+| `add_tags` | array of string or object (name, color) | no | Tags to add. Use tag names. A tag_ id works only for a tag already on the comment. {"name", "color"} sets the color of this comment's copy of the tag only, so one tag can show two colors. A new name creates the tag for the whole workspace (default color #605CEC). Tags are visible to everyone who can see the comment, clients and review-link viewers included, so do not put private notes in tags. |
 | `remove_tags` | array of string | no | Tags to remove: names or tag_ ids. |
 | `page_url` | string | no | Move the comment to this page URL. |
 | `anchor` | object (selector, xpath, x, y, element_text, viewport, device) | no | Where on the page the comment is pinned. Omit for a page-level comment. |
@@ -851,8 +851,8 @@ Use it when the user sets up a site's team. For one check use superflow_assign_c
 |---|---|---|---|
 | `project` | string | yes | Project: its name ("Acme Dental"), site URL or domain ("acme.com"), or id (prj_...). |
 | `content` | string or null | no | A workspace member: name, email, id (usr_...) or me. null means the project admin. |
-| `design` | any | no | A workspace member: name, email, id (usr_...) or me. null means the project admin. |
-| `dev` | any | no | A workspace member: name, email, id (usr_...) or me. null means the project admin. |
+| `design` | string or null | no | A workspace member: name, email, id (usr_...) or me. null means the project admin. |
+| `dev` | string or null | no | A workspace member: name, email, id (usr_...) or me. null means the project admin. |
 
 Example:
 
@@ -2065,10 +2065,10 @@ Runs at most once an hour: more frequent crons are refused. Delete with superflo
 | `project` | string | no | Project to review (name, site URL or id). Required to create. |
 | `cron` | string | no | When to run: a five-field cron (minute hour day-of-month month day-of-week), for example "0 9 * * 1" for Mondays at 9:00. At most once an hour. Required to create. |
 | `timezone` | string | no | IANA time zone for the cron, for example Europe/Berlin or America/New_York. Default UTC. |
-| `agents` | any or array of string or null | no | Agents to run: names or ids (agt_...), at most 25. Give agents or pack, not both. On a change, null clears them (then the pack or the default agents run). |
+| `agents` | array of string or null | no | Agents to run: names or ids (agt_...), at most 25. Give agents or pack, not both. On a change, null clears them (then the pack or the default agents run). |
 | `pack` | string or null | no | Run every agent in this pack (name or pck_ id). Give agents or pack, not both. On a change, null clears it. |
 | `scope` | `page`, `list`, `site` | no | What to review: site (default, the pages Superflow finds on the site), page (the project's own site URL only, no pages) or list (the URLs in pages). To review one other page, use list with that one URL. |
-| `pages` | any or array of string or null | no | Page URLs to review, at most 500, with scope list only (the API refuses pages with scope page or site; for one page, scope list and that one URL). On a change, null clears them. |
+| `pages` | array of string or null | no | Page URLs to review, at most 500, with scope list only (the API refuses pages with scope page or site; for one page, scope list and that one URL). On a change, null clears them. |
 | `enabled` | boolean | no | false pauses the schedule, true turns it back on. New schedules start on. |
 | `confirm` | boolean | no | Must be true to create the schedule or change what or when it runs; every run spends AI credits. Set it only after the user explicitly agreed in this conversation. Default: `false`. |
 | `idempotency_key` | string | no | Only when creating: a key so a retried call does not create two schedules. Generated when you leave it out. After a timeout, pass the idempotency_key the error returned. |

@@ -69,7 +69,7 @@ async function runTool<Shape extends z.ZodRawShape>(
   args: Record<string, unknown>,
   ctx: ToolContext,
 ): Promise<Record<string, unknown>> {
-  const result = await tool.run(args as z.objectOutputType<Shape, z.ZodTypeAny>, ctx);
+  const result = await tool.run(args as z.output<z.ZodObject<Shape>>, ctx);
   const data = (result.structuredContent ?? {}) as Record<string, unknown>;
   if (result.isError) {
     const error = (data.error ?? {}) as { code?: string; message?: string; hint?: string };
