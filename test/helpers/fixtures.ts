@@ -121,6 +121,7 @@ export const compactComment: CommentCompact = {
   last_activity_at: "2026-10-07T18:02:11Z",
   rule_key: null,
   suggested_fix: null,
+  rejected: false,
   url: "https://acme.com/pricing?scommentId=8f3k2",
 };
 
@@ -159,6 +160,7 @@ export const fullComment: CommentFull = {
   source: "widget",
   rule_key: null,
   agent: null,
+  rejected: null,
   external_links: [],
   attachments: [{ id: "att_8f3k2.123456.1", name: "fix.png", url: "https://files.example.com/fix.png", size: 20311 }],
   replies: [reply],

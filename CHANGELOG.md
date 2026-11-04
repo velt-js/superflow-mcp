@@ -239,6 +239,18 @@ when their engines ship.
   registers the 45.
 
 ### Fixed
+- Resolving an imported finding (from `superflow_import_findings`) no longer spends a credit
+  on a rescan that could never finish: Superflow cannot rerun an outside agent, so the API
+  only resolves it and `verify.no_rescan_reason` is `imported_finding`.
+  `superflow_resolve_comment` and `superflow_update_comment` say so instead of promising a
+  rescan, and the server instructions and the resolve description name the exception (B8,
+  backend `raghul/mcp-known-bugs`).
+- A rejected agent finding reads rejected: comments carry `rejected` (the full shape: reason,
+  who, when; list rows: true or false), `superflow_get_comment` and update summaries say
+  "rejected, not open", the status filter word `open` leaves rejected findings out and the
+  new word `rejected` lists them (B5).
+- `superflow_create_comment` keeps the attachments it is given: the API adds them right after
+  the comment is created, or the create fails and keeps nothing (B1, backend only).
 - `superflow_bulk_update_comments` dry runs show the comments they would not write (`failed`,
   with why, for example a tag change on a comment whose tags could not be read), apart from
   `would_update`; the confirm message asks to show them too.

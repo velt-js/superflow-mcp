@@ -101,7 +101,7 @@ export const filterShape = {
   status: z
     .array(z.string().min(1))
     .optional()
-    .describe("Status names or ids, or the words \"open\" (every unresolved status) and \"resolved\"."),
+    .describe("Status names or ids, or the words \"open\" (every unresolved status, without rejected agent findings), \"resolved\" and \"rejected\" (agent findings a person rejected)."),
   priority: z.array(z.enum(PRIORITIES)).optional().describe("Priorities to include."),
   assignee: z
     .array(z.string().min(1))

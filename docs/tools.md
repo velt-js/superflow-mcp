@@ -259,7 +259,7 @@ Returns compact rows by default; set fields "full" only when you need every fiel
 | `project` | string or array of string | no | Project or projects: name, site URL, domain or id. Omit for every project the key can see. |
 | `page_url` | string | no | Page URL to match. See page_match. |
 | `page_match` | `exact`, `prefix`, `contains` | no | How page_url matches: exact (default; ignores the query string unless you give one), prefix, or contains. |
-| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status) and "resolved". |
+| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status, without rejected agent findings), "resolved" and "rejected" (agent findings a person rejected). |
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
@@ -327,7 +327,7 @@ To read the comments behind a number use superflow_list_comments with the same f
 | `project` | string or array of string | no | Project or projects: name, site URL, domain or id. Omit for every project the key can see. |
 | `page_url` | string | no | Page URL to match. See page_match. |
 | `page_match` | `exact`, `prefix`, `contains` | no | How page_url matches: exact (default; ignores the query string unless you give one), prefix, or contains. |
-| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status) and "resolved". |
+| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status, without rejected agent findings), "resolved" and "rejected" (agent findings a person rejected). |
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
@@ -373,7 +373,7 @@ To read or count comments in the conversation use superflow_list_comments or sup
 | `project` | string or array of string | no | Project or projects: name, site URL, domain or id. Omit for every project the key can see. |
 | `page_url` | string | no | Page URL to match. See page_match. |
 | `page_match` | `exact`, `prefix`, `contains` | no | How page_url matches: exact (default; ignores the query string unless you give one), prefix, or contains. |
-| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status) and "resolved". |
+| `status` | array of string | no | Status names or ids, or the words "open" (every unresolved status, without rejected agent findings), "resolved" and "rejected" (agent findings a person rejected). |
 | `priority` | array of `none`, `low`, `medium`, `high`, `critical` | no | Priorities to include. |
 | `assignee` | array of string | no | Assignees: names, emails, ids, "me", or "unassigned" for comments with no assignee. |
 | `author` | array of string | no | Authors: names, emails or ids (usr_..., gst_...), or "me". |
@@ -474,6 +474,7 @@ Example:
 
 Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).
 On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.
+An imported finding (from superflow_import_findings) is only resolved: Superflow cannot rerun an outside agent, so no rescan is queued and no credit is spent.
 Safe to repeat: if it is already resolved nothing changes and the note is not posted.
 To resolve many comments at once use superflow_bulk_update_comments with patch {"resolve": true}. To undo use superflow_reopen_comment.
 

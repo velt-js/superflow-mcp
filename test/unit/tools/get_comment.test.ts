@@ -21,6 +21,16 @@ describe(TOOL, () => {
     expect(recorded[0]?.query).toEqual({ project: "Acme Dental", include_replies: "true" });
   });
 
+  it("says a rejected agent finding is rejected and not open, whatever its status (B5)", async () => {
+    const rejected = { reason: "wrong", by: { id: "usr_m1", name: "Rakesh", type: "member" as const }, at: "2026-11-03T10:00:00Z" };
+    on("get", "/comments/:comment", ok({ ...fullComment, rejected }));
+    const h = await connect();
+    const result = await h.call(TOOL, { comment: "cmt_8f3k2" });
+    expect(summaryOf(result)).toBe(
+      "Comment cmt_8f3k2 in Acme Dental on https://acme.com/pricing: rejected (wrong), not open (status Open), high priority, assigned to Jen, 1 reply. Link: https://acme.com/pricing?scommentId=8f3k2",
+    );
+  });
+
   it("sends no project when none is given", async () => {
     on("get", "/comments/:comment", ok(fullComment));
     const h = await connect();

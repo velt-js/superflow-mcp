@@ -1883,7 +1883,8 @@
                         "url"
                       ],
                       "additionalProperties": false
-                    }
+                    },
+                    "description": "Added to the comment as it is created: the answer carries them, or the create fails and keeps nothing."
                   },
                   "on_behalf_of": {
                     "type": "string",
@@ -13266,12 +13267,27 @@
                 "type": "null"
               }
             ]
+          },
+          "no_rescan_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "imported_finding"
+                ],
+                "description": "Why no rescan was queued, when the finding itself rules one out. imported_finding: an outside agent pushed it in with importFindings, and Superflow cannot rerun that agent, so the resolve only resolves it and nothing is charged."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "queued",
           "already_pending",
-          "run_id"
+          "run_id",
+          "no_rescan_reason"
         ],
         "additionalProperties": false
       },
@@ -15387,6 +15403,10 @@
               }
             ]
           },
+          "rejected": {
+            "type": "boolean",
+            "description": "A person rejected this agent finding: it keeps its status but is not open (the status filter rejected lists these)."
+          },
           "url": {
             "type": "string",
             "description": "Deep link that opens the thread"
@@ -15410,6 +15430,7 @@
           "last_activity_at",
           "rule_key",
           "suggested_fix",
+          "rejected",
           "url"
         ],
         "additionalProperties": false
@@ -15863,6 +15884,81 @@
               }
             ]
           },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "wrong, not_important, not_applicable or cannot_tell, or the person's own words when they gave some."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "by": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "usr_, gst_ or agt_ id"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "member",
+                              "guest",
+                              "agent"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "UTC ISO 8601 with Z"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "reason",
+                  "by",
+                  "at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when a person rejected this agent finding: it keeps its status but is not open, and no scan reopens it. Null otherwise."
+          },
           "external_links": {
             "type": "array",
             "items": {
@@ -15986,6 +16082,7 @@
           "source",
           "rule_key",
           "agent",
+          "rejected",
           "external_links",
           "attachments",
           "reply_count",
@@ -17165,7 +17262,7 @@
         "name": "status",
         "in": "query",
         "required": false,
-        "description": "Status names or ids, or the words open and resolved. Comma separated, or repeated.",
+        "description": "Status names or ids, or the words open (unresolved, without the agent findings a person rejected), resolved, and rejected (those rejected agent findings, which keep their status). Comma separated, or repeated.",
         "schema": {
           "type": "array",
           "items": {
@@ -17374,7 +17471,7 @@
         "name": "stale_days",
         "in": "query",
         "required": false,
-        "description": "Not resolved and no activity for N days.",
+        "description": "Not resolved (nor a rejected agent finding) and no activity for N days.",
         "schema": {
           "type": "integer",
           "minimum": 1

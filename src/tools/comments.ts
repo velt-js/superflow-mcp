@@ -16,6 +16,7 @@ import type {
   Reply,
   ResolveResponse,
   StatsResponse,
+  VerifyInfo,
 } from "../client/types.ts";
 import {
   CONFIRM_BULK_MESSAGE,
@@ -64,9 +65,14 @@ import {
 function commentSummary(comment: CommentFull): string {
   const assignee = comment.assignees?.[0]?.name;
   const page = comment.page?.url ? ` on ${comment.page.url}` : "";
+  const status = comment.status?.name ?? "unknown status";
+  // A rejected agent finding keeps its status but is not open: say so first.
+  const state = comment.rejected
+    ? `rejected${comment.rejected.reason ? ` (${comment.rejected.reason})` : ""}, not open (status ${status})`
+    : status;
   return (
     `Comment ${comment.id} in ${comment.project?.name ?? "its project"}${page}: ` +
-    `${comment.status?.name ?? "unknown status"}, ${comment.priority ?? "no"} priority, ` +
+    `${state}, ${comment.priority ?? "no"} priority, ` +
     `${assignee ? `assigned to ${assignee}` : "unassigned"}, ${plural(comment.reply_count ?? 0, "reply", "replies")}. ` +
     `Link: ${comment.url}`
   );
@@ -371,15 +377,11 @@ export const updateComment = defineTool({
   },
 });
 
-/** The verify rescan an agent finding's resolve queued. */
-interface VerifyInfo {
-  queued: boolean;
-  already_pending: boolean;
-  run_id: string | null;
-}
-
-/** One sentence on the verify rescan a resolve of an agent finding queued. */
+/** One sentence on the verify rescan a resolve of an agent finding queued, or why none was. */
 function verifyNote(verify: VerifyInfo): string {
+  if (verify.no_rescan_reason === "imported_finding") {
+    return "No rescan was queued and nothing was charged: it is an imported finding, and Superflow cannot rerun the outside agent that found it.";
+  }
   if (verify.already_pending) return "It was already waiting for its verify rescan.";
   return "Its page is rescanned within a minute to verify it; check again with superflow_get_comment, or superflow_get_check_details for the check (a problem that is still there comes back as an open finding).";
 }
@@ -393,6 +395,7 @@ function resolveTool(kind: "resolve" | "reopen") {
       ? [
           "Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).",
           "On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.",
+          "An imported finding (from superflow_import_findings) is only resolved: Superflow cannot rerun an outside agent, so no rescan is queued and no credit is spent.",
           "Safe to repeat: if it is already resolved nothing changes and the note is not posted.",
           "To resolve many comments at once use superflow_bulk_update_comments with patch {\"resolve\": true}. To undo use superflow_reopen_comment.",
           'Example: {"comment": "cmt_8f3k2", "note": "Fixed in the latest deploy, please check."}',
