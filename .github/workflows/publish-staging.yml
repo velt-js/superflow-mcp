@@ -1,0 +1,60 @@
+name: Publish @usesuperflow/mcp-staging
+
+# A push to staging builds the staging target and publishes it to npm (scripts/publish.mjs picks
+# the version: the latest published patch + 1, or package.json's version when that is higher).
+# Run it by hand with dry_run to see the tarball without publishing.
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and pack only, do not publish
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One publish at a time, and never cancel one halfway.
+concurrency:
+  group: publish-staging
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish the staging package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      # The same Node as ci.yml: pnpm 11 needs Node 22 (the package itself runs on Node 20+).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: OpenAPI snapshot is not provisional
+        run: |
+          node -e "if (require('./openapi/openapi.json')['x-provisional']) { console.error('openapi/openapi.json is still the provisional snapshot. Copy in the API document first.'); process.exit(1) }"
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm check:drift
+      - run: pnpm check:playbooks
+      - run: pnpm build
+      - name: Publish
+        id: publish
+        run: node scripts/publish.mjs staging ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      - name: Summary
+        env:
+          NAME: ${{ steps.publish.outputs.name }}
+          VERSION: ${{ steps.publish.outputs.version }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then verb="Dry run, not published"; else verb="Published"; fi
+          echo "$verb: $NAME@$VERSION" >> "$GITHUB_STEP_SUMMARY"
