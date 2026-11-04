@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       # pnpm itself needs Node 22, so install and build there, then run on Node 20.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -59,7 +59,7 @@ jobs:
       # setup-node v5 turns on package-manager caching by itself when package.json has a
       # packageManager field, and that runs `pnpm store path`. pnpm 11 cannot start on
       # Node 20, so switch the automatic cache off here: this job only runs the built CLI.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           package-manager-cache: false
