@@ -2,7 +2,7 @@
   "mcpServers": {
     "superflow": {
       "command": "npx",
-      "args": ["-y", "superflow-mcp"],
+      "args": ["-y", "@usesuperflow/mcp"],
       "env": {
         "SUPERFLOW_API_KEY": "sf_pat_YOUR_KEY"
       }

@@ -40,7 +40,7 @@ describe("loadConfig", () => {
 
   it("offers login and names SUPERFLOW_API_KEY when there is no key", () => {
     expect(() => loadConfig({})).toThrow(ConfigError);
-    expect(() => loadConfig({ SUPERFLOW_API_KEY: "  " })).toThrow(/Run npx superflow-mcp login.*SUPERFLOW_API_KEY/);
+    expect(() => loadConfig({ SUPERFLOW_API_KEY: "  " })).toThrow(/Run npx -y @usesuperflow\/mcp login.*SUPERFLOW_API_KEY/);
   });
 
   it("rejects plain http except for localhost", () => {
@@ -100,7 +100,7 @@ describe("loadBridgeConfig", () => {
   });
 
   it("checks the key, read-only flag and log level before anything goes over the network", () => {
-    expect(() => loadBridgeConfig({})).toThrow(/Run npx superflow-mcp login.*SUPERFLOW_API_KEY/);
+    expect(() => loadBridgeConfig({})).toThrow(/Run npx -y @usesuperflow\/mcp login.*SUPERFLOW_API_KEY/);
     expect(() => loadBridgeConfig({ SUPERFLOW_API_KEY: "k", SUPERFLOW_READ_ONLY: "maybe" })).toThrow(/SUPERFLOW_READ_ONLY/);
     expect(() => loadBridgeConfig({ SUPERFLOW_API_KEY: "k", SUPERFLOW_LOG_LEVEL: "loud" })).toThrow(/SUPERFLOW_LOG_LEVEL/);
     expect(loadBridgeConfig({ SUPERFLOW_API_KEY: "k", SUPERFLOW_READ_ONLY: "true" }).readOnly).toBe(true);

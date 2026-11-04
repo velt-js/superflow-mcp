@@ -1,4 +1,5 @@
 // The only module that talks to the network. Everything else calls ApiClient.call().
+import { NPX_COMMAND } from "../target.ts";
 import { USER_AGENT } from "../version.ts";
 import type { Logger } from "../lib/logger.ts";
 import { silentLogger } from "../lib/logger.ts";
@@ -22,12 +23,12 @@ export type ErrorCode =
 export const UNAUTHORIZED_MESSAGE =
   "The Superflow API key was rejected. Create a new key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.";
 
-/** The 401 message for a signed-in session (`superflow-mcp login`) instead of an API key. */
-export const SESSION_ENDED_MESSAGE = "Your Superflow sign-in expired or was revoked. Run npx superflow-mcp login.";
+/** The 401 message for a signed-in session (`@usesuperflow/mcp login`) instead of an API key. */
+export const SESSION_ENDED_MESSAGE = `Your Superflow sign-in expired or was revoked. Run ${NPX_COMMAND} login.`;
 
 /** A 403 for a signed-in session: its scopes are fixed, so the way out is a new sign-in. */
 export const SESSION_SCOPE_HINT =
-  "A sign-in's scopes cannot be changed: run npx superflow-mcp login --scope \"...\" again, naming every scope you need (login --help lists them).";
+  `A sign-in's scopes cannot be changed: run ${NPX_COMMAND} login --scope "..." again, naming every scope you need (login --help lists them).`;
 
 export interface SuperflowApiErrorInit {
   status: number;
@@ -138,7 +139,7 @@ export interface ApiClientOptions {
   timeoutMs?: number;
   /**
    * Supplies the Bearer token per request instead of `apiKey`, for a signed-in session
-   * (`superflow-mcp login`): access tokens expire after an hour and are refreshed.
+   * (`@usesuperflow/mcp login`): access tokens expire after an hour and are refreshed.
    */
   tokenProvider?: TokenProvider;
 }
@@ -232,7 +233,7 @@ const FALLBACK_MESSAGES: Record<ErrorCode, string> = {
 
 const FALLBACK_HINTS: Partial<Record<ErrorCode, string>> = {
   forbidden:
-    "Check the scopes with superflow_get_me. Scopes cannot be added to an existing key or sign-in: create a key with the scope this needs in Superflow under Settings > Integrations > API keys, or sign in again with npx superflow-mcp login --scope \"...\".",
+    `Check the scopes with superflow_get_me. Scopes cannot be added to an existing key or sign-in: create a key with the scope this needs in Superflow under Settings > Integrations > API keys, or sign in again with ${NPX_COMMAND} login --scope "...".`,
   ambiguous: "Pick one of the candidates and call again with its id.",
 };
 
@@ -476,7 +477,7 @@ export class ApiClient {
 
 /**
  * Maps a non-2xx response to SuperflowApiError, using the contract body when present.
- * `signedIn`: the token came from `superflow-mcp login`, not an API key, so a 401 or 403 says
+ * `signedIn`: the token came from `@usesuperflow/mcp login`, not an API key, so a 401 or 403 says
  * how to sign in again.
  */
 export function toApiError(status: number, text: string, retryAfterMs?: number, context: { signedIn?: boolean } = {}): SuperflowApiError {
@@ -551,7 +552,7 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
   });
 }
 
-/** One request to the OAuth server (`superflow-mcp login`, token refresh, revoke). */
+/** One request to the OAuth server (`@usesuperflow/mcp login`, token refresh, revoke). */
 export interface OAuthRequest {
   url: string;
   method: "GET" | "POST";

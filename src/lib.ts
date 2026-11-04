@@ -1,4 +1,4 @@
-// Library entry (`superflow-mcp/server`): what a host needs to serve these tools itself.
+// Library entry (`@usesuperflow/mcp/server`): what a host needs to serve these tools itself.
 // The hosted server at mcp.usesuperflow.ai builds this server per request, with an ApiClient
 // whose fetch calls the API in process for the person's OAuth grant. One tool set, two hosts.
 export { createServer } from "./server.ts";

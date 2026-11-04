@@ -355,7 +355,7 @@ describe("error mapping", () => {
   it("says the sign-in ended, not that a key was rejected, for a 401 on a login session", () => {
     const error = toApiError(401, JSON.stringify({ error: { code: "unauthorized", message: "Token revoked." } }), undefined, { signedIn: true });
     expect(error.message).toBe(SESSION_ENDED_MESSAGE);
-    expect(error.message).toBe("Your Superflow sign-in expired or was revoked. Run npx superflow-mcp login.");
+    expect(error.message).toBe("Your Superflow sign-in expired or was revoked. Run npx -y @usesuperflow/mcp login.");
     expect(error.message).not.toContain("API key");
   });
 
@@ -383,7 +383,7 @@ describe("error mapping", () => {
       expect(error.hint).toBe("");
       const text = (errorResult(error).content[0] as { text: string }).text.split("\n")[0] ?? "";
       expect(text).toBe(`Error (unauthorized): ${SESSION_ENDED_MESSAGE}`);
-      expect(count(text, "superflow-mcp login")).toBe(1);
+      expect(count(text, "@usesuperflow/mcp login")).toBe(1);
       expect(text).not.toContain("Create a new key");
     });
 
@@ -407,7 +407,7 @@ describe("error mapping", () => {
     expect(error.hint).not.toMatch(/Change them/);
     expect(error.hint).toContain("cannot be added to an existing key or sign-in");
     expect(error.hint).toContain("create a key with the scope this needs");
-    expect(error.hint).toContain("npx superflow-mcp login --scope");
+    expect(error.hint).toContain("npx -y @usesuperflow/mcp login --scope");
   });
 
   it("403 on a login session keeps the API's hint and adds how to sign in with more scopes", () => {
@@ -500,7 +500,7 @@ describe("logging", () => {
   });
 });
 
-describe("ApiClient with a token provider (superflow-mcp login)", () => {
+describe("ApiClient with a token provider (@usesuperflow/mcp login)", () => {
   const meBody = () => new Response(JSON.stringify({ member: { id: "u" } }), { status: 200, headers: { "content-type": "application/json" } });
   const unauthorized = () => new Response(JSON.stringify({ error: { code: "unauthorized", message: "expired" } }), { status: 401, headers: { "content-type": "application/json" } });
 

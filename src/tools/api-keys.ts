@@ -4,6 +4,7 @@ import { SuperflowApiError } from "../client/api.ts";
 import type { ApiKey, CreatedApiKey, ListEnvelope, Me, RevokedApiKey } from "../client/types.ts";
 import { CONFIRM_CREATE_API_KEY_MESSAGE, CONFIRM_REVOKE_API_KEY_MESSAGE, isConfirmed } from "../lib/confirm.ts";
 import { confirmationResult, errorResult, okResult, plural } from "../lib/format.ts";
+import { NPX_COMMAND } from "../target.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, join } from "./helpers.ts";
 import { confirmSchema } from "./schemas.ts";
@@ -76,7 +77,7 @@ export const listApiKeys = defineTool({
   name: "superflow_list_api_keys",
   title: "List API keys",
   description: [
-    "List your own API keys and app sign-ins (Claude, Cursor, superflow-mcp login) in this workspace: label, scopes, last use, expiry. Tokens are never shown.",
+    `List your own API keys and app sign-ins (Claude, Cursor, ${NPX_COMMAND} login) in this workspace: label, scopes, last use, expiry. Tokens are never shown.`,
     "Use it to find a key id before revoking it with superflow_revoke_api_key, or to check what has access. Other people's keys are not listed. For the scopes of the key in use now, use superflow_get_me.",
     "Example: {}",
   ].join("\n"),
@@ -95,7 +96,7 @@ export const createApiKey = defineTool({
   name: "superflow_create_api_key",
   title: "Create an API key",
   description: [
-    "Create an API key (sf_pat_...) for this workspace, for CI or another tool. It needs an API key with workspace:write: a sign-in (superflow-mcp login, Claude, Cursor) cannot create keys. The new key's scopes must be ones this key already has, and it cannot outlive this key.",
+    `Create an API key (sf_pat_...) for this workspace, for CI or another tool. It needs an API key with workspace:write: a sign-in (${NPX_COMMAND} login, Claude, Cursor) cannot create keys. The new key's scopes must be ones this key already has, and it cannot outlive this key.`,
     "The token is returned once, in this conversation: tell the user to save it now (for example as SUPERFLOW_API_KEY in their CI secrets) and not to paste it anywhere public.",
     "Without confirm: true nothing is created: you get a preview, or an error saying why the key cannot be created. Call again with confirm: true only after the user says yes to a preview. Do not retry a create that succeeded: each call makes another key. To see the keys you have use superflow_list_api_keys.",
     'Example: {"label": "GitHub Actions", "scopes": ["comments:read", "projects:read"], "expires_in_days": 90}',
