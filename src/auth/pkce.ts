@@ -1,4 +1,4 @@
-// PKCE (RFC 7636, S256) and the OAuth `state` value for `superflow-mcp login`.
+// PKCE (RFC 7636, S256) and the OAuth `state` value for `@usesuperflow/mcp login`.
 import { createHash, randomBytes } from "node:crypto";
 
 function base64url(buffer: Buffer): string {

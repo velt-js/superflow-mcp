@@ -2,7 +2,7 @@
 
 If you used BugHerd's API or a BugHerd MCP setup, this page maps what you know to
 Superflow. In Superflow, feedback lives as comments pinned on live pages. Your
-assistant works with them through the `superflow-mcp` tools (or the REST API v1 they
+assistant works with them through the `@usesuperflow/mcp` tools (or the REST API v1 they
 call).
 
 ## Terms

@@ -1,3 +1,5 @@
+import { DEFAULT_ORIGIN, NPX_COMMAND } from "./target.ts";
+
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
 export interface Config {
@@ -11,7 +13,7 @@ export interface Config {
 }
 
 /**
- * The settings of the stdio bridge (the default way `npx superflow-mcp` runs): the hosted MCP
+ * The settings of the stdio bridge (the default way `npx -y @usesuperflow/mcp` runs): the hosted MCP
  * endpoint it forwards to, instead of the REST API the tools would call themselves.
  */
 export interface BridgeConfig {
@@ -25,9 +27,9 @@ export interface BridgeConfig {
 }
 
 /** The REST API, for direct mode (development): the same function as the hosted MCP server serves it. */
-export const DEFAULT_BASE_URL = "https://mcp.usesuperflow.ai/v1";
+export const DEFAULT_BASE_URL = `${DEFAULT_ORIGIN}/v1`;
 /** The hosted Superflow MCP server the bridge forwards to. */
-export const DEFAULT_MCP_URL = "https://mcp.usesuperflow.ai/mcp";
+export const DEFAULT_MCP_URL = `${DEFAULT_ORIGIN}/mcp`;
 export const LOG_LEVELS: readonly LogLevel[] = ["debug", "info", "warn", "error", "silent"];
 
 /** A configuration problem. The message is one line, safe to print, and names the variable. */
@@ -95,7 +97,7 @@ function readApiKey(env: Record<string, string | undefined>): string {
   const apiKey = env.SUPERFLOW_API_KEY?.trim();
   if (!apiKey) {
     throw new ConfigError(
-      "Not signed in. Run npx superflow-mcp login, or create a key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.",
+      `Not signed in. Run ${NPX_COMMAND} login, or create a key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.`,
     );
   }
   if (/\s/.test(apiKey)) {

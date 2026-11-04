@@ -1,13 +1,13 @@
 // Smoke test for the library build: a CommonJS host (like the hosted server) requires
-// `superflow-mcp/server`, builds the server with its own fetch, and lists and calls tools.
+// `@usesuperflow/mcp/server`, builds the server with its own fetch, and lists and calls tools.
 // Run after `pnpm build`.
 const { Client } = require("@modelcontextprotocol/sdk/client/index.js");
 const { InMemoryTransport } = require("@modelcontextprotocol/sdk/inMemory.js");
-const lib = require("superflow-mcp/server");
+const lib = require("@usesuperflow/mcp/server");
 
 async function main() {
   for (const name of ["createServer", "ApiClient", "OPENAPI_SHA256", "TOOL_NAMES", "VERSION", "PLAYBOOKS"]) {
-    if (!(name in lib)) throw new Error(`superflow-mcp/server does not export ${name}`);
+    if (!(name in lib)) throw new Error(`@usesuperflow/mcp/server does not export ${name}`);
   }
   const calls = [];
   const fetch = async (url, init) => {
@@ -29,7 +29,7 @@ async function main() {
   const renamed = await client.callTool({ name: "list_workspaces", arguments: {} });
   if (!renamed.isError || !JSON.stringify(renamed.content).includes("renamed to superflow_get_me")) throw new Error("a renamed tool did not answer with its new name");
   await client.close();
-  console.log(`superflow-mcp/server (CommonJS) ${lib.VERSION}: ${tools.length} read-only tools, hosted wording, host fetch and renames work.`);
+  console.log(`@usesuperflow/mcp/server (CommonJS) ${lib.VERSION}: ${tools.length} read-only tools, hosted wording, host fetch and renames work.`);
 }
 
 main().catch((error) => {

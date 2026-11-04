@@ -1,4 +1,4 @@
-// The scopes `superflow-mcp login` asks for. Without an explicit list the consent screen
+// The scopes `@usesuperflow/mcp login` asks for. Without an explicit list the consent screen
 // falls back to its own read-heavy default (no comments:write), and a sign-in's scopes cannot
 // be widened later, so login always names the scopes this package's tools need.
 
@@ -34,7 +34,7 @@ export type Scope = (typeof ALL_SCOPES)[number];
  */
 export const OPT_IN_SCOPES: readonly Scope[] = ["users:invite", "users:write", "workspace:write", "users:read"];
 
-/** What `superflow-mcp login` asks for without `--scope`. */
+/** What `@usesuperflow/mcp login` asks for without `--scope`. */
 export const DEFAULT_LOGIN_SCOPES: readonly Scope[] = ALL_SCOPES.filter((scope) => !OPT_IN_SCOPES.includes(scope));
 
 /**

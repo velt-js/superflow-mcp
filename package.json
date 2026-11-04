@@ -1,5 +1,5 @@
 {
-  "name": "superflow-mcp",
+  "name": "@usesuperflow/mcp",
   "version": "0.1.0",
   "description": "Talk to your Superflow website comments from Claude Code, Claude Desktop, Cursor or any MCP client. A local stdio MCP server.",
   "keywords": [

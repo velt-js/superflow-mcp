@@ -8,8 +8,8 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 
 | | Local package | Hosted server |
 |---|---|---|
-| What | `npx -y superflow-mcp`, a small bridge on your machine: stdio to your client, the hosted server behind it | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
-| Auth | `npx superflow-mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
+| What | `npx -y @usesuperflow/mcp`, a small bridge on your machine: stdio to your client, the hosted server behind it | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
+| Auth | `npx -y @usesuperflow/mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
 | Tools | 101 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
@@ -20,7 +20,7 @@ Both give the same tools, because the local package forwards every request to th
 Sign in once with your browser. New to Superflow? You can sign up on the same page:
 
 ```bash
-npx -y superflow-mcp login
+npx -y @usesuperflow/mcp login
 ```
 
 The sign-in is saved (see [Sign in with the browser](#sign-in-with-the-browser)), so the
@@ -30,7 +30,7 @@ key with narrower scopes, use an API key instead. See [Get an API key](#get-an-a
 ### Claude Code (local)
 
 ```bash
-claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -- npx -y superflow-mcp
+claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -- npx -y @usesuperflow/mcp
 ```
 
 ### Claude Desktop (local)
@@ -42,7 +42,7 @@ Add this to `claude_desktop_config.json` (Settings > Developer > Edit Config), t
   "mcpServers": {
     "superflow": {
       "command": "npx",
-      "args": ["-y", "superflow-mcp"],
+      "args": ["-y", "@usesuperflow/mcp"],
       "env": {
         "SUPERFLOW_API_KEY": "sf_pat_..."
       }
@@ -60,7 +60,7 @@ Add this to `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
   "mcpServers": {
     "superflow": {
       "command": "npx",
-      "args": ["-y", "superflow-mcp"],
+      "args": ["-y", "@usesuperflow/mcp"],
       "env": {
         "SUPERFLOW_API_KEY": "sf_pat_..."
       }
@@ -72,7 +72,7 @@ Add this to `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
 ### Gemini CLI (local)
 
 ```bash
-gemini mcp add -s user -e SUPERFLOW_API_KEY=sf_pat_... superflow npx -y superflow-mcp
+gemini mcp add -s user -e SUPERFLOW_API_KEY=sf_pat_... superflow npx -y @usesuperflow/mcp
 ```
 
 Do not put `--` before `npx`. Or add the same `mcpServers` block as Cursor to
@@ -134,7 +134,7 @@ The same key works for the local package, the hosted server and the REST API. Re
 
 ### How the local package works
 
-`npx -y superflow-mcp` is a thin bridge. It speaks stdio to your MCP client and forwards every request (tools, prompts, resources, completions) to the hosted server at `https://mcp.usesuperflow.ai/mcp` over Streamable HTTP, with your API key or your `login` sign-in as the bearer token. The tools run on the hosted server, so the local package and the hosted connector are one server: the same tools, the same answers, and the same key. Results and errors come back unchanged. The install snippets below do not change.
+`npx -y @usesuperflow/mcp` is a thin bridge. It speaks stdio to your MCP client and forwards every request (tools, prompts, resources, completions) to the hosted server at `https://mcp.usesuperflow.ai/mcp` over Streamable HTTP, with your API key or your `login` sign-in as the bearer token. The tools run on the hosted server, so the local package and the hosted connector are one server: the same tools, the same answers, and the same key. Results and errors come back unchanged. The install snippets below do not change.
 
 What the bridge adds: it renews a sign-in's token (once more after a refused one), applies read-only mode locally, waits up to 150 seconds for a tool call (the longest tools, tag rewrites, take up to 90), and says clearly when the hosted server cannot be reached or refuses the key. A tool call is never sent twice, since it may change data. It names itself to the hosted server (`X-Superflow-Client: superflow-mcp/<version>`).
 
@@ -142,7 +142,7 @@ For development only, `SUPERFLOW_API_BASE_URL` switches to direct mode: the tool
 
 ### Sign in with the browser
 
-`npx -y superflow-mcp login` opens Superflow's consent screen in your browser. Sign in (or
+`npx -y @usesuperflow/mcp login` opens Superflow's consent screen in your browser. Sign in (or
 sign up), pick the workspace and the permissions, and approve. The terminal finishes on its
 own.
 
@@ -156,16 +156,16 @@ own.
   revokes API keys, renames the workspace) and `users:read` (no tool needs it).
 - `--scope` replaces that list, to narrow it or to add one of the four. Name every scope you
   want, separated by spaces or commas. A sign-in's scopes cannot be changed afterwards: run
-  `login` again with the new list. `npx -y superflow-mcp login --help` prints both lists.
+  `login` again with the new list. `npx -y @usesuperflow/mcp login --help` prints both lists.
 
   ```bash
-  npx -y superflow-mcp login --scope "comments:read projects:read"
+  npx -y @usesuperflow/mcp login --scope "comments:read projects:read"
   ```
 - The sign-in is saved in the macOS Keychain, the Linux Secret Service (`secret-tool`), or,
   when neither is available, `~/.config/superflow-mcp/credentials.json` (`%APPDATA%` on
   Windows) readable only by you. The command says which.
 - Access tokens last an hour and are renewed in the background while the server runs.
-- `npx -y superflow-mcp logout` ends the sign-in and removes it. You can also revoke it in
+- `npx -y @usesuperflow/mcp logout` ends the sign-in and removes it. You can also revoke it in
   Superflow under Settings > Integrations > API keys > Connected AI apps.
 - `SUPERFLOW_API_KEY`, when set, always wins over a saved sign-in.
 
@@ -189,7 +189,7 @@ Requires Node.js 20 or later.
 Set `SUPERFLOW_READ_ONLY=true` and the 56 write tools are not listed, and a call to one is refused on your machine without reaching Superflow. The 45 read tools stay: the assistant can still read, filter, count and export, look up projects, guests, the workspace and credit usage, read agents, runs, findings, schedules and integrations, estimate what a run would cost, and get a link to connect a tool (those two only read). The prompts still work. For a hard guarantee, and prompts and server instructions that present changes as recommendations, also use a key without the write scopes (`comments:write`, `projects:write`, `users:invite`, `users:write`, `workspace:write`, `agents:write`, `agents:run`, `integrations:write`, `ingest`).
 
 ```bash
-claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y superflow-mcp
+claude mcp add superflow -e SUPERFLOW_API_KEY=sf_pat_... -e SUPERFLOW_READ_ONLY=true -- npx -y @usesuperflow/mcp
 ```
 
 ### Tools
@@ -409,6 +409,22 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.
 - The key is only ever sent as the bearer token to the Superflow MCP server (in development mode, to the Superflow API), and it is never logged. See [SECURITY.md](SECURITY.md).
+
+### Staging build (Superflow team)
+
+`@usesuperflow/mcp-staging` is the same package built for Superflow staging. It is private:
+run `npm login` first with an npm account that has access to the `usesuperflow` org.
+
+```bash
+npx -y @usesuperflow/mcp-staging login
+claude mcp add superflow-staging -- npx -y @usesuperflow/mcp-staging
+```
+
+It forwards to staging (`https://superflowmcphandler-4mfhcuyw2q-uc.a.run.app/mcp`) by default,
+so it needs no `SUPERFLOW_MCP_URL`. It keeps its sign-in apart from the prod package (the
+`superflow-mcp-staging` Keychain or Secret Service entry, or
+`~/.config/superflow-mcp-staging/credentials.json`), so signing in to one never signs you out
+of the other. Every push to the `staging` branch publishes a new version.
 
 ## Hosted server
 

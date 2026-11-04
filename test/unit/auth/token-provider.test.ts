@@ -97,7 +97,7 @@ describe("SessionTokenProvider", () => {
     // Signed out, and the store still has nothing newer: still null, without asking the server.
     expect(await provider.refresh()).toBeNull();
     expect(server.calls).toHaveLength(1);
-    // npx superflow-mcp login saved a new sign-in.
+    // npx -y @usesuperflow/mcp login saved a new sign-in.
     await store.write({ ...session(10 * 60_000), accessToken: "sf_at_new", refreshToken: "sf_rt_new" });
     expect(await provider.refresh()).toBe("sf_at_new");
     expect(await provider.token()).toBe("sf_at_new");

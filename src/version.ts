@@ -11,6 +11,9 @@ function readVersion(): string {
   return pkg.version ?? "0.0.0";
 }
 
+// The bin and MCP client name, the same in every build (the npm package name is in
+// src/target.ts). The backend classifies MCP traffic by the User-Agent prefix
+// `superflow-mcp/` (PUBLIC_API_MCP_CLIENT_PREFIX), so keep both.
 export const PACKAGE_NAME = "superflow-mcp";
 export const VERSION: string = readVersion();
 export const USER_AGENT = `${PACKAGE_NAME}/${VERSION}`;
