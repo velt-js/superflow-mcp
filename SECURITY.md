@@ -42,7 +42,7 @@ redirect URI are refused with an error page and never redirected.
 
 ## The local package
 
-**The key stays out of logs.** `superflow-mcp` is a bridge to the hosted MCP
+**The key stays out of logs.** `@usesuperflow/mcp` is a bridge to the hosted MCP
 server: it sends the key (or the sign-in's access token) only as the bearer token
 to that server (`SUPERFLOW_MCP_URL`, https only, except for localhost), or, in
 development mode, to the Superflow API (`SUPERFLOW_API_BASE_URL`, same rule). It

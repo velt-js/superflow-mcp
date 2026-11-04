@@ -249,7 +249,7 @@ export interface Me {
   member: { id: string; name: string; email: string | null; role: string };
   organization: { id: string; name: string; plan: string | null };
   scopes: string[];
-  /** kind: pat for an API key (sf_pat_), oauth for a sign-in (sf_at_: superflow-mcp login, Claude, Cursor). */
+  /** kind: pat for an API key (sf_pat_), oauth for a sign-in (sf_at_: @usesuperflow/mcp login, Claude, Cursor). */
   key: { kind: "pat" | "oauth"; label: string | null; created_at: string | null; expires_at: string | null };
 }
 

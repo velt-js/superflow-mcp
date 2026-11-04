@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. This repo holds the `superflow-mcp` npm package (a local stdio
+Thanks for helping. This repo holds the `@usesuperflow/mcp` npm package (a local stdio
 bridge to the hosted Superflow MCP server, whose tool code also lives here) and the
 docs for the hosted server.
 
@@ -34,7 +34,7 @@ direct mode refuses an API on another origin than the MCP server the key is for.
 
 | Script | What it does |
 |---|---|
-| `pnpm build` | Bundles `src/index.ts` to `dist/index.js` with tsup. |
+| `pnpm build` | Bundles `src/index.ts` to `dist/index.js` with tsup. `SUPERFLOW_MCP_TARGET=staging pnpm build` builds the staging package. |
 | `pnpm typecheck` | `tsc --noEmit` over src, tests and scripts. |
 | `pnpm lint` | Typecheck, then fail on any em or en dash in source, docs and examples. |
 | `pnpm test` | Unit tests (msw) and, when configured, integration tests. |
@@ -99,4 +99,21 @@ direct mode refuses an API on another origin than the MCP server the key is for.
 
 Branch from `staging` and open the pull request into `staging`. Run `pnpm lint`,
 `pnpm test` and `pnpm check:drift` before you push. Do not edit version numbers by
-hand; releases are cut by tagging `v<version>`.
+hand for a normal change.
+
+## Releases
+
+CI publishes on every push: `staging` publishes `@usesuperflow/mcp-staging` (private to the
+usesuperflow npm org), `main` publishes `@usesuperflow/mcp` (public, with provenance) after a person approves the
+run's publish job (the `npm-prod` environment). Each publish tags its commit `v<version>` or
+`staging-v<version>`. The
+version is the latest published patch + 1, or package.json's version when that is higher (and
+package.json's version for the very first publish), so raise package.json's version only for
+a minor or major release. To see what a release would ship without publishing:
+
+```bash
+node scripts/publish.mjs prod --dry-run      # or staging
+```
+
+It builds that target, checks dist, runs `npm publish --dry-run` and puts package.json back.
+The workflows (`publish.yml`, `publish-staging.yml`) also run by hand with `dry_run`.

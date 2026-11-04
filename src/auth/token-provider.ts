@@ -3,6 +3,7 @@
 import type { TokenProvider } from "../client/api.ts";
 import type { Logger } from "../lib/logger.ts";
 import { silentLogger } from "../lib/logger.ts";
+import { NPX_COMMAND } from "../target.ts";
 import { AuthError, refreshTokens } from "./oauth.ts";
 import type { CredentialStore, StoredSession } from "./store.ts";
 
@@ -87,7 +88,7 @@ export class SessionTokenProvider implements TokenProvider {
         const recovered = await this.recoverFromStore();
         if (recovered) return recovered;
         this.dead = true;
-        logger.error("The Superflow sign-in has ended (revoked or expired). Run npx superflow-mcp login again.");
+        logger.error(`The Superflow sign-in has ended (revoked or expired). Run ${NPX_COMMAND} login again.`);
         return null;
       }
       logger.warn("Could not renew the Superflow sign-in. It will be tried again on the next call.");
@@ -114,7 +115,7 @@ export class SessionTokenProvider implements TokenProvider {
     try {
       await this.options.store.write(this.session);
     } catch {
-      logger.warn("The renewed Superflow sign-in could not be saved. Run npx superflow-mcp login if the next start fails.");
+      logger.warn(`The renewed Superflow sign-in could not be saved. Run ${NPX_COMMAND} login if the next start fails.`);
     }
     return this.session.accessToken;
   }

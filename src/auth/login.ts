@@ -1,11 +1,12 @@
-// `npx superflow-mcp login`: sign in with the browser instead of pasting an API key.
+// `npx -y @usesuperflow/mcp login`: sign in with the browser instead of pasting an API key.
 // OAuth 2.1 authorization code + PKCE on a loopback redirect (RFC 8252): a one-shot HTTP
 // server on 127.0.0.1 receives the code, then the tokens are saved to the credential
 // store. The same consent screen as the hosted connector: a new user can sign up there.
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { AuthError, discover, exchangeCode, registerClient, type AuthServerMetadata } from "./oauth.ts";
+import { NPX_COMMAND } from "../target.ts";
+import { AuthError, DEFAULT_AUTH_URL, discover, exchangeCode, registerClient, type AuthServerMetadata } from "./oauth.ts";
 import { challengeFor, createState, createVerifier } from "./pkce.ts";
 import { DEFAULT_LOGIN_SCOPES, OPT_IN_SCOPES } from "./scopes.ts";
 import { fileStore, defaultCredentialsFile, type CredentialStore, type StoredSession } from "./store.ts";
@@ -180,9 +181,9 @@ export async function login(options: LoginOptions): Promise<{ session: StoredSes
   }
 }
 
-/** `superflow-mcp login --help`. */
+/** `npx -y @usesuperflow/mcp login --help`. */
 export function loginHelp(): string {
-  return `Usage: npx -y superflow-mcp login [--scope "<scopes>"] [--auth-url <url>] [--api-url <url>]
+  return `Usage: ${NPX_COMMAND} login [--scope "<scopes>"] [--auth-url <url>] [--api-url <url>]
 
 Sign in (or sign up) in the browser and save the sign-in for the MCP server.
 
@@ -191,9 +192,9 @@ Sign in (or sign up) in the browser and save the sign-in for the MCP server.
               run login again to change them.
               Default: ${DEFAULT_LOGIN_SCOPES.join(" ")}
               Not in the default (ask for them by name): ${OPT_IN_SCOPES.join(" ")}
-  --auth-url  The sign-in server. Default SUPERFLOW_AUTH_URL, else https://mcp.usesuperflow.ai
+  --auth-url  The sign-in server. Default SUPERFLOW_AUTH_URL, else ${DEFAULT_AUTH_URL}
   --api-url   The API the sign-in is for. Default SUPERFLOW_API_BASE_URL, else the Superflow API.
 
-Example: npx -y superflow-mcp login --scope "${[...DEFAULT_LOGIN_SCOPES, "users:invite"].join(" ")}"
+Example: ${NPX_COMMAND} login --scope "${[...DEFAULT_LOGIN_SCOPES, "users:invite"].join(" ")}"
 `;
 }

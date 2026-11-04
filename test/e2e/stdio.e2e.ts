@@ -102,7 +102,9 @@ afterAll(async () => {
 describe("handshake", () => {
   it("names the package and its version", () => {
     const info = server.client.getServerVersion();
-    expect(info?.name).toBe(PKG.name);
+    // The MCP server keeps the bin name in every build; the npm package is @usesuperflow/mcp.
+    expect(PKG.name).toBe("@usesuperflow/mcp");
+    expect(info?.name).toBe("superflow-mcp");
     expect(info?.version).toBe(PKG.version);
   });
 

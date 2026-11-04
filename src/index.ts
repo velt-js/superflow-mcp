@@ -26,18 +26,23 @@ import {
 } from "./config.ts";
 import { createLogger, type Logger, redact } from "./lib/logger.ts";
 import { createServer } from "./server.ts";
+import { BUILD_TARGET, NPM_PACKAGE, NPX_COMMAND } from "./target.ts";
 import { toolsFor } from "./tools/index.ts";
 import { PACKAGE_NAME, VERSION } from "./version.ts";
 
-const HELP = `${PACKAGE_NAME} ${VERSION}
+// The commands, padded to one column whatever the package name of this build.
+const COMMAND_WIDTH = `${NPX_COMMAND} logout`.length + 2;
+const usage = (command: string, text: string) => `  ${command.padEnd(COMMAND_WIDTH)}${text}`;
+
+const HELP = `${NPM_PACKAGE} ${VERSION}${BUILD_TARGET === "staging" ? " (staging build)" : ""}
 A local MCP server (stdio) for Superflow. It forwards to the hosted Superflow MCP server,
 so you get the same tools as the hosted connector, with your own key or sign-in.
 
 Usage:
-  npx -y superflow-mcp login     Sign in (or sign up) in the browser. Saves the sign-in.
-                                 login --help lists its options, --scope among them.
-  npx -y superflow-mcp           Run the server (what your MCP client starts).
-  npx -y superflow-mcp logout    Sign out and remove the saved sign-in.
+${usage(`${NPX_COMMAND} login`, "Sign in (or sign up) in the browser. Saves the sign-in.")}
+${usage("", "login --help lists its options, --scope among them.")}
+${usage(NPX_COMMAND, "Run the server (what your MCP client starts).")}
+${usage(`${NPX_COMMAND} logout`, "Sign out and remove the saved sign-in.")}
 
 Environment:
   SUPERFLOW_API_KEY          An API key (sf_pat_...). Wins over a saved sign-in; use it in CI.
@@ -202,7 +207,7 @@ async function runLogin(args: string[]): Promise<void> {
   const rawScope = readFlag(args, "--scope");
   const requested = rawScope === undefined ? undefined : normalizeScopes(rawScope);
   if (requested && !requested.scope) {
-    print(`${PACKAGE_NAME}: --scope names no scopes. Run npx -y superflow-mcp login --help to see them.`);
+    print(`${PACKAGE_NAME}: --scope names no scopes. Run ${NPX_COMMAND} login --help to see them.`);
     process.exit(1);
   }
   if (requested?.unknown.length) print(`Superflow does not know ${requested.unknown.join(", ")}; the consent screen ignores ${requested.unknown.length === 1 ? "it" : "them"}.`);
@@ -212,7 +217,7 @@ async function runLogin(args: string[]): Promise<void> {
     const result = await login({ authUrl, apiBaseUrl, store, print, env: process.env, ...(scope ? { scope } : {}) });
     print(`Signed in to Superflow${await whoSignedIn(result.session)}. Saved in ${result.savedTo}.`);
     for (const note of [warning, result.warning]) if (note) print(note);
-    print("Your MCP client can now start superflow-mcp without SUPERFLOW_API_KEY.");
+    print(`Your MCP client can now start ${NPX_COMMAND} without SUPERFLOW_API_KEY.`);
   } catch (error) {
     const message = error instanceof AuthError || error instanceof SuperflowApiError ? error.message : String(error instanceof Error ? error.message : error);
     print(`${PACKAGE_NAME}: ${redact(message)}`);

@@ -1,4 +1,4 @@
-// The stdio bridge. `npx superflow-mcp` serves the hosted Superflow MCP server
+// The stdio bridge. `npx -y @usesuperflow/mcp` serves the hosted Superflow MCP server
 // (https://mcp.usesuperflow.ai/mcp) over stdio: every request goes to the hosted endpoint over
 // Streamable HTTP with the user's API key or sign-in, so the npm package and the hosted connector
 // are one server with the same tools, prompts and resources. Results and errors pass through
@@ -35,6 +35,7 @@ import { SESSION_ENDED_MESSAGE, type TokenProvider, UNAUTHORIZED_MESSAGE, bearer
 import { errorResult } from "./lib/format.ts";
 import type { Logger } from "./lib/logger.ts";
 import { silentLogger } from "./lib/logger.ts";
+import { NPX_COMMAND } from "./target.ts";
 import { TOOL_NAMES, WRITE_TOOL_NAMES } from "./tools/index.ts";
 import { PACKAGE_NAME, USER_AGENT, VERSION } from "./version.ts";
 
@@ -65,14 +66,14 @@ export const READ_ONLY_CHOICE =
  * cannot write): then both steps are needed, and the note says so instead of contradicting it.
  */
 export const READ_ONLY_RECONNECT =
-  "The key or sign-in can only read as well: for changes the user also needs one that may write (a key with write scopes, or npx superflow-mcp login again allowing the write permissions).";
+  `The key or sign-in can only read as well: for changes the user also needs one that may write (a key with write scopes, or ${NPX_COMMAND} login again allowing the write permissions).`;
 
 export interface BridgeOptions {
   /** The hosted MCP endpoint, for example https://mcp.usesuperflow.ai/mcp. */
   url: string;
   /** The bearer token: an API key, or a signed-in session that refreshes itself. */
   tokens: TokenProvider;
-  /** True for a sign-in (`superflow-mcp login`), false for an API key: picks the 401 message. */
+  /** True for a sign-in (`@usesuperflow/mcp login`), false for an API key: picks the 401 message. */
   signedIn: boolean;
   /** SUPERFLOW_READ_ONLY: list and allow only the tools that read. */
   readOnly: boolean;
@@ -155,7 +156,7 @@ export function bridgeFailure(error: unknown, options: Pick<BridgeOptions, "url"
         : new BridgeError({
             code: "unauthorized",
             message: UNAUTHORIZED_MESSAGE,
-            hint: "Or unset SUPERFLOW_API_KEY and run npx superflow-mcp login to sign in in the browser.",
+            hint: `Or unset SUPERFLOW_API_KEY and run ${NPX_COMMAND} login to sign in in the browser.`,
           });
     }
     if (status === 403) {
