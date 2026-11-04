@@ -17,6 +17,13 @@ The npm package is published from CI, under the `@usesuperflow` scope.
   stays `superflow-mcp`, and the User-Agent and `X-Superflow-Client` stay `superflow-mcp/<version>`.
 - Every command the package prints (help, login usage, hints and errors, the API key tool
   descriptions) names the package of the build it is in.
+- Dependencies: zod 4 (was 3), the same major the hosted server already runs these tools on,
+  and `@modelcontextprotocol/sdk` 1.32.2. Tool names and behavior are the same. The input
+  schemas in tools/list come from zod 4's JSON Schema emitter: reused fields are inlined
+  instead of `$ref`, objects no longer list `additionalProperties: false` (unknown fields are
+  still dropped), email fields carry a `pattern`, site and page URL fields keep their http or
+  https `pattern` without `format: uri`, and integers without a cap show
+  `maximum: 9007199254740991`.
 
 ### Added
 - `@usesuperflow/mcp-staging`: the same package built for Superflow staging (private to the

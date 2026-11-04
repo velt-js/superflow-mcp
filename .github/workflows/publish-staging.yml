@@ -34,13 +34,16 @@ jobs:
       version: ${{ steps.publish.outputs.version }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v5
       # The same Node as ci.yml: pnpm 11 needs Node 22 (the package itself runs on Node 20+).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
+          # The .npmrc reads NODE_AUTH_TOKEN, which only the Publish steps set. setup-node v7
+          # no longer exports a placeholder, so the steps before it warn "Failed to replace env
+          # in config" and read the registry without a token. That is expected.
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - name: OpenAPI snapshot is not provisional
