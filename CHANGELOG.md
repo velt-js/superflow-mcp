@@ -49,9 +49,9 @@ The npm package is published from CI, under the `@usesuperflow` scope.
   `playbook` (with the read-only note when writes are off); before, the model saw only its
   name and title. The text block and error results are unchanged, and resources still return
   the bare JSON.
-- The `push_my_review` playbook says how to keep a finding's identity (`external_id`, a
-  stable `fingerprint` from the first push or none, the same `source`) so a repeat push
-  merges instead of making duplicates.
+- The `push_my_review` playbook says how to keep a finding's identity (a stable
+  `external_id`, a stable `fingerprint` if any, the same `source`) so a repeat push merges
+  instead of making duplicates.
 
 ## [0.4.0] - Unreleased
 
