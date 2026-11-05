@@ -6,8 +6,10 @@ import {
   containsCommentText,
   describeFilters,
   errorResult,
+  confirmationResult,
   okResult,
   paginationNote,
+  payloadOf,
   toCompactComment,
 } from "../../src/lib/format.ts";
 import { compactComment, fullComment } from "../helpers/fixtures.ts";
@@ -21,8 +23,52 @@ describe("okResult", () => {
   it("puts the summary first, then a blank line, then pretty JSON", () => {
     const result = okResult("Found 2 tags.", { items: [{ name: "copy" }] });
     expect(text(result)).toBe(`Found 2 tags.\n\n${JSON.stringify({ items: [{ name: "copy" }] }, null, 2)}`);
-    expect(result.structuredContent).toEqual({ items: [{ name: "copy" }] });
+    expect(result.structuredContent).toEqual({ summary: "Found 2 tags.", items: [{ name: "copy" }] });
     expect(result.isError).toBeUndefined();
+  });
+
+  it("puts the summary first in structuredContent, since some clients show the model only that", () => {
+    const result = okResult("Found 2\ntags.", { items: [{ name: "copy" }], next_cursor: null });
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(Object.keys(structured)).toEqual(["summary", "items", "next_cursor"]);
+    expect(structured.summary).toBe("Found 2 tags.");
+    expect(structured).not.toHaveProperty("untrusted_notice");
+    expect(payloadOf(structured)).toEqual({ items: [{ name: "copy" }], next_cursor: null });
+  });
+
+  it("puts the untrusted notice in structuredContent, right after the summary, only when comment text is present", () => {
+    const withText = okResult("One comment.", { items: [compactComment] }).structuredContent as Record<string, unknown>;
+    expect(Object.keys(withText).slice(0, 3)).toEqual(["summary", "untrusted_notice", "items"]);
+    expect(withText.untrusted_notice).toBe(UNTRUSTED_NOTICE);
+    expect(payloadOf(withText)).toEqual({ items: [compactComment] });
+    expect(okResult("Two tags.", { items: [{ name: "copy", usage_count: 2 }] }).structuredContent).not.toHaveProperty("untrusted_notice");
+    expect(okResult("x", { items: [{ text: "  " }] }).structuredContent).not.toHaveProperty("untrusted_notice");
+    expect(okResult("Export.", { content: "csv" }, { untrusted: true }).structuredContent).toHaveProperty("untrusted_notice", UNTRUSTED_NOTICE);
+    expect(okResult("x", { items: [compactComment] }, { untrusted: false }).structuredContent).not.toHaveProperty("untrusted_notice");
+  });
+
+  it("keeps a payload's own summary and notice keys and moves ours aside, so neither overwrites the other", () => {
+    const payload = { summary: { total: 3 }, untrusted_notice: "theirs", items: [compactComment] };
+    const result = okResult("One comment.", payload);
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(Object.keys(structured)).toEqual(["superflow_summary", "superflow_untrusted_notice", "summary", "untrusted_notice", "items"]);
+    expect(structured.superflow_summary).toBe("One comment.");
+    expect(structured.superflow_untrusted_notice).toBe(UNTRUSTED_NOTICE);
+    expect(structured.summary).toEqual({ total: 3 });
+    expect(structured.untrusted_notice).toBe("theirs");
+    expect(payloadOf(structured)).toEqual(payload);
+    // The text block is unchanged: our summary line, then the payload as it came.
+    expect(text(result)).toBe(`One comment.\n${UNTRUSTED_NOTICE}\n\n${JSON.stringify(payload, null, 2)}`);
+  });
+
+  it("gives a confirmation preview its summary in structuredContent", () => {
+    const result = confirmationResult("Nothing was resolved. Call again with confirm: true.", { preview: { id: "cmt_1" } });
+    expect(result.structuredContent).toEqual({
+      summary: "Nothing was resolved. Call again with confirm: true.",
+      needs_confirmation: true,
+      preview: { id: "cmt_1" },
+    });
+    expect(Object.keys(result.structuredContent ?? {})[0]).toBe("summary");
   });
 
   it("adds the untrusted notice right after the summary only when comment text is present", () => {
@@ -57,6 +103,11 @@ describe("okResult", () => {
     expect(summary).toContain(`Truncated: dropped the last ${100 - data.items.length} of 100 items`);
     expect(summary).toContain(`limit=${data.items.length}`);
     expect((data.items.at(-1) as { id: string }).id).toBe(`cmt_${data.items.length - 1}`);
+    // structuredContent carries the same truncation summary, so the paging advice reaches the model.
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(Object.keys(structured).slice(0, 2)).toEqual(["summary", "untrusted_notice"]);
+    expect(structured.summary).toBe(summary);
+    expect(structured.summary).toContain("follow next_cursor");
   });
 
   it("truncates large export content", () => {
@@ -65,6 +116,7 @@ describe("okResult", () => {
     const data = result.structuredContent as { truncated: boolean; content: string };
     expect(data.truncated).toBe(true);
     expect(text(result).split("\n")[0]).toContain("Truncated: the content was cut to");
+    expect((result.structuredContent as { summary: string }).summary).toBe(text(result).split("\n")[0]);
   });
 
   it("does not mark small results as truncated", () => {

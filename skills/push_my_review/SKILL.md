@@ -44,6 +44,15 @@ each finding fill:
 Pick one `source` for the user's agent (for example `stache-review`) and keep it the same
 every time, so next week's review merges into this week's comments.
 
+Give every finding an identity, so a repeat push merges instead of making a duplicate:
+
+- `external_id`: the review's own stable id for the finding. Send the same id on every push.
+- `fingerprint`: optional. If you send one, keep it the same on every push.
+- Keep the same `source` slug every push.
+
+Superflow merges a repeat when its fingerprint matches, or else when it has the same source
+and `external_id` as an earlier finding.
+
 **Stop:** show the user how many findings you will push, the source name, and three sample
 rows. Ask for a yes.
 

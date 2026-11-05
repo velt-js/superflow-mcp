@@ -1,5 +1,8 @@
-// Result shaping. Every tool returns structuredContent (the JSON) plus one text block:
-// a one-line summary, an optional untrusted-content notice, a blank line, then the JSON.
+// Result shaping. Every tool returns one text block (a one-line summary, an optional
+// untrusted-content notice, a blank line, then the JSON) plus structuredContent: the same
+// JSON with the summary and the notice as its first keys. Some clients (Claude Code among
+// them) show the model structuredContent instead of the text, so everything a model must
+// read has to be in both.
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { SuperflowApiError } from "../client/api.ts";
 import type { CommentCompact, CommentFull, ListEnvelope } from "../client/types.ts";
@@ -111,7 +114,37 @@ export function okResult(summary: string, data: Data, options: ResultOptions = {
     }
   }
 
-  return { content: [{ type: "text", text }], structuredContent: payload };
+  return { content: [{ type: "text", text }], structuredContent: structured(line, payload, untrusted) };
+}
+
+/** Our summary key, or the fallback when the payload already has one. */
+export const SUMMARY_KEY = "summary";
+export const SUMMARY_FALLBACK_KEY = "superflow_summary";
+/** Our untrusted-content notice key, or the fallback when the payload already has one. */
+export const NOTICE_KEY = "untrusted_notice";
+export const NOTICE_FALLBACK_KEY = "superflow_untrusted_notice";
+
+/**
+ * structuredContent for a successful result: the summary first, then the untrusted notice
+ * when there is comment text, then the payload, so a model reads the guidance before the
+ * data. No tool declares an outputSchema, so the extra keys are allowed. The API's response
+ * schemas use neither "summary" nor "untrusted_notice" at the top level, but if a payload
+ * ever carries one of them, the payload keeps its own value under that name and ours moves
+ * to "superflow_summary" (or "superflow_untrusted_notice"): neither side overwrites the other.
+ */
+function structured(summary: string, payload: Data, untrusted: boolean): Data {
+  const head: Data = {};
+  head[SUMMARY_KEY in payload ? SUMMARY_FALLBACK_KEY : SUMMARY_KEY] = summary;
+  if (untrusted) head[NOTICE_KEY in payload ? NOTICE_FALLBACK_KEY : NOTICE_KEY] = UNTRUSTED_NOTICE;
+  return { ...head, ...payload };
+}
+
+/** The payload of a successful result's structuredContent: the result minus the summary and notice keys okResult added. */
+export function payloadOf(structuredContent: Record<string, unknown> | undefined): Data {
+  const rest: Data = { ...(structuredContent ?? {}) };
+  delete rest[SUMMARY_FALLBACK_KEY in rest ? SUMMARY_FALLBACK_KEY : SUMMARY_KEY];
+  delete rest[NOTICE_FALLBACK_KEY in rest ? NOTICE_FALLBACK_KEY : NOTICE_KEY];
+  return rest;
 }
 
 /** A normal (not error) result telling the model to ask the user before writing. */

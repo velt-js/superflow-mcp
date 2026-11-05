@@ -6,6 +6,7 @@ import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { UriTemplate } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import { SuperflowApiError } from "../client/api.ts";
+import { payloadOf } from "../lib/format.ts";
 import type { ListEnvelope, Page, Project } from "../client/types.ts";
 import { getComment, listComments } from "../tools/comments.ts";
 import type { ToolContext, ToolDefinition } from "../tools/define.ts";
@@ -63,7 +64,10 @@ class CommentsUriTemplate extends UriTemplate {
   }
 }
 
-/** Runs a tool and returns its structuredContent, or throws its error so the read fails clearly. */
+/**
+ * Runs a tool and returns its JSON, or throws its error so the read fails clearly. A resource
+ * is JSON only, so it drops the summary and notice keys okResult puts in structuredContent.
+ */
 async function runTool<Shape extends z.ZodRawShape>(
   tool: ToolDefinition<Shape>,
   args: Record<string, unknown>,
@@ -80,7 +84,7 @@ async function runTool<Shape extends z.ZodRawShape>(
       hint: error.hint ?? "",
     });
   }
-  return data;
+  return payloadOf(data);
 }
 
 export function registerResources(server: McpServer, ctx: ToolContext): void {

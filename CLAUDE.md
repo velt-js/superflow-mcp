@@ -38,6 +38,11 @@ Its code lives elsewhere. `server.json` is its registry manifest: do not edit it
   status and duration at debug level only.
 - **Logs go to stderr only.** stdout carries the MCP protocol. A stray `console.log`
   breaks every client.
+- **Everything a model must read goes in `structuredContent` as well as the text block.**
+  Claude Code shows the model a result's `structuredContent`, not its text, when there is
+  one. `okResult` puts the summary and the untrusted-content notice first in
+  `structuredContent`; a result built by hand (like `superflow_use_playbook`) must carry its
+  summary and its full text there too. Errors are shown as text, so `errorResult` is exempt.
 - **Never throw out of a tool handler.** Return `errorResult(...)` or let the server
   wrapper turn the error into an `isError` result.
 - **Do not edit `src/client/generated/operations.ts`.** Change `openapi/openapi.json`
@@ -132,6 +137,9 @@ playbook line in the server instructions.
   generated `idempotency_key` when the caller gave none.
 - Results: `okResult(summary, data)`. One-line summary, the untrusted-content notice when
   comment text is present, then the JSON. Text is capped at 30,000 characters.
+  `structuredContent` is `{ summary, untrusted_notice?, ...data }` (a payload's own `summary`
+  or `untrusted_notice` wins its name, and ours moves to `superflow_summary` or
+  `superflow_untrusted_notice`). `payloadOf` strips them again (resources use it).
 - `idempotency_key`: generated per call for create comment, add reply, create project,
   invites, create review link, create agent, duplicate agent, create agent pack, run agents,
   create schedule, import findings and push comment when missing, and every one of those tools
