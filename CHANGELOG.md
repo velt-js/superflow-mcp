@@ -39,6 +39,20 @@ The npm package is published from CI, under the `@usesuperflow` scope.
 ### Removed
 - The tag-based release workflow (`release.yml`). Releases are no longer `v*` tags.
 
+### Fixed
+- Clients that show the model a result's `structuredContent` instead of its text (Claude Code
+  does) now get the guidance too. Every successful result's `structuredContent` starts with
+  `summary` (the one-line summary, with any confirm, paging or truncation advice) and, when
+  the result holds comment text, `untrusted_notice`, then the data. A payload that has its own
+  `summary` or `untrusted_notice` keeps it, and ours moves to `superflow_summary` or
+  `superflow_untrusted_notice`. `superflow_use_playbook` with a name puts the whole playbook in
+  `playbook` (with the read-only note when writes are off); before, the model saw only its
+  name and title. The text block and error results are unchanged, and resources still return
+  the bare JSON.
+- The `push_my_review` playbook says how to keep a finding's identity (`external_id`, a
+  stable `fingerprint` from the first push or none, the same `source`) so a repeat push
+  merges instead of making duplicates.
+
 ## [0.4.0] - Unreleased
 
 The MCP spec addendum (v2.1): agent findings by kind, playbooks the server serves,
