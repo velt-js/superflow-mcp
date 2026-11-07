@@ -206,7 +206,7 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 | `superflow_get_check_details` | One check: its fix guide and its open findings with their pages and links, 20 at a time. |
 | `superflow_get_site_score` | The site score, the runs before it, and the lowest scoring pages. |
 | `superflow_get_finding_source` | The line of stored HTML a finding points at, to find it in the code. |
-| `superflow_mark_check_fixed` | Resolves every open finding of a check and has a rescan verify it (1 credit). Needs `confirm: true`; without it the tool shows what it would resolve. |
+| `superflow_mark_check_fixed` | Resolves every open finding of a check and has a rescan verify it (1 credit; an `ext-` check of imported findings is only resolved, at no charge). Needs `confirm: true`; without it the tool shows what it would resolve. |
 | `superflow_exclude_check` | Turns a check off for a site, with a reason. Needs `confirm: true`. |
 | `superflow_include_check` | Turns an excluded check back on. |
 | `superflow_assign_check_owner` | Sets who owns a check, or back to the default owner. |
@@ -366,7 +366,7 @@ Analytics are computed once a day. When `is_stale` is true the numbers are not a
 
 | Tool | What it does |
 |---|---|
-| `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. They are not checks: the failing checks and the fix list do not include them. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
+| `superflow_import_findings` | Pushes the findings of your own review (your prompts, your agent) into Superflow. Each becomes an agent comment pinned on its page under your agent's name, and merges with the same finding next time. Each counts under its check: the failing checks and the fix list include it. Superflow verifies a fix only for its own rule keys; an `ext-` finding is closed when resolved. Up to 500 per call, 5,000 per project per day. Needs the `ingest` scope. |
 
 In Claude Code the `fix` playbook can run one subagent per item, up to 3 at a time; other clients run the same steps in order. The playbooks are also prompts of the same name, so clients that show prompts as slash commands offer `/fix`, `/triage`, `/push_my_review` and `/onboard_agency`.
 
@@ -404,7 +404,7 @@ More in [`examples/prompts.md`](examples/prompts.md).
 - A review link makes a project visible to anyone who has the link.
 - Agent runs spend AI credits. The assistant prices the run with `superflow_estimate_run`, shows you the credits and asks; `superflow_run_agents` starts nothing without `confirm: true`. When the balance is too low it tells you how to add credits and does not retry.
 - Pushing a comment creates a real issue or task in your Jira, Asana, ClickUp or Monday, and a Slack post is seen by everyone in the channel. The assistant asks first, and a Slack post needs `confirm: true`.
-- Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, excluding a check hides it for the whole site, and rejecting an agent finding cannot be undone. All three need `confirm: true`; without it the tool only reads and shows what would happen. Resolving an imported finding (from `superflow_import_findings`) never spends a credit: Superflow cannot rerun an outside agent, so it is only resolved.
+- Marking a check fixed resolves every one of its open findings and spends 1 credit on the rescan, excluding a check hides it for the whole site, and rejecting an agent finding cannot be undone. All three need `confirm: true`; without it the tool only reads and shows what would happen. Resolving an imported finding (from `superflow_import_findings`) with an `ext-` key never spends a credit: Superflow cannot rerun an outside agent, so it is only resolved. One with Superflow's own rule key is rescanned by Superflow's agents like any finding.
 - A schedule runs agents, and spends credits, on every run. Creating one, or changing what or when it runs, needs `confirm: true`; without it the tool prices one run and shows it. Pausing needs no confirm.
 - Bulk updates are a dry run by default: it says how many comments would change and how many already match. A real run needs `dry_run: false` and `confirm: true`. The tool descriptions tell the assistant to ask you first.
 - Comment text comes from website visitors. Results that contain it carry a notice telling the model to treat it as data, not instructions.

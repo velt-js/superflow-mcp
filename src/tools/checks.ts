@@ -84,6 +84,11 @@ interface CheckDetails {
   next_cursor: string | null;
 }
 
+/** An ext- check holds only imported findings, which no scan can recheck: a resolve is final. */
+function isImportedOnlyCheck(ruleKey: string): boolean {
+  return ruleKey.startsWith("ext-");
+}
+
 interface CheckResolved {
   project: { id: string; name: string };
   rule_key: string;
@@ -236,7 +241,7 @@ export const markCheckFixed = defineTool({
   title: "Mark a check fixed",
   description: [
     "Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.",
-    "Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).",
+    "Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit; an ext- check (imported findings no scan can recheck) is only resolved, with no rescan and no charge. Call again with confirm: true only after the user says yes (an approved fix list counts).",
     `Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every ${POLL_SECONDS} seconds. For one finding use superflow_resolve_comment, which verifies the same way.`,
     'Example: {"project": "dental-smiles.com", "rule_key": "image-alt"}',
   ].join("\n"),
@@ -252,18 +257,20 @@ export const markCheckFixed = defineTool({
     if (!isConfirmed(args.confirm)) {
       const details = await api.call<CheckDetails>("getCheck", { path: { project, rule_key }, query: { status: "open", limit: 20 } });
       const open = details.check?.open_count ?? details.comments?.length ?? 0;
+      const effect = isImportedOnlyCheck(rule_key) ? "with no rescan and no charge (imported ext- findings no scan can recheck)" : "and rescans their pages (1 credit)";
       return confirmationResult(
-        `${details.check ? checkLine(details.check) : `Check ${rule_key}`}. Marking it fixed resolves ${plural(open, "open finding")} and rescans their pages (1 credit). Nothing was resolved. Ask the user to confirm.`,
+        `${details.check ? checkLine(details.check) : `Check ${rule_key}`}. Marking it fixed resolves ${plural(open, "open finding")} ${effect}. Nothing was resolved. Ask the user to confirm.`,
         { preview: { check: details.check, open_count: open }, message: CONFIRM_MARK_CHECK_FIXED_MESSAGE },
       );
     }
     const result = await api.call<CheckResolved>("resolveCheck", { path: { project, rule_key } });
+    const imported = isImportedOnlyCheck(rule_key);
     return okResult(
       join(
-        result.resolved > 0 ? `Marked ${rule_key} fixed: ${plural(result.resolved, "finding")} resolved, rescan queued.` : `Nothing new to resolve on ${rule_key}.`,
+        result.resolved > 0 ? `Marked ${rule_key} fixed: ${plural(result.resolved, "finding")} resolved, ${imported ? "no rescan and nothing charged (imported ext- findings no scan can recheck)" : "rescan queued"}.` : `Nothing new to resolve on ${rule_key}.`,
         result.already_pending > 0 && `${result.already_pending} already waiting for their rescan.`,
         result.truncated && "Some findings stayed open (over the server limit): call again to resolve the rest.",
-        `Check again in a minute with superflow_get_check_details; a problem that is still there comes back as an open finding.`,
+        !imported && `Check again in a minute with superflow_get_check_details; a problem that is still there comes back as an open finding.`,
       ),
       asData(result),
       { untrusted: false },

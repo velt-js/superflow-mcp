@@ -474,7 +474,7 @@ Example:
 
 Mark one comment resolved, optionally posting a note as a reply first (for example what was fixed).
 On an agent finding this is a claim the scan checks: its page is rescanned within a minute (verify in the result), and a problem that is still there comes back as an open finding. If the finding is wrong rather than fixed, use superflow_reject_comment.
-An imported finding (from superflow_import_findings) is only resolved: Superflow cannot rerun an outside agent, so no rescan is queued and no credit is spent.
+An imported finding (from superflow_import_findings) with one of Superflow's rule keys is rescanned by Superflow's own agents like any finding. One with an ext- key is only resolved: Superflow cannot rerun the outside agent and none of its agents checks that kind, so no rescan is queued and no credit is spent.
 Safe to repeat: if it is already resolved nothing changes and the note is not posted.
 To resolve many comments at once use superflow_bulk_update_comments with patch {"resolve": true}. To undo use superflow_reopen_comment.
 
@@ -726,7 +726,7 @@ Example:
 **Mark a check fixed**
 
 Say a whole check is fixed after you fixed it on the site: every open finding of it is resolved, and Superflow rescans their pages to verify. A problem that is still there comes back as an open finding, so this is a claim the scan checks, never the final word.
-Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit. Call again with confirm: true only after the user says yes (an approved fix list counts).
+Without confirm: true nothing changes: you get the open count to show the user. The rescan costs 1 credit; an ext- check (imported findings no scan can recheck) is only resolved, with no rescan and no charge. Call again with confirm: true only after the user says yes (an approved fix list counts).
 Then wait a minute and check with superflow_get_check_details (verified_at, or the finding reopened), or follow a run id with superflow_get_run no more often than every 20 seconds. For one finding use superflow_resolve_comment, which verifies the same way.
 
 | Parameter | Type | Required | Description |
@@ -2030,8 +2030,8 @@ Example:
 
 **Import findings from your own agent**
 
-Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments and in superflow_list_findings with the run_id the import returns. Imported findings are agent comments, not checks: superflow_list_failing_checks and the fix list (the triage playbook) do not include them.
-Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it carries the same key as Superflow's own findings of that kind. It merges only with your own earlier imports of the same finding, never with Superflow's. Up to 500 findings per call, 5,000 per project per day.
+Push what your own review found (your prompts, your agent) into Superflow. Each finding becomes an agent comment pinned on its page under your agent's name (source), so it shows up in superflow_list_comments and in superflow_list_findings with the run_id the import returns. Each one counts under its check: superflow_list_failing_checks and the fix list (the triage playbook) include it, beside Superflow's own findings.
+Use it at the end of your own review, when the user asks to push the findings into Superflow. Map each finding into the fields below; use Superflow's rule_key when the kind matches so it carries the same key as Superflow's own findings of that kind. It merges only with your own earlier imports of the same finding, never with Superflow's. Superflow's agents verify a fix to a finding with one of Superflow's keys; resolving an ext- finding closes it, with no rescan. Up to 500 findings per call, 5,000 per project per day.
 It only creates or merges, never deletes. The same finding sent again merges into its comment. If one finding is invalid nothing is imported and the error lists every problem by index (findings[3].page_url): fix them all and send the whole batch again.
 Not for one comment a person writes: use superflow_create_comment. Not for running Superflow's agents: use superflow_run_agents.
 
