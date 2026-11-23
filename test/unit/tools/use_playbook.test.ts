@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLAYBOOKS } from "../../../src/playbooks/generated.ts";
-import { connect, recorded, textOf, useMsw } from "../../helpers/harness.ts";
+import { connect, recorded, summaryOf, textOf, useMsw } from "../../helpers/harness.ts";
 
 useMsw();
 
@@ -14,7 +14,16 @@ describe(TOOL, () => {
     const text = textOf(result);
     expect(text.startsWith("Playbook: Fix, verify, report. Follow these steps in order.")).toBe(true);
     expect(text).toContain(PLAYBOOKS.find((p) => p.name === "fix")!.body);
-    expect(result.structuredContent).toEqual({ name: "fix", title: "Fix, verify, report", clients: expect.any(String) });
+    const fix = PLAYBOOKS.find((p) => p.name === "fix")!;
+    // Claude Code shows the model structuredContent, so it carries the summary and the whole body.
+    expect(result.structuredContent).toEqual({
+      summary: "Playbook: Fix, verify, report. Follow these steps in order.",
+      name: "fix",
+      title: "Fix, verify, report",
+      clients: expect.any(String),
+      playbook: fix.body,
+    });
+    expect(Object.keys(result.structuredContent ?? {})[0]).toBe("summary");
     expect(recorded).toHaveLength(0);
   });
 
@@ -23,12 +32,17 @@ describe(TOOL, () => {
     const result = await h.call(TOOL, {});
     expect(textOf(result)).toContain("- triage: Use when");
     expect((result.structuredContent as { playbooks: unknown[] }).playbooks).toHaveLength(PLAYBOOKS.length);
+    expect((result.structuredContent as { summary: string }).summary).toBe(summaryOf(result));
+    expect(Object.keys(result.structuredContent ?? {})[0]).toBe("summary");
   });
 
   it("is available in read-only mode and says the write steps cannot run", async () => {
     const h = await connect({ readOnly: true });
     const result = await h.call(TOOL, { name: "triage" });
     expect(textOf(result)).toContain("this server is read-only, so the write steps in this playbook cannot run here");
+    const playbook = (result.structuredContent as { playbook: string }).playbook;
+    expect(playbook.startsWith(PLAYBOOKS.find((p) => p.name === "triage")!.body)).toBe(true);
+    expect(playbook).toContain("this server is read-only, so the write steps in this playbook cannot run here");
   });
 
   it("refuses an unknown playbook through the schema", async () => {

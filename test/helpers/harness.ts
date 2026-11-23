@@ -10,6 +10,7 @@ import { ApiClient } from "../../src/client/api.ts";
 import { operations } from "../../src/client/generated/operations.ts";
 import type { OperationId } from "../../src/client/generated/operations.ts";
 import type { Config } from "../../src/config.ts";
+import { SUMMARY_FALLBACK_KEY, SUMMARY_KEY, payloadOf } from "../../src/lib/format.ts";
 import { silentLogger } from "../../src/lib/logger.ts";
 import { createServer } from "../../src/server.ts";
 
@@ -196,8 +197,18 @@ export function summaryOf(result: CallToolResult): string {
   return textOf(result).split("\n")[0] ?? "";
 }
 
+/**
+ * The payload of a result: structuredContent minus the summary and notice keys okResult adds.
+ * On a success it also checks that structuredContent leads with the text block's summary line,
+ * so every tool test proves the model sees the summary whichever block its client shows.
+ */
 export function data<T = Record<string, unknown>>(result: CallToolResult): T {
-  return result.structuredContent as T;
+  const structured = result.structuredContent as Record<string, unknown> | undefined;
+  if (result.isError || !structured) return structured as T;
+  const first = Object.keys(structured)[0];
+  expect(first === SUMMARY_KEY || first === SUMMARY_FALLBACK_KEY, "structuredContent leads with the summary").toBe(true);
+  expect(structured[first as string]).toBe(summaryOf(result));
+  return payloadOf(structured) as T;
 }
 
 export interface ToolError {

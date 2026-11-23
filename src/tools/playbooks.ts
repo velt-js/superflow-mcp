@@ -18,12 +18,18 @@ export function playbookText(playbook: Playbook, readOnly: boolean): string {
   return readOnly ? `${playbook.body}\n\n${READ_ONLY_NOTE}` : playbook.body;
 }
 
+// Claude Code shows the model structuredContent, not the text, so the summary and the full
+// playbook body go in both.
 function listResult(): CallToolResult {
-  const lines = ["Playbooks. Call superflow_use_playbook with a name to get one.", ""];
+  const summary = "Playbooks. Call superflow_use_playbook with a name to get one.";
+  const lines = [summary, ""];
   for (const playbook of PLAYBOOKS) lines.push(`- ${playbook.name}: ${playbook.description}`);
   return {
     content: [{ type: "text", text: lines.join("\n") }],
-    structuredContent: { playbooks: PLAYBOOKS.map(({ name, title, description, clients }) => ({ name, title, description, clients })) },
+    structuredContent: {
+      summary,
+      playbooks: PLAYBOOKS.map(({ name, title, description, clients }) => ({ name, title, description, clients })),
+    },
   };
 }
 
@@ -45,9 +51,11 @@ export const usePlaybook = defineTool({
   async run(args, { config }): Promise<CallToolResult> {
     if (!args.name) return listResult();
     const playbook = PLAYBOOKS.find((entry) => entry.name === args.name)!;
+    const summary = `Playbook: ${playbook.title}. Follow these steps in order.`;
+    const body = playbookText(playbook, config.readOnly);
     return {
-      content: [{ type: "text", text: `Playbook: ${playbook.title}. Follow these steps in order.\n\n${playbookText(playbook, config.readOnly)}` }],
-      structuredContent: { name: playbook.name, title: playbook.title, clients: playbook.clients },
+      content: [{ type: "text", text: `${summary}\n\n${body}` }],
+      structuredContent: { summary, name: playbook.name, title: playbook.title, clients: playbook.clients, playbook: body },
     };
   },
 });
