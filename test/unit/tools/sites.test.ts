@@ -381,7 +381,7 @@ describe("M2 superflow_get_site_care_run", () => {
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
     expect(summary).toContain(": done (no_changes). No page changed since the last check, so nothing was checked.");
     expect(summary).toContain(
-      "This run does not say which checks fail: it is not a clean result, and failures found earlier may still be open. Read them in the latest run that checked pages, with superflow_get_site_care_run and site_run set to its number (below 14), or list the site's open failures with superflow_list_failing_checks.",
+      "Not a clean result: this run does not say which checks fail, and failures found earlier may still be open. To see them, list the site's open failures with superflow_list_failing_checks, or read the latest run that checked pages with superflow_get_site_care_run and site_run set to its number (below 14).",
     );
     expect(summary).not.toContain("No failing checks.");
     expect(summary).not.toContain("No findings.");
@@ -393,15 +393,23 @@ describe("M2 superflow_get_site_care_run", () => {
     on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...NO_CHANGES, checks_state: "listed", failing_check_count: 0 }));
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
-    expect(summary).toContain("it is not a clean result");
+    expect(summary).toContain("Not a clean result: this run does not say which checks fail");
     expect(summary).not.toContain("No failing checks.");
+  });
+
+  it("M2: no_changes on the first run names no lower run number", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...NO_CHANGES, run: { ...NO_CHANGES.run, number: 1 } }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain("site_run set to its number.");
+    expect(summary).not.toContain("(below");
   });
 
   it("M2: no_changes narrowed to one check does not say the check passes", async () => {
     on("get", "/projects/:project/monitoring/runs/:site_run", ok(NO_CHANGES));
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental", rule_key: "link-broken" }));
-    expect(summary).toContain("This run does not say whether check link-broken fails: it is not a clean result");
+    expect(summary).toContain("Not a clean result: this run does not say whether check link-broken fails");
     expect(summary).not.toContain("is not failing");
   });
 
@@ -424,7 +432,7 @@ describe("M2 superflow_get_site_care_run", () => {
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
     expect(summary).toContain(
-      "No failing checks are listed yet: Superflow has not settled this run's checks, so this is not a clean result. Read the run again later, no more often than every 20 seconds.",
+      "Not a clean result yet: Superflow has not settled this run's checks, so none are listed. Read the run again later, no more often than every 20 seconds.",
     );
     expect(summary).not.toContain("No failing checks.");
     expect(summary).not.toContain("These checks");
@@ -435,16 +443,18 @@ describe("M2 superflow_get_site_care_run", () => {
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
     expect(summary).toContain(
-      "No failing checks are listed, but Superflow's check list is not available for this run, so which checks fail is unknown and this is not a clean result: list the site's open failures with superflow_list_failing_checks.",
+      "Not a clean result: Superflow's check list is not available for this run, so which checks fail is unknown. List the site's open failures with superflow_list_failing_checks.",
     );
     expect(summary).not.toContain("No failing checks.");
   });
 
-  it("M2: a failed run checked no pages, so its checks are unknown", async () => {
-    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, run: { ...RESULT.run, status: "failed", pages_checked: 0 }, checks_state: "unavailable", failing_check_count: null, failing_checks: [] }));
+  it.each(["failed", "skipped", "auth_failed"])("M2: a %s run checked no pages, so its checks are unknown", async (status) => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, run: { ...RESULT.run, status, pages_checked: 0 }, checks_state: "unavailable", failing_check_count: null, failing_checks: [] }));
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
-    expect(summary).toContain("This run checked no pages, so which checks fail is unknown: list the site's open failures with superflow_list_failing_checks.");
+    expect(summary).toContain(
+      "Not a clean result: this run checked no pages, so which checks fail is unknown. List the site's open failures with superflow_list_failing_checks.",
+    );
     expect(summary).not.toContain("No findings.");
   });
 

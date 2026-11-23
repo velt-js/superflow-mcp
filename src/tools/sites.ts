@@ -321,18 +321,18 @@ function emptyChecksLine(result: SiteCareRun, status: string, onlyRule?: string)
   // First, whatever checks_state says: a run that checked no page is never a pass.
   if (run.reason === "no_changes") {
     const below = typeof run.number === "number" && run.number > 1 ? ` (below ${run.number})` : "";
-    return `This run does not say ${what}: it is not a clean result, and failures found earlier may still be open. Read them in the latest run that checked pages, with superflow_get_site_care_run and site_run set to its number${below}, or ${openFailures}.`;
+    return `Not a clean result: this run does not say ${what}, and failures found earlier may still be open. To see them, ${openFailures}, or read the latest run that checked pages with superflow_get_site_care_run and site_run set to its number${below}.`;
   }
   if (result.checks_state === "listed" && (onlyRule !== undefined || result.failing_check_count === 0)) {
     if (onlyRule !== undefined) return `Check ${onlyRule} is not failing in this run.`;
     return status === "done" || status === "partial" ? "No failing checks." : "No findings.";
   }
   if (result.checks_state === "unsettled") {
-    return `No failing checks are listed yet: Superflow has not settled this run's checks, so this is not a clean result. Read the run again later, no more often than every ${POLL_SECONDS} seconds.`;
+    return `Not a clean result yet: Superflow has not settled this run's checks, so none are listed. Read the run again later, no more often than every ${POLL_SECONDS} seconds.`;
   }
-  if (status !== "done" && status !== "partial") return `This run checked no pages, so ${what} is unknown: ${openFailures}.`;
+  if (status !== "done" && status !== "partial") return `Not a clean result: this run checked no pages, so ${what} is unknown. List the site's open failures with superflow_list_failing_checks.`;
   const why = result.checks_state === "unavailable" ? "Superflow's check list is not available for this run" : "this run gave no failing check count";
-  return `No failing checks are listed, but ${why}, so ${what} is unknown and this is not a clean result: ${openFailures}.`;
+  return `Not a clean result: ${why}, so ${what} is unknown. List the site's open failures with superflow_list_failing_checks.`;
 }
 
 /** One summary of a Site Care run result, for a model to act on. */
