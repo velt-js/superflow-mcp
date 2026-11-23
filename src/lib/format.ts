@@ -136,6 +136,8 @@ export interface ToolErrorShape {
   scan?: { scanned: number; complete: boolean };
   /** With scan: send it back as cursor to look further. */
   next_cursor?: string | null;
+  /** run_active only: the Site Care run still going (read it with superflow_get_site_care_run). */
+  active_run_id?: string;
 }
 
 /** Builds an isError tool result in the contract's error shape. Never throws. */

@@ -116,6 +116,10 @@ playbook line in the server instructions.
   it runs (every run spends credits; without confirm it prices one run with the estimate and
   returns it as the preview; pausing and moving the time zone need no confirm). A credits
   refusal is explained with Settings > Billing and never retried.
+- `superflow_run_site_care` spends credits but does not gate on confirm: the site is already in
+  care (`superflow_set_site_mode` asked), it checks only the changed pages like a deploy run, and
+  it is the step an agent repeats in the fix loop. The API caps it (one run at a time, 10 an
+  hour per site). `superflow_set_site_webhook` never takes or returns a signing secret.
 - A gate never adds `confirm` (or `accept_test_leads`) to an API call on the user's behalf.
   When the call would change nothing (care on a site already in care with the same cadence
   and time zone, a form test already on the same way), the tool sends no write and says

@@ -18,7 +18,8 @@ export type ErrorCode =
   | "ambiguous"
   | "needs_confirmation"
   | "rate_limited"
-  | "upstream";
+  | "upstream"
+  | "run_active";
 
 export const UNAUTHORIZED_MESSAGE =
   "The Superflow API key was rejected. Create a new key in Superflow under Settings > Integrations > API keys and set SUPERFLOW_API_KEY.";
@@ -49,6 +50,8 @@ export interface SuperflowApiErrorInit {
   scan?: { scanned: number; complete: boolean };
   /** With scan: where to look further (send it back as cursor). */
   nextCursor?: string | null;
+  /** run_active only (409 from runSiteCare): the Site Care run still going. */
+  activeRunId?: string;
 }
 
 /** One validation problem the API listed. */
@@ -71,6 +74,7 @@ export class SuperflowApiError extends Error {
   readonly resetAt: string | undefined;
   readonly scan: { scanned: number; complete: boolean } | undefined;
   readonly nextCursor: string | null | undefined;
+  readonly activeRunId: string | undefined;
 
   constructor(init: SuperflowApiErrorInit) {
     super(init.message);
@@ -85,6 +89,7 @@ export class SuperflowApiError extends Error {
     this.resetAt = init.resetAt;
     this.scan = init.scan;
     this.nextCursor = init.nextCursor;
+    this.activeRunId = init.activeRunId;
   }
 
   toJSON(): {
@@ -98,6 +103,7 @@ export class SuperflowApiError extends Error {
     reset_at?: string;
     scan?: { scanned: number; complete: boolean };
     next_cursor?: string | null;
+    active_run_id?: string;
   } {
     return {
       code: this.code,
@@ -110,6 +116,7 @@ export class SuperflowApiError extends Error {
       ...(this.resetAt ? { reset_at: this.resetAt } : {}),
       ...(this.scan ? { scan: this.scan } : {}),
       ...(this.nextCursor !== undefined ? { next_cursor: this.nextCursor } : {}),
+      ...(this.activeRunId ? { active_run_id: this.activeRunId } : {}),
     };
   }
 }
@@ -229,6 +236,7 @@ const FALLBACK_MESSAGES: Record<ErrorCode, string> = {
   needs_confirmation: "This change needs confirm: true.",
   rate_limited: "Too many requests to the Superflow API.",
   upstream: "The Superflow API had a problem. Try again in a minute.",
+  run_active: "A Site Care check is already running for this site.",
 };
 
 const FALLBACK_HINTS: Partial<Record<ErrorCode, string>> = {
@@ -536,6 +544,9 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
       : undefined;
   const nextCursor =
     scan && (typeof errorBody?.next_cursor === "string" || errorBody?.next_cursor === null) ? (errorBody.next_cursor as string | null) : undefined;
+  // run_active (409 from runSiteCare): the run still going, to read instead of starting another.
+  const activeRunId =
+    typeof errorBody?.active_run_id === "string" && /^[A-Za-z0-9_-]{1,200}$/.test(errorBody.active_run_id) ? errorBody.active_run_id : undefined;
 
   return new SuperflowApiError({
     status,
@@ -549,6 +560,7 @@ export function toApiError(status: number, text: string, retryAfterMs?: number, 
     ...(resetAt ? { resetAt } : {}),
     ...(scan ? { scan } : {}),
     ...(nextCursor !== undefined ? { nextCursor } : {}),
+    ...(activeRunId ? { activeRunId } : {}),
   });
 }
 
