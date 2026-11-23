@@ -14,7 +14,7 @@ import {
   CONFIRM_SITE_CARE_MESSAGE,
   isConfirmed,
 } from "../lib/confirm.ts";
-import { MAX_TEXT_CHARS, confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
+import { MAX_TEXT_CHARS, UNTRUSTED_NOTICE, confirmationResult, errorResult, invalidInput, okResult, plural } from "../lib/format.ts";
 import { findOne } from "../lib/match.ts";
 import { READ_HINTS, defineTool, hints } from "./define.ts";
 import { asData, compact, join } from "./helpers.ts";
@@ -305,6 +305,9 @@ function elsewhereLine(check: SiteCareFailingCheck): string {
   return `${label} was not checked this run, and no recent run found it`;
 }
 
+/** How many checks without findings the summary names; the rest are in the JSON. */
+const ELSEWHERE_LINES = 5;
+
 /** One summary of a Site Care run result, for a model to act on. */
 export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
   const run = result.run ?? ({} as Partial<SiteCareRun["run"]>);
@@ -330,7 +333,7 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
           : "No findings."
       : `${plural(total, "failing check")}, ${plural(findings, "finding")} listed${found.length > 0 ? `: ${found.slice(0, 5).map(checkLine).join("; ")}${found.length > 5 ? "; and more in failing_checks" : ""}` : ""}.`,
     elsewhere.length > 0 &&
-      `${plural(elsewhere.length, "failing check")} ${elsewhere.length === 1 ? "has" : "have"} no findings here because ${elsewhere.length === 1 ? "its" : "their"} pages were not checked this run: ${elsewhere.slice(0, 10).map(elsewhereLine).join("; ")}${elsewhere.length > 10 ? "; and more in failing_checks (carried_from)" : ""}.`,
+      `${plural(elsewhere.length, "failing check")} ${elsewhere.length === 1 ? "has" : "have"} no findings here because ${elsewhere.length === 1 ? "its" : "their"} pages were not checked this run: ${elsewhere.slice(0, ELSEWHERE_LINES).map(elsewhereLine).join("; ")}${elsewhere.length > ELSEWHERE_LINES ? `; and ${elsewhere.length - ELSEWHERE_LINES} more, see carried_from in the JSON` : ""}.`,
     result.checks_state === "unsettled" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
     result.checks_state === "unavailable" && "These checks are grouped from the run's findings; Superflow's own check list is not available for this run, so reading it again will not change them.",
     result.findings_state === "capped" && "More findings exist than listed (at most 10 a check, 100 in all, fewer when cut to fit): fix these first, or read a check's full list with superflow_get_check_details and its rule_key.",
@@ -338,26 +341,55 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
   );
 }
 
-/** Room left in the text block for the JSON, after the summary and the untrusted notice. */
-const SITE_RUN_JSON_BUDGET = MAX_TEXT_CHARS - 3_000;
+/** Slack under MAX_TEXT_CHARS for the text block's separators. */
+const SITE_RUN_TEXT_MARGIN = 200;
 
-const fits = (result: SiteCareRun): boolean => JSON.stringify(result, null, 2).length <= SITE_RUN_JSON_BUDGET;
+interface SiteRunText {
+  summary: string;
+  data: SiteCareRun & { trimmed?: true };
+  untrusted: boolean;
+}
+
+/** The summary, data and notice the tool returns for one (possibly cut) result. */
+function renderSiteRun(result: SiteCareRun, onlyRule: string | undefined, trimmed: boolean, cut: number): SiteRunText {
+  const findings = findingCount(result.failing_checks ?? []);
+  const labelled = Boolean(result.run?.source?.ref || result.run?.source?.url);
+  return {
+    summary: join(
+      siteRunSummary(result, onlyRule),
+      trimmed && `Cut to fit: snippet and box were left out of the findings${cut > 0 ? `, and ${plural(cut, "finding")} more were cut` : ""}. Read one check with rule_key to see them.`,
+    ),
+    data: trimmed ? { ...result, trimmed: true } : result,
+    // Findings quote the site's own pages (element_text, snippet), and ref and url are labels set by
+    // whoever holds the check trigger URL or a key: data, not instructions.
+    untrusted: findings > 0 || labelled,
+  };
+}
+
+/** The text block's length for this render: summary, notice, blank line, JSON (as okResult writes it). */
+function textLength(text: SiteRunText): number {
+  return text.summary.length + (text.untrusted ? UNTRUSTED_NOTICE.length + 1 : 0) + 2 + JSON.stringify(text.data, null, 2).length;
+}
+
+const fits = (text: SiteRunText): boolean => textLength(text) <= MAX_TEXT_CHARS - SITE_RUN_TEXT_MARGIN;
 
 /**
- * Keeps the result under the text cap, so the JSON in the text always parses. First snippet and box
- * go (the bulk of a finding); then findings are cut from the check that lists the most, keeping one
- * a check; then whole checks from the end. Anything cut marks findings_state capped.
+ * Keeps the text under the cap, so the JSON in it always parses. The budget is what the real summary
+ * and notice leave, measured on every candidate. First snippet and box go (the bulk of a finding); then
+ * findings are cut from the check that lists the most, keeping one a check; then whole checks that
+ * still list findings, from the end. Anything cut marks findings_state capped. carried_from and
+ * findings_note rows hold no findings and are never cut: they are how a model finds the run that has them.
  */
-// carried_from and findings_note rows hold no findings, so they are never cut: they are how a model
-// finds the run that has the findings.
-export function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed: boolean; cut: number } {
-  if (fits(result)) return { result, trimmed: false, cut: 0 };
+export function fitSiteRun(result: SiteCareRun, onlyRule?: string): SiteRunText {
+  const whole = renderSiteRun(result, onlyRule, false, 0);
+  if (fits(whole)) return whole;
   let checks = (result.failing_checks ?? []).map((check) => ({
     ...check,
     findings: (check.findings ?? []).map(({ snippet: _snippet, box: _box, ...finding }) => finding),
   }));
-  const build = (): SiteCareRun => ({ ...result, failing_checks: checks });
   let cut = 0;
+  const build = (): SiteRunText =>
+    renderSiteRun({ ...result, failing_checks: checks, ...(cut > 0 ? { findings_state: "capped" as const } : {}) }, onlyRule, true, cut);
   while (!fits(build())) {
     const widest = checks.reduce((best, check, i) => (check.findings.length > (checks[best]?.findings.length ?? 0) ? i : best), 0);
     const target = checks[widest];
@@ -373,7 +405,7 @@ export function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed:
       break;
     }
   }
-  return { result: { ...build(), ...(cut > 0 ? { findings_state: "capped" as const } : {}) }, trimmed: true, cut };
+  return build();
 }
 
 export const runSiteCare = defineTool({
@@ -460,19 +492,8 @@ export const getSiteCareRun = defineTool({
     const narrowed: SiteCareRun = args.rule_key
       ? { ...full, failing_checks: (full.failing_checks ?? []).filter((check) => check.rule_key === args.rule_key) }
       : full;
-    const { result, trimmed, cut } = fitSiteRun(narrowed);
-    const findings = findingCount(result.failing_checks ?? []);
-    const labelled = Boolean(result.run?.source?.ref || result.run?.source?.url);
-    return okResult(
-      join(
-        siteRunSummary(result, args.rule_key),
-        trimmed && `Cut to fit: snippet and box were left out of the findings${cut > 0 ? `, and ${plural(cut, "finding")} more were cut` : ""}. Read one check with rule_key to see them.`,
-      ),
-      asData(trimmed ? { ...result, trimmed: true } : result),
-      // Findings quote the site's own pages (element_text, snippet), and ref and url are labels set by
-      // whoever holds the check trigger URL or a key: data, not instructions.
-      { untrusted: findings > 0 || labelled },
-    );
+    const { summary, data, untrusted } = fitSiteRun(narrowed, args.rule_key);
+    return okResult(summary, asData(data), { untrusted });
   },
 });
 

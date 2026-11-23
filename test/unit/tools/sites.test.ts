@@ -464,6 +464,26 @@ describe("M2 superflow_get_site_care_run", () => {
     expect(recorded[0]?.path).toBe("/projects/Acme%20Dental/monitoring/runs/12");
   });
 
+  it("M2 R6: ten carried checks on a capped run: the summary lists five, the text fits and its JSON parses", async () => {
+    const long = { ...FINDING, detail: "d".repeat(300), suggested_fix: "f".repeat(300), snippet: "s".repeat(300) };
+    const heavy = Array.from({ length: 10 }, (_, i) => ({ ...RESULT.failing_checks[0], rule_key: `rule-${i}`, title: "t".repeat(120), fix_guide: "g".repeat(500), findings: Array.from({ length: 10 }, () => long) }));
+    const carried = Array.from({ length: 10 }, (_, i) => ({
+      ...CARRIED, rule_key: `carried-${i}`, title: "c".repeat(120),
+      carried_from: { ...CARRIED.carried_from, url: `https://app.superflow.test/site/runs/${"r".repeat(150)}${i}` },
+    }));
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, failing_checks: [...heavy, ...carried], failing_check_count: 20, findings_state: "capped" }));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental" });
+    const text = textOf(result);
+    expect(text.length).toBeLessThanOrEqual(30_000);
+    expect(text).not.toContain("[output truncated]");
+    const parsed = JSON.parse(text.slice(text.indexOf("\n\n") + 2)) as { failing_checks: Array<{ rule_key: string; carried_from: unknown }> };
+    expect(parsed.failing_checks.filter((c) => c.carried_from !== null)).toHaveLength(10);
+    const summary = summaryOf(result);
+    expect(summary.match(/was last found in run 12/g)).toHaveLength(5);
+    expect(summary).toContain("; and 5 more, see carried_from in the JSON.");
+  });
+
   it("M2 R6: cutting to fit never drops a carried_from or findings_note check", async () => {
     const long = { ...FINDING, detail: "d".repeat(300), suggested_fix: "f".repeat(300), snippet: "s".repeat(300) };
     const heavy = Array.from({ length: 10 }, (_, i) => ({ ...RESULT.failing_checks[0], rule_key: `rule-${i}`, fix_guide: "g".repeat(500), findings: Array.from({ length: 10 }, () => long) }));
