@@ -6935,7 +6935,7 @@
     "/projects/{project}/monitoring": {
       "get": {
         "operationId": "getSiteMonitoring",
-        "summary": "The site's monitoring mode (care or watch), cadence, time zone and Version history schedule",
+        "summary": "The site's monitoring mode (care or watch), cadence, time zone, Version history schedule, and where run results go (webhook, Slack), its deploy link and check trigger",
         "tags": [
           "projects"
         ],
@@ -7006,7 +7006,7 @@
       },
       "patch": {
         "operationId": "updateSiteMonitoring",
-        "summary": "Change the monitoring mode, time zone or cadence. Turning care on needs confirm=true and the agents:run scope: on a site never monitored it starts its first full check, which spends credits. Without confirm: 409 needs_confirmation with the current monitoring as preview.",
+        "summary": "Change the monitoring mode, time zone, cadence or webhook report. Turning care on needs confirm=true and the agents:run scope: on a site never monitored it starts its first full check, which spends credits. Without confirm: 409 needs_confirmation with the current monitoring as preview.",
         "tags": [
           "projects"
         ],
@@ -7055,6 +7055,34 @@
                       "off"
                     ],
                     "description": "How often monitoring runs. Needs a monitored site, or mode=care in the same request."
+                  },
+                  "webhook_report": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "description": "A public https address. Each finished Site Care run is POSTed to it."
+                          },
+                          "version": {
+                            "type": "integer",
+                            "enum": [
+                              1,
+                              2
+                            ],
+                            "description": "2 sends the detailed result (the getSiteCareRun body: each failing check with what, where and how to fix). Left out, the site keeps its format (1 for a site saved before)."
+                          }
+                        },
+                        "required": [
+                          "url"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "confirm": {
                     "type": "boolean",
@@ -7266,6 +7294,183 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdatedForm"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/monitoring/runs": {
+      "post": {
+        "operationId": "runSiteCare",
+        "summary": "Start a Site Care check of the site now: the pages changed since the last check go to its agents. Care sites only, 10 an hour per site (shared with runAgents). A check still going answers 409 run_active with active_run_id. The fix loop: read the result with getSiteCareRun, fix, deploy, start a check, read it again.",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "agents:run"
+            ]
+          }
+        ],
+        "x-required-scope": "agents:run",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "description": "A label of yours, such as a commit or deploy id, at most 200 characters. Stored and echoed in the result, never read."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "An https label, such as the deploy's address, at most 200 characters. Echoed, never fetched."
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteCareRunStarted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Upstream"
+          }
+        }
+      }
+    },
+    "/projects/{project}/monitoring/runs/{site_run}": {
+      "get": {
+        "operationId": "getSiteCareRun",
+        "summary": "One Site Care run's result: each failing check with up to 10 findings saying what is wrong (problem, detail), where (page_url, element_text, snippet, box) and how to fix it (suggested_fix, the check's fix_guide). site_run is latest, the run number, or its run_id. The same body as the detailed webhook. A run still going has status queued or running and no findings yet.",
+        "tags": [
+          "runs"
+        ],
+        "security": [
+          {
+            "bearer": [
+              "comments:read"
+            ]
+          }
+        ],
+        "x-required-scope": "comments:read",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "Project: prj_ id, raw id, name, site URL or domain. URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site_run",
+            "in": "path",
+            "required": true,
+            "description": "Site Care run: latest, its number (as History shows it), or its run_id (from runSiteCare). URL-encoded.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteCareRun"
                 }
               }
             }
@@ -14598,6 +14803,140 @@
               "timezone"
             ],
             "additionalProperties": false
+          },
+          "webhook_report": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "Where each finished Site Care run is POSTed (https)."
+                  },
+                  "version": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2
+                    ],
+                    "description": "1: the summary. 2: the detailed result, the same body getSiteCareRun answers."
+                  }
+                },
+                "required": [
+                  "url",
+                  "version"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slack_report": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The Slack channel name each finished run is posted to."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "team": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "channel",
+                  "team"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deploy_link": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "vercel",
+                      "github"
+                    ]
+                  },
+                  "project": {
+                    "type": "string",
+                    "description": "The linked Vercel project or GitHub repository."
+                  }
+                },
+                "required": [
+                  "provider",
+                  "project"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check_hook": {
+            "type": "object",
+            "properties": {
+              "on": {
+                "type": "boolean",
+                "description": "A check trigger URL exists for the site (made in Superflow, shown once)."
+              },
+              "created_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "last_used_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "on",
+              "created_at",
+              "last_used_at"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -14611,7 +14950,486 @@
           "last_run_at",
           "last_run_status",
           "score",
-          "version_history"
+          "version_history",
+          "webhook_report",
+          "slack_report",
+          "deploy_link",
+          "check_hook"
+        ],
+        "additionalProperties": false
+      },
+      "SiteCareRunStarted": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "description": "The Site Care run: read it with getSiteCareRun."
+          },
+          "number": {
+            "type": "integer",
+            "description": "The run number, as History shows it."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued"
+            ]
+          },
+          "project": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "run_id",
+          "number",
+          "status",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "SiteCareRun": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "site_care.check_finished"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "enum": [
+              2
+            ]
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "When a webhook sent it; null on this read."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "site": {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "description": "prj_ id"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "project_id",
+              "name",
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          "run": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "trigger": {
+                "type": "string",
+                "description": "api for a run started by runSiteCare or a check trigger; schedule, deploy, manual and the rest otherwise."
+              },
+              "status": {
+                "type": "string",
+                "description": "queued, running, done, partial, failed, skipped or auth_failed."
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Why a run checked nothing or ended early, such as no_changes."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "started_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "finished_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 with Z"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pages_checked": {
+                "type": "integer"
+              },
+              "pages_tracked": {
+                "type": "integer"
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "hook",
+                          "api",
+                          "mcp"
+                        ]
+                      },
+                      "ref": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "url": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "ref",
+                      "url"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "trigger",
+              "status",
+              "reason",
+              "started_at",
+              "finished_at",
+              "pages_checked",
+              "pages_tracked",
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "description": "The site score after the run, 0 to 100."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks_state": {
+            "type": "string",
+            "enum": [
+              "listed",
+              "unsettled",
+              "unavailable"
+            ],
+            "description": "listed: the failing checks as Superflow lists them. unsettled or unavailable: grouped from the run's findings; read again later for the listed form."
+          },
+          "failing_check_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failing_checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rule_key": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "The check's rule key (getCheck reads it); null for a group of older findings that carry none."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "critical",
+                    "high",
+                    "medium",
+                    "low",
+                    "info"
+                  ]
+                },
+                "advisory": {
+                  "type": "boolean",
+                  "description": "Advice on a best practice, not a defect."
+                },
+                "fix_guide": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "How to fix every finding of the check, at most 500 characters."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "open_count": {
+                  "type": "integer",
+                  "description": "Open findings of the check on the site."
+                },
+                "page_count": {
+                  "type": "integer"
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "page_url": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": [
+                          "critical",
+                          "high",
+                          "medium",
+                          "low",
+                          "info"
+                        ]
+                      },
+                      "problem": {
+                        "type": "string",
+                        "description": "What is wrong."
+                      },
+                      "detail": {
+                        "type": "string",
+                        "description": "What is wrong, in the agent's words. Left out when the agent wrote none."
+                      },
+                      "element_text": {
+                        "type": "string",
+                        "description": "Where: the element's text. Left out when unknown."
+                      },
+                      "snippet": {
+                        "type": "string",
+                        "description": "Where: the element's HTML. Left out when unknown."
+                      },
+                      "box": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "viewport_width": {
+                            "type": "number"
+                          },
+                          "device": {
+                            "type": "string",
+                            "enum": [
+                              "desktop",
+                              "mobile"
+                            ]
+                          },
+                          "url_hash": {
+                            "type": "string",
+                            "description": "The page in Version history."
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "width",
+                          "height",
+                          "viewport_width",
+                          "device",
+                          "url_hash"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "suggested_fix": {
+                        "type": "string",
+                        "description": "How to fix it. Left out when the agent gave none."
+                      },
+                      "comment_id": {
+                        "type": "string",
+                        "description": "cmt_ id of the comment the finding was moved to, when it was."
+                      }
+                    },
+                    "required": [
+                      "page_url",
+                      "path",
+                      "severity",
+                      "problem"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "rule_key",
+                "title",
+                "severity",
+                "advisory",
+                "fix_guide",
+                "open_count",
+                "page_count",
+                "findings"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "findings_state": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "capped"
+            ],
+            "description": "capped: more findings exist than listed (at most 10 a check, 100 a body)."
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "superflow": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "The site in Superflow."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "report": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "The run's report in Superflow."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "api": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "This result in the API."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "superflow",
+              "report",
+              "api"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "event",
+          "version",
+          "sent_at",
+          "site",
+          "run",
+          "score",
+          "checks_state",
+          "failing_check_count",
+          "failing_checks",
+          "findings_state",
+          "links"
         ],
         "additionalProperties": false
       },
@@ -15028,7 +15846,8 @@
                   "ambiguous",
                   "needs_confirmation",
                   "rate_limited",
-                  "upstream"
+                  "upstream",
+                  "run_active"
                 ]
               },
               "message": {
@@ -15100,6 +15919,10 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "active_run_id": {
+                "type": "string",
+                "description": "run_active only (409 from runSiteCare): the Site Care run still going. Read it with getSiteCareRun, or try again when it ends."
               }
             }
           }
@@ -17593,7 +18416,7 @@
         }
       },
       "Conflict": {
-        "description": "ambiguous, or needs_confirmation (with preview)",
+        "description": "ambiguous, needs_confirmation (with preview), or run_active (with active_run_id)",
         "content": {
           "application/json": {
             "schema": {
