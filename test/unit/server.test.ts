@@ -112,6 +112,10 @@ const CONTRACT: Record<string, [boolean, boolean, boolean, boolean]> = {
   superflow_set_site_timezone: [false, false, true, false],
   superflow_list_forms: [true, false, true, false],
   superflow_set_form_testing: [false, false, true, true],
+  // Site Care runs (plans/care-check-api.md flow 7).
+  superflow_run_site_care: [false, false, false, true],
+  superflow_get_site_care_run: [true, false, true, false],
+  superflow_set_site_webhook: [false, false, true, true],
   superflow_get_invoices: [true, false, true, false],
 };
 
@@ -140,10 +144,10 @@ const READ_ONLY_COUNT = Object.values(CONTRACT).filter(([readOnly]) => readOnly)
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
 
 describe("tool registration", () => {
-  it("registers exactly the 101 contract tools", async () => {
+  it("registers exactly the 104 contract tools", async () => {
     const h = await connect();
     const { tools: listed } = await h.client.listTools();
-    expect(listed).toHaveLength(101);
+    expect(listed).toHaveLength(104);
     expect(listed.map((t) => t.name).sort()).toEqual(Object.keys(CONTRACT).sort());
   });
 
@@ -233,7 +237,7 @@ describe("tool registration", () => {
     const h = await connect({ readOnly: true });
     const { tools: listed } = await h.client.listTools();
     const names = listed.map((t) => t.name);
-    expect(READ_ONLY_COUNT).toBe(45);
+    expect(READ_ONLY_COUNT).toBe(46);
     expect(listed).toHaveLength(READ_ONLY_COUNT);
     expect(names.filter((n) => WRITE_TOOL_NAMES.includes(n))).toEqual([]);
     for (const tool of listed) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);

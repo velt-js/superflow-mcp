@@ -278,6 +278,12 @@ export const operations = {
     pathParams: ["run"],
     queryParams: [],
   },
+  getSiteCareRun: {
+    method: "GET",
+    path: "/projects/{project}/monitoring/runs/{site_run}",
+    pathParams: ["project", "site_run"],
+    queryParams: [],
+  },
   getSiteMonitoring: {
     method: "GET",
     path: "/projects/{project}/monitoring",
@@ -542,6 +548,12 @@ export const operations = {
     pathParams: [],
     queryParams: [],
   },
+  runSiteCare: {
+    method: "POST",
+    path: "/projects/{project}/monitoring/runs",
+    pathParams: ["project"],
+    queryParams: [],
+  },
   setCheckOwner: {
     method: "PUT",
     path: "/projects/{project}/checks/{rule_key}/owner",
@@ -644,7 +656,7 @@ export const operations = {
  * sha256 of the snapshot this client was generated from (JSON.stringify of the parsed
  * document). The hosted server compares it with its own API snapshot to catch a stale pin.
  */
-export const OPENAPI_SHA256 = "62e3b61778b1dfdfa94a1312bc6f494f760c9d4814923815e1c58238cece113e";
+export const OPENAPI_SHA256 = "2e9664e3d565cfa98abdca0444bc21da2abbb6669f062c36738872aad5cf4d92";
 
 export type OperationId = keyof typeof operations;
 export type Operation = (typeof operations)[OperationId];

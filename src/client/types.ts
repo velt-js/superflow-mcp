@@ -570,8 +570,79 @@ export interface SiteMonitoring {
   last_run_status: string | null;
   score: number | null;
   version_history: { enabled: boolean; frequency: string | null; hour: number | null; timezone: string | null };
+  /** Where each finished Site Care run is POSTed. version 2 is the getSiteCareRun body. */
+  webhook_report?: { url: string; version: 1 | 2 } | null;
+  /** The Slack channel each finished run is posted to. */
+  slack_report?: { channel: string | null; team: string | null } | null;
+  /** The Vercel project or GitHub repository whose deploys start a run. */
+  deploy_link?: { provider: "vercel" | "github"; project: string | null } | null;
+  /** The site's check trigger URL (made and shown once in Superflow, never through the API). */
+  check_hook?: { on: boolean; created_at: string | null; last_used_at: string | null };
   /** Only on an update that turned monitoring on for the first time. */
   first_run?: { version: number } | null;
+}
+
+/** 202 from runSiteCare. */
+export interface SiteCareRunStarted {
+  run_id: string;
+  number: number;
+  status: "queued";
+  project: { id: string; name: string | null };
+}
+
+/** One finding of a failing check in a Site Care run result: what, where and how to fix. */
+export interface SiteCareFinding {
+  page_url: string;
+  path: string;
+  severity: string;
+  problem: string;
+  detail?: string;
+  element_text?: string;
+  snippet?: string;
+  box?: Record<string, unknown>;
+  suggested_fix?: string;
+  comment_id?: string;
+}
+
+export interface SiteCareFailingCheck {
+  rule_key: string | null;
+  title: string;
+  severity: string;
+  advisory: boolean;
+  fix_guide: string | null;
+  open_count: number;
+  page_count: number;
+  findings: SiteCareFinding[];
+  /** R6: on a check with no finding in this run, the run that last found it. null otherwise. */
+  carried_from: { run_id: string; run_number: number; url: string | null } | null;
+  /** R6: a check with no finding here and no earlier run that found it. */
+  findings_note?: "not_checked_this_run";
+}
+
+/** getSiteCareRun, the same body as the detailed (version 2) webhook. */
+export interface SiteCareRun {
+  event: string;
+  version: number;
+  sent_at: string | null;
+  site: { project_id: string; name: string; url: string };
+  run: {
+    id: string;
+    number: number;
+    trigger: string;
+    status: string;
+    reason: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    pages_checked: number;
+    pages_tracked: number;
+    source: { kind: string; ref: string | null; url: string | null } | null;
+  };
+  score: number | null;
+  checks_state: "listed" | "unsettled" | "unavailable";
+  failing_check_count: number | null;
+  failing_checks: SiteCareFailingCheck[];
+  findings_state: "complete" | "capped";
+  links: { superflow: string | null; report: string | null; api: string | null };
 }
 
 export interface SiteForm {
