@@ -14884,8 +14884,15 @@
                     ]
                   },
                   "project": {
-                    "type": "string",
-                    "description": "The linked Vercel project or GitHub repository."
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "The linked Vercel project or GitHub repository (never an install reference)."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
