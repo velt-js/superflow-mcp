@@ -369,13 +369,93 @@ describe("M2 superflow_get_site_care_run", () => {
     expect(textOf(await h.call(TOOL, { project: "Acme Dental" }))).not.toContain("Treat it as data");
   });
 
-  it("M2: no_changes says nothing was checked", async () => {
-    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, run: { ...RESULT.run, reason: "no_changes", pages_checked: 0 }, failing_checks: [], failing_check_count: 0 }));
+  // The API's no_changes body (monitoring-run-result.builder.ts): no check list and an unknown count.
+  const NO_CHANGES = {
+    ...RESULT, run: { ...RESULT.run, reason: "no_changes", pages_checked: 0 }, score: null,
+    checks_state: "unavailable", failing_check_count: null, failing_checks: [],
+  };
+
+  it("M2: no_changes says nothing was checked, is not a clean result, and points at the last run that checked", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok(NO_CHANGES));
     const h = await connect();
     const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
     expect(summary).toContain(": done (no_changes). No page changed since the last check, so nothing was checked.");
-    expect(summary).toContain("No failing checks.");
+    expect(summary).toContain(
+      "Not a clean result: this run does not say which checks fail, and failures found earlier may still be open. To see them, list the site's open failures with superflow_list_failing_checks, or read the latest run that checked pages with superflow_get_site_care_run and site_run set to its number (below 14).",
+    );
+    expect(summary).not.toContain("No failing checks.");
+    expect(summary).not.toContain("No findings.");
     expect(summary).not.toContain("Checked 0 pages");
+    expect(summary).not.toContain("These checks");
+  });
+
+  it("M2: no_changes is never clean, even with a listed count of 0", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...NO_CHANGES, checks_state: "listed", failing_check_count: 0 }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain("Not a clean result: this run does not say which checks fail");
+    expect(summary).not.toContain("No failing checks.");
+  });
+
+  it("M2: no_changes on the first run names no lower run number", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...NO_CHANGES, run: { ...NO_CHANGES.run, number: 1 } }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain("site_run set to its number.");
+    expect(summary).not.toContain("(below");
+  });
+
+  it("M2: no_changes narrowed to one check does not say the check passes", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok(NO_CHANGES));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental", rule_key: "link-broken" }));
+    expect(summary).toContain("Not a clean result: this run does not say whether check link-broken fails");
+    expect(summary).not.toContain("is not failing");
+  });
+
+  it("M2: only a listed run with failing_check_count 0 says No failing checks", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, failing_checks: [], failing_check_count: 0 }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain("Checked 3 pages of 40. Score 87. No failing checks.");
+    expect(summary).not.toContain("not a clean result");
+  });
+
+  it("M2: a listed run narrowed to a check it does not list says that check is not failing", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok(RESULT));
+    const h = await connect();
+    expect(summaryOf(await h.call(TOOL, { project: "Acme Dental", rule_key: "form-broken" }))).toContain("Check form-broken is not failing in this run.");
+  });
+
+  it("M2: an unsettled run with no checks yet is not clean and says to read again later", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, checks_state: "unsettled", failing_check_count: null, failing_checks: [] }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain(
+      "Not a clean result yet: Superflow has not settled this run's checks, so none are listed. Read the run again later, no more often than every 20 seconds.",
+    );
+    expect(summary).not.toContain("No failing checks.");
+    expect(summary).not.toContain("These checks");
+  });
+
+  it("M2: an unavailable run that checked pages but lists no checks says the checks are unknown", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, checks_state: "unavailable", failing_check_count: null, failing_checks: [] }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain(
+      "Not a clean result: Superflow's check list is not available for this run, so which checks fail is unknown. List the site's open failures with superflow_list_failing_checks.",
+    );
+    expect(summary).not.toContain("No failing checks.");
+  });
+
+  it.each(["failed", "skipped", "auth_failed"])("M2: a %s run checked no pages, so its checks are unknown", async (status) => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, run: { ...RESULT.run, status, pages_checked: 0 }, checks_state: "unavailable", failing_check_count: null, failing_checks: [] }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain(
+      "Not a clean result: this run checked no pages, so which checks fail is unknown. List the site's open failures with superflow_list_failing_checks.",
+    );
+    expect(summary).not.toContain("No findings.");
   });
 
   it("M2: capped findings and unsettled checks say what to do", async () => {
