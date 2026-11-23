@@ -965,7 +965,7 @@ Example:
 **Start a Site Care check**
 
 Start a Site Care check of a site now: the pages changed since the last check go to the site's agents, exactly like a deploy run, and the run's result lists each failing check with what is wrong, where and how to fix it. The site must be in care (see superflow_set_site_mode). It spends AI credits on the changed pages only, none when nothing changed.
-The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every 20 seconds until it is finished. Repeat until no check fails.
+The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every 20 seconds until it is finished. Repeat until no check fails. A check the new run did not reach (only changed pages are checked) has no findings there: its carried_from names the run that last found it.
 One check at a time: while a run is still going this refuses with run_active and the run's active_run_id; read that run instead of starting another. At most 10 checks an hour per site, shared with superflow_run_agents and the site's check trigger URL; past that it refuses with rate_limited and reset_at, so do not retry before then.
 ref and url are your own labels (a commit, a deploy address), echoed in the result and never fetched. To run chosen agents on chosen pages use superflow_run_agents instead.
 
@@ -987,6 +987,7 @@ Example:
 
 Read one Site Care run's result: its status, score and pages checked, then each failing check (rule_key, title, severity, fix_guide) with up to 10 findings. Each finding says what is wrong (problem, detail), where (page_url, path, element_text, snippet, box) and how to fix it (suggested_fix). It is the same body the detailed (version 2) webhook sends.
 Use it after superflow_run_site_care, and on a run a deploy or the schedule started (site_run latest). A run still queued or running has no findings yet: read again no more often than every 20 seconds until the status is done, partial, failed, skipped or auth_failed. reason no_changes means no page changed, so nothing was checked.
+A failing check with no findings here was not checked this run (only changed pages are): carried_from names the run that last found it (run_number, url), so read that run with site_run set to its run_number; findings_note not_checked_this_run means no recent run found it either.
 Then fix, deploy, start a check with superflow_run_site_care and read the new run. findings_state capped means more findings exist than listed: read a check's full list with superflow_get_check_details. rule_key narrows the answer to one check. For agent runs (run_ ids from superflow_run_agents) use superflow_get_run instead.
 
 | Parameter | Type | Required | Description |

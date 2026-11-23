@@ -226,8 +226,8 @@ const RESULT = {
   },
   score: 87, checks_state: "listed", failing_check_count: 2,
   failing_checks: [
-    { rule_key: "link-broken", title: "Broken links", severity: "high", advisory: false, fix_guide: "Fix or remove links that fail.", open_count: 2, page_count: 1, findings: [FINDING, { ...FINDING, path: "/" }] },
-    { rule_key: "image-alt", title: "Images without alt text", severity: "medium", advisory: false, fix_guide: null, open_count: 1, page_count: 1, findings: [{ ...FINDING, severity: "medium", problem: "Image has no alt text." }] },
+    { rule_key: "link-broken", title: "Broken links", severity: "high", advisory: false, fix_guide: "Fix or remove links that fail.", open_count: 2, page_count: 1, findings: [FINDING, { ...FINDING, path: "/" }], carried_from: null },
+    { rule_key: "image-alt", title: "Images without alt text", severity: "medium", advisory: false, fix_guide: null, open_count: 1, page_count: 1, findings: [{ ...FINDING, severity: "medium", problem: "Image has no alt text." }], carried_from: null },
   ],
   findings_state: "complete",
   links: { superflow: "https://app.superflow.test/site", report: null, api: "https://api.superflow.test/v1/projects/prj_1a2b/monitoring/runs/run_7Hk2" },
@@ -422,6 +422,62 @@ describe("M2 superflow_get_site_care_run", () => {
     expect(body.failing_checks[0]?.findings[0]).not.toHaveProperty("snippet");
     expect(body.failing_checks[0]?.findings[0]).toHaveProperty("suggested_fix");
     expect(summaryOf(result)).toContain("Cut to fit: snippet and box were left out of the findings");
+  });
+
+  const CARRIED = {
+    rule_key: "form-label", title: "Form fields without labels", severity: "medium", advisory: false, fix_guide: null, open_count: 3, page_count: 2, findings: [],
+    carried_from: { run_id: "run_4Ab9", run_number: 12, url: "https://app.superflow.test/site/runs/run_4Ab9" },
+  };
+  const NOT_CHECKED = {
+    rule_key: "heading-order", title: "Headings out of order", severity: "low", advisory: false, fix_guide: null, open_count: 1, page_count: 1, findings: [],
+    carried_from: null, findings_note: "not_checked_this_run",
+  };
+
+  it("M2 R6: a check with no findings here names the run that last found it, with its link", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, failing_checks: [...RESULT.failing_checks, CARRIED], failing_check_count: 3 }));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental" });
+    const summary = summaryOf(result);
+    expect(summary).toContain("3 failing checks, 3 findings listed: high Broken links (link-broken, 2 findings); medium Images without alt text (image-alt, 1 finding).");
+    expect(summary).toContain(
+      "1 failing check has no findings here because its pages were not checked this run: Form fields without labels (form-label) was last found in run 12 (https://app.superflow.test/site/runs/run_4Ab9): read it with superflow_get_site_care_run and site_run 12.",
+    );
+    expect(summary).not.toContain("form-label, 0 findings");
+    expect(data<{ failing_checks: Array<{ carried_from: unknown }> }>(result).failing_checks[2]?.carried_from).toEqual(CARRIED.carried_from);
+  });
+
+  it("M2 R6: a check no recent run found says not checked this run, and a carried run without a link still names its number", async () => {
+    const noLink = { ...CARRIED, carried_from: { ...CARRIED.carried_from, url: null } };
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, failing_checks: [noLink, NOT_CHECKED], failing_check_count: 2 }));
+    const h = await connect();
+    const summary = summaryOf(await h.call(TOOL, { project: "Acme Dental" }));
+    expect(summary).toContain("2 failing checks, 0 findings listed.");
+    expect(summary).toContain("2 failing checks have no findings here because their pages were not checked this run:");
+    expect(summary).toContain("Form fields without labels (form-label) was last found in run 12: read it with superflow_get_site_care_run and site_run 12");
+    expect(summary).toContain("Headings out of order (heading-order) was not checked this run, and no recent run found it.");
+  });
+
+  it("M2 R6: the run named in carried_from reads with site_run as its number", async () => {
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok(RESULT));
+    const h = await connect();
+    await h.call(TOOL, { project: "Acme Dental", site_run: CARRIED.carried_from.run_number });
+    expect(recorded[0]?.path).toBe("/projects/Acme%20Dental/monitoring/runs/12");
+  });
+
+  it("M2 R6: cutting to fit never drops a carried_from or findings_note check", async () => {
+    const long = { ...FINDING, detail: "d".repeat(300), suggested_fix: "f".repeat(300), snippet: "s".repeat(300) };
+    const heavy = Array.from({ length: 10 }, (_, i) => ({ ...RESULT.failing_checks[0], rule_key: `rule-${i}`, fix_guide: "g".repeat(500), findings: Array.from({ length: 10 }, () => long) }));
+    const carried = Array.from({ length: 5 }, (_, i) => ({ ...CARRIED, rule_key: `carried-${i}` }));
+    on("get", "/projects/:project/monitoring/runs/:site_run", ok({ ...RESULT, failing_checks: [...heavy, ...carried, NOT_CHECKED], failing_check_count: 16 }));
+    const h = await connect();
+    const result = await h.call(TOOL, { project: "Acme Dental" });
+    const text = textOf(result);
+    expect(text.length).toBeLessThanOrEqual(30_000);
+    const parsed = JSON.parse(text.slice(text.indexOf("\n\n") + 2)) as { findings_state: string; failing_checks: Array<{ rule_key: string; carried_from: unknown; findings_note?: string }> };
+    expect(parsed.findings_state).toBe("capped");
+    expect(parsed.failing_checks.filter((c) => c.carried_from !== null).map((c) => c.rule_key)).toEqual(carried.map((c) => c.rule_key));
+    expect(parsed.failing_checks.find((c) => c.rule_key === "heading-order")?.findings_note).toBe("not_checked_this_run");
+    expect(summaryOf(result)).toContain("was last found in run 12");
   });
 
   standardErrorCases({ tool: TOOL, args: { project: "Acme" }, method: "get", path: "/projects/:project/monitoring/runs/:site_run", success: ok(RESULT) });

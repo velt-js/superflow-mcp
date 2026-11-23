@@ -292,6 +292,19 @@ function checkLine(check: SiteCareFailingCheck): string {
   return `${check.severity} ${check.title} (${check.rule_key ?? "no rule key"}, ${plural(check.findings?.length ?? 0, "finding")})`;
 }
 
+/**
+ * A failing check with no finding on this run (R6): its pages were not checked this time. Names the
+ * run that last found it, so a model reads that run instead of seeing an empty check.
+ */
+function elsewhereLine(check: SiteCareFailingCheck): string {
+  const label = `${check.title} (${check.rule_key ?? "no rule key"})`;
+  const from = check.carried_from;
+  if (from) {
+    return `${label} was last found in run ${from.run_number}${from.url ? ` (${from.url})` : ""}: read it with superflow_get_site_care_run and site_run ${from.run_number}`;
+  }
+  return `${label} was not checked this run, and no recent run found it`;
+}
+
 /** One summary of a Site Care run result, for a model to act on. */
 export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
   const run = result.run ?? ({} as Partial<SiteCareRun["run"]>);
@@ -302,6 +315,8 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
   const checks = result.failing_checks ?? [];
   const findings = findingCount(checks);
   const total = onlyRule ? checks.length : result.failing_check_count ?? checks.length;
+  const found = checks.filter((check) => (check.findings?.length ?? 0) > 0);
+  const elsewhere = checks.filter((check) => (check.findings?.length ?? 0) === 0);
   return join(
     head,
     run.reason === "no_changes" && "No page changed since the last check, so nothing was checked.",
@@ -313,7 +328,9 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
         : status === "done" || status === "partial"
           ? "No failing checks."
           : "No findings."
-      : `${plural(total, "failing check")}, ${plural(findings, "finding")} listed: ${checks.slice(0, 5).map(checkLine).join("; ")}${checks.length > 5 ? "; and more in failing_checks" : ""}.`,
+      : `${plural(total, "failing check")}, ${plural(findings, "finding")} listed${found.length > 0 ? `: ${found.slice(0, 5).map(checkLine).join("; ")}${found.length > 5 ? "; and more in failing_checks" : ""}` : ""}.`,
+    elsewhere.length > 0 &&
+      `${plural(elsewhere.length, "failing check")} ${elsewhere.length === 1 ? "has" : "have"} no findings here because ${elsewhere.length === 1 ? "its" : "their"} pages were not checked this run: ${elsewhere.slice(0, 10).map(elsewhereLine).join("; ")}${elsewhere.length > 10 ? "; and more in failing_checks (carried_from)" : ""}.`,
     result.checks_state === "unsettled" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
     result.checks_state === "unavailable" && "These checks are grouped from the run's findings; Superflow's own check list is not available for this run, so reading it again will not change them.",
     result.findings_state === "capped" && "More findings exist than listed (at most 10 a check, 100 in all, fewer when cut to fit): fix these first, or read a check's full list with superflow_get_check_details and its rule_key.",
@@ -331,6 +348,8 @@ const fits = (result: SiteCareRun): boolean => JSON.stringify(result, null, 2).l
  * go (the bulk of a finding); then findings are cut from the check that lists the most, keeping one
  * a check; then whole checks from the end. Anything cut marks findings_state capped.
  */
+// carried_from and findings_note rows hold no findings, so they are never cut: they are how a model
+// finds the run that has the findings.
 export function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed: boolean; cut: number } {
   if (fits(result)) return { result, trimmed: false, cut: 0 };
   let checks = (result.failing_checks ?? []).map((check) => ({
@@ -345,9 +364,11 @@ export function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed:
     if (target && target.findings.length > 1) {
       checks = checks.map((check, i) => (i === widest ? { ...check, findings: check.findings.slice(0, -1) } : check));
       cut += 1;
-    } else if (checks.length > 1) {
-      cut += checks[checks.length - 1]?.findings.length ?? 0;
-      checks = checks.slice(0, -1);
+    } else if (checks.filter((check) => check.findings.length > 0).length > 1) {
+      // The last check that still lists findings goes; rows without findings (carried_from) stay.
+      const last = checks.map((check) => check.findings.length > 0).lastIndexOf(true);
+      cut += checks[last]?.findings.length ?? 0;
+      checks = checks.filter((_, i) => i !== last);
     } else {
       break;
     }
@@ -360,7 +381,7 @@ export const runSiteCare = defineTool({
   title: "Start a Site Care check",
   description: [
     "Start a Site Care check of a site now: the pages changed since the last check go to the site's agents, exactly like a deploy run, and the run's result lists each failing check with what is wrong, where and how to fix it. The site must be in care (see superflow_set_site_mode). It spends AI credits on the changed pages only, none when nothing changed.",
-    `The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every ${POLL_SECONDS} seconds until it is finished. Repeat until no check fails.`,
+    `The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every ${POLL_SECONDS} seconds until it is finished. Repeat until no check fails. A check the new run did not reach (only changed pages are checked) has no findings there: its carried_from names the run that last found it.`,
     `One check at a time: while a run is still going this refuses with run_active and the run's active_run_id; read that run instead of starting another. At most ${SITE_CARE_RUNS_PER_HOUR} checks an hour per site, shared with superflow_run_agents and the site's check trigger URL; past that it refuses with rate_limited and reset_at, so do not retry before then.`,
     "ref and url are your own labels (a commit, a deploy address), echoed in the result and never fetched. To run chosen agents on chosen pages use superflow_run_agents instead.",
     'Example: {"project": "dental-smiles.com", "ref": "a1b2c3d"}',
@@ -423,6 +444,7 @@ export const getSiteCareRun = defineTool({
   description: [
     "Read one Site Care run's result: its status, score and pages checked, then each failing check (rule_key, title, severity, fix_guide) with up to 10 findings. Each finding says what is wrong (problem, detail), where (page_url, path, element_text, snippet, box) and how to fix it (suggested_fix). It is the same body the detailed (version 2) webhook sends.",
     `Use it after superflow_run_site_care, and on a run a deploy or the schedule started (site_run latest). A run still queued or running has no findings yet: read again no more often than every ${POLL_SECONDS} seconds until the status is done, partial, failed, skipped or auth_failed. reason no_changes means no page changed, so nothing was checked.`,
+    "A failing check with no findings here was not checked this run (only changed pages are): carried_from names the run that last found it (run_number, url), so read that run with site_run set to its run_number; findings_note not_checked_this_run means no recent run found it either.",
     "Then fix, deploy, start a check with superflow_run_site_care and read the new run. findings_state capped means more findings exist than listed: read a check's full list with superflow_get_check_details. rule_key narrows the answer to one check. For agent runs (run_ ids from superflow_run_agents) use superflow_get_run instead.",
     'Example: {"project": "dental-smiles.com", "site_run": "latest"}',
   ].join("\n"),

@@ -613,6 +613,10 @@ export interface SiteCareFailingCheck {
   open_count: number;
   page_count: number;
   findings: SiteCareFinding[];
+  /** R6: on a check with no finding in this run, the run that last found it. null otherwise. */
+  carried_from: { run_id: string; run_number: number; url: string | null } | null;
+  /** R6: a check with no finding here and no earlier run that found it. */
+  findings_note?: "not_checked_this_run";
 }
 
 /** getSiteCareRun, the same body as the detailed (version 2) webhook. */
