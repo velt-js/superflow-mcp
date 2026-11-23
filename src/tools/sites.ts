@@ -308,6 +308,33 @@ function elsewhereLine(check: SiteCareFailingCheck): string {
 /** How many checks without findings the summary names; the rest are in the JSON. */
 const ELSEWHERE_LINES = 5;
 
+/**
+ * The line for a finished run that lists no failing check. Only Superflow's own settled list
+ * (checks_state listed) with failing_check_count 0 is a clean result. A run that checked nothing
+ * (no_changes, failed, skipped, auth_failed), or whose checks are not settled or not readable, says
+ * nothing about which checks fail: read as clean, it would end a fix loop while failures are still open.
+ */
+function emptyChecksLine(result: SiteCareRun, status: string, onlyRule?: string): string {
+  const run = result.run ?? ({} as Partial<SiteCareRun["run"]>);
+  const what = onlyRule !== undefined ? `whether check ${onlyRule} fails` : "which checks fail";
+  const openFailures = "list the site's open failures with superflow_list_failing_checks";
+  // First, whatever checks_state says: a run that checked no page is never a pass.
+  if (run.reason === "no_changes") {
+    const below = typeof run.number === "number" && run.number > 1 ? ` (below ${run.number})` : "";
+    return `This run does not say ${what}: it is not a clean result, and failures found earlier may still be open. Read them in the latest run that checked pages, with superflow_get_site_care_run and site_run set to its number${below}, or ${openFailures}.`;
+  }
+  if (result.checks_state === "listed" && (onlyRule !== undefined || result.failing_check_count === 0)) {
+    if (onlyRule !== undefined) return `Check ${onlyRule} is not failing in this run.`;
+    return status === "done" || status === "partial" ? "No failing checks." : "No findings.";
+  }
+  if (result.checks_state === "unsettled") {
+    return `No failing checks are listed yet: Superflow has not settled this run's checks, so this is not a clean result. Read the run again later, no more often than every ${POLL_SECONDS} seconds.`;
+  }
+  if (status !== "done" && status !== "partial") return `This run checked no pages, so ${what} is unknown: ${openFailures}.`;
+  const why = result.checks_state === "unavailable" ? "Superflow's check list is not available for this run" : "this run gave no failing check count";
+  return `No failing checks are listed, but ${why}, so ${what} is unknown and this is not a clean result: ${openFailures}.`;
+}
+
 /** One summary of a Site Care run result, for a model to act on. */
 export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
   const run = result.run ?? ({} as Partial<SiteCareRun["run"]>);
@@ -326,16 +353,12 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
     typeof run.pages_checked === "number" && run.reason !== "no_changes" && `Checked ${plural(run.pages_checked, "page")}${typeof run.pages_tracked === "number" ? ` of ${run.pages_tracked}` : ""}.`,
     typeof result.score === "number" && `Score ${result.score}.`,
     total === 0
-      ? onlyRule
-        ? `Check ${onlyRule} is not failing in this run.`
-        : status === "done" || status === "partial"
-          ? "No failing checks."
-          : "No findings."
+      ? emptyChecksLine(result, status, onlyRule)
       : `${plural(total, "failing check")}, ${plural(findings, "finding")} listed${found.length > 0 ? `: ${found.slice(0, 5).map(checkLine).join("; ")}${found.length > 5 ? "; and more in failing_checks" : ""}` : ""}.`,
     elsewhere.length > 0 &&
       `${plural(elsewhere.length, "failing check")} ${elsewhere.length === 1 ? "has" : "have"} no findings here because ${elsewhere.length === 1 ? "its" : "their"} pages were not checked this run: ${elsewhere.slice(0, ELSEWHERE_LINES).map(elsewhereLine).join("; ")}${elsewhere.length > ELSEWHERE_LINES ? `; and ${elsewhere.length - ELSEWHERE_LINES} more, see carried_from in the JSON` : ""}.`,
-    result.checks_state === "unsettled" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
-    result.checks_state === "unavailable" && "These checks are grouped from the run's findings; Superflow's own check list is not available for this run, so reading it again will not change them.",
+    checks.length > 0 && result.checks_state === "unsettled" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
+    checks.length > 0 && result.checks_state === "unavailable" && "These checks are grouped from the run's findings; Superflow's own check list is not available for this run, so reading it again will not change them.",
     result.findings_state === "capped" && "More findings exist than listed (at most 10 a check, 100 in all, fewer when cut to fit): fix these first, or read a check's full list with superflow_get_check_details and its rule_key.",
     findings > 0 && FIX_LOOP_NOTE,
   );
@@ -413,7 +436,7 @@ export const runSiteCare = defineTool({
   title: "Start a Site Care check",
   description: [
     "Start a Site Care check of a site now: the pages changed since the last check go to the site's agents, exactly like a deploy run, and the run's result lists each failing check with what is wrong, where and how to fix it. The site must be in care (see superflow_set_site_mode). It spends AI credits on the changed pages only, none when nothing changed.",
-    `The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every ${POLL_SECONDS} seconds until it is finished. Repeat until no check fails. A check the new run did not reach (only changed pages are checked) has no findings there: its carried_from names the run that last found it.`,
+    `The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every ${POLL_SECONDS} seconds until it is finished. Repeat until a run that checked pages lists no failing check (checks_state listed, failing_check_count 0); a no_changes run checked nothing, so it is not a pass. A check the new run did not reach (only changed pages are checked) has no findings there: its carried_from names the run that last found it.`,
     `One check at a time: while a run is still going this refuses with run_active and the run's active_run_id; read that run instead of starting another. At most ${SITE_CARE_RUNS_PER_HOUR} checks an hour per site, shared with superflow_run_agents and the site's check trigger URL; past that it refuses with rate_limited and reset_at, so do not retry before then.`,
     "ref and url are your own labels (a commit, a deploy address), echoed in the result and never fetched. To run chosen agents on chosen pages use superflow_run_agents instead.",
     'Example: {"project": "dental-smiles.com", "ref": "a1b2c3d"}',
@@ -475,7 +498,7 @@ export const getSiteCareRun = defineTool({
   title: "Get a Site Care run's result",
   description: [
     "Read one Site Care run's result: its status, score and pages checked, then each failing check (rule_key, title, severity, fix_guide) with up to 10 findings. Each finding says what is wrong (problem, detail), where (page_url, path, element_text, snippet, box) and how to fix it (suggested_fix). It is the same body the detailed (version 2) webhook sends.",
-    `Use it after superflow_run_site_care, and on a run a deploy or the schedule started (site_run latest). A run still queued or running has no findings yet: read again no more often than every ${POLL_SECONDS} seconds until the status is done, partial, failed, skipped or auth_failed. reason no_changes means no page changed, so nothing was checked.`,
+    `Use it after superflow_run_site_care, and on a run a deploy or the schedule started (site_run latest). A run still queued or running has no findings yet: read again no more often than every ${POLL_SECONDS} seconds until the status is done, partial, failed, skipped or auth_failed. reason no_changes means no page changed, so nothing was checked: it is not a clean result, and failures found earlier may still be open. Only checks_state listed with failing_check_count 0 means no check fails.`,
     "A failing check with no findings here was not checked this run (only changed pages are): carried_from names the run that last found it (run_number, url), so read that run with site_run set to its run_number; findings_note not_checked_this_run means no recent run found it either.",
     "Then fix, deploy, start a check with superflow_run_site_care and read the new run. findings_state capped means more findings exist than listed: read a check's full list with superflow_get_check_details. rule_key narrows the answer to one check. For agent runs (run_ ids from superflow_run_agents) use superflow_get_run instead.",
     'Example: {"project": "dental-smiles.com", "site_run": "latest"}',
