@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       # The same Node as ci.yml: pnpm 11 needs Node 22 (the package itself runs on Node 20+).
       - uses: actions/setup-node@v7
         with:
