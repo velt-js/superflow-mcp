@@ -575,7 +575,7 @@ export interface SiteMonitoring {
   /** The Slack channel each finished run is posted to. */
   slack_report?: { channel: string | null; team: string | null } | null;
   /** The Vercel project or GitHub repository whose deploys start a run. */
-  deploy_link?: { provider: "vercel" | "github"; project: string } | null;
+  deploy_link?: { provider: "vercel" | "github"; project: string | null } | null;
   /** The site's check trigger URL (made and shown once in Superflow, never through the API). */
   check_hook?: { on: boolean; created_at: string | null; last_used_at: string | null };
   /** Only on an update that turned monitoring on for the first time. */

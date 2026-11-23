@@ -49,7 +49,8 @@ function reportsLine(site: SiteMonitoring): string {
   const channel = site.slack_report?.channel?.replace(/^#/, "");
   const hook = site.check_hook;
   return join(
-    site.deploy_link && `Deploys of the ${site.deploy_link.provider === "vercel" ? "Vercel project" : "GitHub repository"} ${site.deploy_link.project} start a check.`,
+    site.deploy_link &&
+      `Deploys of the linked ${site.deploy_link.provider === "vercel" ? "Vercel project" : "GitHub repository"}${site.deploy_link.project ? ` ${site.deploy_link.project}` : ""} start a check.`,
     hook?.on && `A check trigger URL is set${hook.last_used_at ? `, last used ${hook.last_used_at.slice(0, 10)}` : ", not used yet"}.`,
     site.webhook_report && `Each finished run is POSTed to ${hostOf(site.webhook_report.url)} (${site.webhook_report.version === 2 ? "the detailed result" : "the summary"}).`,
     channel && `Each finished run is posted to Slack #${channel}.`,
@@ -313,23 +314,45 @@ export function siteRunSummary(result: SiteCareRun, onlyRule?: string): string {
           ? "No failing checks."
           : "No findings."
       : `${plural(total, "failing check")}, ${plural(findings, "finding")} listed: ${checks.slice(0, 5).map(checkLine).join("; ")}${checks.length > 5 ? "; and more in failing_checks" : ""}.`,
-    result.checks_state !== undefined && result.checks_state !== "listed" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
-    result.findings_state === "capped" && "More findings exist than listed (at most 10 a check, 100 in all): fix these first, or read a check's full list with superflow_get_check_details and its rule_key.",
+    result.checks_state === "unsettled" && "These checks are grouped from the run's findings and not settled yet: read the run again later for the listed form.",
+    result.checks_state === "unavailable" && "These checks are grouped from the run's findings; Superflow's own check list is not available for this run, so reading it again will not change them.",
+    result.findings_state === "capped" && "More findings exist than listed (at most 10 a check, 100 in all, fewer when cut to fit): fix these first, or read a check's full list with superflow_get_check_details and its rule_key.",
     findings > 0 && FIX_LOOP_NOTE,
   );
 }
 
+/** Room left in the text block for the JSON, after the summary and the untrusted notice. */
+const SITE_RUN_JSON_BUDGET = MAX_TEXT_CHARS - 3_000;
+
+const fits = (result: SiteCareRun): boolean => JSON.stringify(result, null, 2).length <= SITE_RUN_JSON_BUDGET;
+
 /**
- * Keeps the result under the text cap: snippet and box are the bulk of a finding, so they go first,
- * and the summary says how to see them (one check at a time).
+ * Keeps the result under the text cap, so the JSON in the text always parses. First snippet and box
+ * go (the bulk of a finding); then findings are cut from the check that lists the most, keeping one
+ * a check; then whole checks from the end. Anything cut marks findings_state capped.
  */
-function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed: boolean } {
-  if (JSON.stringify(result, null, 2).length <= MAX_TEXT_CHARS - 2_000) return { result, trimmed: false };
-  const failing_checks = (result.failing_checks ?? []).map((check) => ({
+export function fitSiteRun(result: SiteCareRun): { result: SiteCareRun; trimmed: boolean; cut: number } {
+  if (fits(result)) return { result, trimmed: false, cut: 0 };
+  let checks = (result.failing_checks ?? []).map((check) => ({
     ...check,
     findings: (check.findings ?? []).map(({ snippet: _snippet, box: _box, ...finding }) => finding),
   }));
-  return { result: { ...result, failing_checks }, trimmed: true };
+  const build = (): SiteCareRun => ({ ...result, failing_checks: checks });
+  let cut = 0;
+  while (!fits(build())) {
+    const widest = checks.reduce((best, check, i) => (check.findings.length > (checks[best]?.findings.length ?? 0) ? i : best), 0);
+    const target = checks[widest];
+    if (target && target.findings.length > 1) {
+      checks = checks.map((check, i) => (i === widest ? { ...check, findings: check.findings.slice(0, -1) } : check));
+      cut += 1;
+    } else if (checks.length > 1) {
+      cut += checks[checks.length - 1]?.findings.length ?? 0;
+      checks = checks.slice(0, -1);
+    } else {
+      break;
+    }
+  }
+  return { result: { ...build(), ...(cut > 0 ? { findings_state: "capped" as const } : {}) }, trimmed: true, cut };
 }
 
 export const runSiteCare = defineTool({
@@ -338,7 +361,7 @@ export const runSiteCare = defineTool({
   description: [
     "Start a Site Care check of a site now: the pages changed since the last check go to the site's agents, exactly like a deploy run, and the run's result lists each failing check with what is wrong, where and how to fix it. The site must be in care (see superflow_set_site_mode). It spends AI credits on the changed pages only, none when nothing changed.",
     `The fix loop: read the result with superflow_get_site_care_run, fix the findings in the site's code, deploy, call this tool, then read the new run with superflow_get_site_care_run no more often than every ${POLL_SECONDS} seconds until it is finished. Repeat until no check fails.`,
-    `One check at a time: while a run is still going this refuses with run_active and the run's active_run_id; read that run instead of starting another. At most ${SITE_CARE_RUNS_PER_HOUR} checks an hour per site, shared with superflow_run_agents; past that it refuses with rate_limited and reset_at, so do not retry before then.`,
+    `One check at a time: while a run is still going this refuses with run_active and the run's active_run_id; read that run instead of starting another. At most ${SITE_CARE_RUNS_PER_HOUR} checks an hour per site, shared with superflow_run_agents and the site's check trigger URL; past that it refuses with rate_limited and reset_at, so do not retry before then.`,
     "ref and url are your own labels (a commit, a deploy address), echoed in the result and never fetched. To run chosen agents on chosen pages use superflow_run_agents instead.",
     'Example: {"project": "dental-smiles.com", "ref": "a1b2c3d"}',
   ].join("\n"),
@@ -383,7 +406,7 @@ export const runSiteCare = defineTool({
             status: error.status,
             code: error.code,
             message: error.message,
-            hint: join(`A site starts at most ${SITE_CARE_RUNS_PER_HOUR} checks an hour, shared with superflow_run_agents.`, error.hint),
+            hint: join(`A site starts at most ${SITE_CARE_RUNS_PER_HOUR} checks an hour, shared with superflow_run_agents and the site's check trigger URL.`, error.hint),
             candidates: error.candidates,
             resetAt: error.resetAt,
           }),
@@ -415,16 +438,18 @@ export const getSiteCareRun = defineTool({
     const narrowed: SiteCareRun = args.rule_key
       ? { ...full, failing_checks: (full.failing_checks ?? []).filter((check) => check.rule_key === args.rule_key) }
       : full;
-    const { result, trimmed } = fitSiteRun(narrowed);
+    const { result, trimmed, cut } = fitSiteRun(narrowed);
     const findings = findingCount(result.failing_checks ?? []);
+    const labelled = Boolean(result.run?.source?.ref || result.run?.source?.url);
     return okResult(
       join(
         siteRunSummary(result, args.rule_key),
-        trimmed && "Cut to fit: snippet and box were left out of the findings. Read one check with rule_key to see them.",
+        trimmed && `Cut to fit: snippet and box were left out of the findings${cut > 0 ? `, and ${plural(cut, "finding")} more were cut` : ""}. Read one check with rule_key to see them.`,
       ),
       asData(trimmed ? { ...result, trimmed: true } : result),
-      // Findings quote the site's own pages (element_text, snippet): data, not instructions.
-      { untrusted: findings > 0 },
+      // Findings quote the site's own pages (element_text, snippet), and ref and url are labels set by
+      // whoever holds the check trigger URL or a key: data, not instructions.
+      { untrusted: findings > 0 || labelled },
     );
   },
 });
@@ -444,7 +469,7 @@ export const setSiteWebhook = defineTool({
       .string()
       .trim()
       .min(1)
-      .max(2000)
+      .max(2048)
       .nullable()
       .describe("A public https address that takes a POST of each finished run, or null to remove the webhook."),
     version: z
