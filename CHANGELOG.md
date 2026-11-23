@@ -26,6 +26,14 @@ The npm package is published from CI, under the `@usesuperflow` scope.
   `maximum: 9007199254740991`.
 
 ### Added
+- Site Care runs: `superflow_run_site_care` starts a check now on the pages changed since the
+  last one (care sites only, one at a time: `run_active` with `active_run_id` while one is
+  going; 10 an hour per site, shared with `superflow_run_agents`), `superflow_get_site_care_run`
+  reads a run's result (each failing check with findings that say what, where and how to fix,
+  the same body as the detailed webhook), and `superflow_set_site_webhook` sets or removes the
+  webhook report (version 1 summary or version 2 detailed result; no signing secret).
+  `superflow_get_site_monitoring` also returns `webhook_report`, `slack_report`, `deploy_link`
+  and `check_hook`. Errors keep `active_run_id`.
 - `@usesuperflow/mcp-staging`: the same package built for Superflow staging (private to the
   `usesuperflow` npm org). It points at staging by default and keeps its sign-in apart
   (`superflow-mcp-staging` in the Keychain, Secret Service and config folder).

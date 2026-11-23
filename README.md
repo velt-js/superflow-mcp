@@ -10,7 +10,7 @@ Superflow is a visual feedback and AI review layer for websites. Your team, your
 |---|---|---|
 | What | `npx -y @usesuperflow/mcp`, a small bridge on your machine: stdio to your client, the hosted server behind it | `https://mcp.usesuperflow.ai/mcp`, nothing to install |
 | Auth | `npx -y @usesuperflow/mcp login` (browser sign-in), or an API key in `SUPERFLOW_API_KEY` | OAuth, or the same API key as a bearer token |
-| Tools | 101 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
+| Tools | 104 tools: playbooks, checks (failing checks, site score, mark fixed, exclude, owners, reject), site settings (care or watch, time zone, form tests, Site Care checks and their webhook), comments (read, filter, search, count, export, update, resolve, reply, bulk), admin (projects, pages, members, guests, statuses, tags, workspace, review links, notifications, API keys, billing and invoices), and agents, runs, schedules and integrations | Workspace, project, agent, analytics and team tools |
 | Best for | Claude Code, Claude Desktop, Cursor, Gemini CLI | claude.ai, ChatGPT, the Claude API, any remote client |
 
 Both give the same tools, because the local package forwards every request to the hosted server (see [How the local package works](#how-the-local-package-works)). You can use both at once.
@@ -218,11 +218,14 @@ A check is one kind of problem the agents look for (`link-broken`, `image-alt`, 
 
 | Tool | What it does |
 |---|---|
-| `superflow_get_site_monitoring` | Whether a site is in care (agents run on a schedule) or watch (Version history only), with the cadence, time zone and the run in progress. |
+| `superflow_get_site_monitoring` | Whether a site is in care (agents run on a schedule) or watch (Version history only), with the cadence, time zone, the run in progress, and its webhook, Slack report, deploy link and check trigger. |
 | `superflow_set_site_mode` | Moves a site to care or watch. care runs agents and spends AI credits, so it needs `confirm: true`; on a site never monitored it starts a full check now. |
 | `superflow_set_site_timezone` | The time zone scheduled checks and Version history captures run in. |
 | `superflow_list_forms` | The forms the Forms agent found on a site, with their test settings and last result. |
 | `superflow_set_form_testing` | Turns a form's test on or off. On needs `confirm: true`: each test lands in the client's inbox as a lead. |
+| `superflow_run_site_care` | Starts a Site Care check now on the pages changed since the last one (care sites only, one at a time, 10 an hour per site). |
+| `superflow_get_site_care_run` | A Site Care run's result: each failing check with findings that say what is wrong, where and how to fix it. |
+| `superflow_set_site_webhook` | Sets or removes the address each finished Site Care run is POSTed to, as the summary or the detailed result. |
 
 Resolving or marking a check fixed is a claim: a rescan verifies it, and a problem that is still there comes back as an open finding. `superflow_resolve_comment` and `superflow_update_comment` say when they queued that rescan.
 
@@ -432,7 +435,7 @@ The hosted server lives at `https://mcp.usesuperflow.ai/mcp`. It speaks Streamab
 
 ### Hosted tools
 
-These are the hosted server's first 20 tools. They are being replaced by the package tool set, the 101 tools under [Tools](#tools), on the hosted server and so through the local package too. Until a workspace has the package tool set, the local package forwards these 20.
+These are the hosted server's first 20 tools. They are being replaced by the package tool set, the 104 tools under [Tools](#tools), on the hosted server and so through the local package too. Until a workspace has the package tool set, the local package forwards these 20.
 
 | Area | Tool | Scope | What it does |
 |---|---|---|---|

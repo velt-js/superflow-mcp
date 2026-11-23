@@ -423,6 +423,23 @@
     "check": [{ "tool": "superflow_set_form_testing", "arg_includes": { "enabled": true, "daily_test": true } }, { "no_confirmed_writes": true }]
   },
   {
+    "id": "care-run-check",
+    "prompt": "I just deployed commit 9f3e1a2 to {project}. Check the site now.",
+    "expect_first_tool": "superflow_run_site_care",
+    "check": [{ "tool": "superflow_run_site_care", "arg_includes": { "ref": "9f3e1a2" } }, { "tool_not_called": "superflow_run_agents" }]
+  },
+  {
+    "id": "care-read-run",
+    "prompt": "What did the last Site Care check on {project} find, and how do I fix it?",
+    "expect_first_tool": "superflow_get_site_care_run"
+  },
+  {
+    "id": "care-set-webhook",
+    "prompt": "Send the detailed Site Care results for {project} to https://hooks.example.com/superflow.",
+    "expect_first_tool": ["superflow_set_site_webhook", "superflow_get_site_monitoring"],
+    "check": [{ "tool": "superflow_set_site_webhook", "arg_includes": { "url": "https://hooks.example.com/superflow", "version": 2 } }]
+  },
+  {
     "id": "get-invoices",
     "prompt": "Send me our last three invoices.",
     "expect_first_tool": "superflow_get_invoices",
