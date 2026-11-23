@@ -15357,6 +15357,49 @@
                     ],
                     "additionalProperties": false
                   }
+                },
+                "carried_from": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "run_id": {
+                          "type": "string"
+                        },
+                        "run_number": {
+                          "type": "integer",
+                          "description": "As History shows it."
+                        },
+                        "url": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "That run's report in Superflow."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "run_id",
+                        "run_number",
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "findings_note": {
+                  "type": "string",
+                  "enum": [
+                    "not_checked_this_run"
+                  ],
+                  "description": "Only on a check with no findings and no carried_from: it fails on pages this run did not check, and no recent run found it either."
                 }
               },
               "required": [
@@ -15367,7 +15410,8 @@
                 "fix_guide",
                 "open_count",
                 "page_count",
-                "findings"
+                "findings",
+                "carried_from"
               ],
               "additionalProperties": false
             }
