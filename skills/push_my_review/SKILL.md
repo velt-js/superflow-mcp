@@ -9,9 +9,9 @@ clients: all
 # Push my review into Superflow
 
 Goal: the findings of the user's own review, as agent comments on the right pages under
-their agent's name, with the same rule keys as what Superflow already found, with nothing
-lost and nothing duplicated. Their harness does not change: their agent finds, Superflow records, pins,
-verifies and reports.
+their agent's name, grouped under the same checks as what Superflow already found, with nothing
+lost and nothing duplicated. Their harness does not change: their agent finds, Superflow records, pins
+and reports, and Superflow's own agents verify a fix to a finding that uses one of Superflow's check keys.
 
 ## 1. Find the site and check the install
 
@@ -33,10 +33,12 @@ each finding fill:
 - `severity`: critical, high, medium or low. Leave out anything that is only a note.
 - `rule_key`: Superflow's check key when the kind matches (for example `image-alt` for missing
   alt text, `link-broken`, `link-dead-button`, `mobile-small-tap-target`; the tool lists them,
-  and `superflow_list_failing_checks` shows the site's), so it carries the same key as
-  Superflow's own findings of that kind. It stays an agent comment, not part of Superflow's
-  check, and it merges only with your own earlier imports of the same finding. For a kind Superflow has no key for, your own
+  and `superflow_list_failing_checks` shows the site's), so it is grouped under the
+  same check as Superflow's own findings of that kind. It sits beside them as its own comment,
+  and it merges only with your own earlier imports of the same finding. For a kind Superflow has no key for, your own
   key starting with `ext-`, for example `ext-cookie-banner`. Use the same key every review.
+  Superflow's agents recheck a fix only for its own keys: resolving an `ext-` finding closes it,
+  with no rescan.
 - `fix_type`: content, design or code.
 - `anchor.selector` when you know the element; `suggestion` when the review has a fix;
   `confidence` when the review scored it.
@@ -64,9 +66,8 @@ earlier imports of the same finding (never into Superflow's), and how many were 
 comments.
 
 Offer the next step: read them back with `superflow_list_findings` and the `run_id` the import
-returned. Imported findings are not checks: the fix list (`superflow_use_playbook` with
-`name: "triage"`) and `superflow_list_failing_checks` do not include them, so say so if the
-user expects them there.
+returned. Imported findings count under their checks: `superflow_list_failing_checks` and the
+fix list (`superflow_use_playbook` with `name: "triage"`) include them, beside Superflow's own.
 
 ## Rules
 
